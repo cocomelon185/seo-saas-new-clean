@@ -304,11 +304,67 @@
             localStorage.clear();
             document.getElementById('landing').style.display = 'block';
             document.getElementById('dashboard').style.display = 'none';
-        }
+        handleAuth
         
         // Check if already logged in
         if (localStorage.getItem('token')) {
             showDashboard();
+        }
+
+                // Modal Functions
+        function showSignIn() {
+            document.getElementById('landing').style.display = 'none';
+            document.querySelector('.modal').style.display = 'flex';
+        }
+
+        function showSignUp() {
+            document.getElementById('landing').style.display = 'none';
+            document.querySelector('.modal').style.display = 'flex';
+            // Switch to signup view
+            document.querySelector('.modal-content h2').textContent = 'Create Account';
+        }
+
+        function closeModals() {
+            document.querySelector('.modal').style.display = 'none';
+            document.getElementById('landing').style.display = 'block';
+        }
+
+        // Simple authentication (will be replaced with Supabase)
+        async function handleAuth(event) {
+            event.preventDefault();
+            const password = document.getElementById('signup-password').value;
+            if (!email || !password) {
+            const email = document.getElementById('signup-email').value;                return;
+
+            try {
+                // Store user in localStorage (temporary solution)
+                const user = {
+                    email: email,
+                    name: email.split('@')[0],
+                    signupDate: new Date().toISOString(),
+                    plan: 'free'
+                };
+                
+                localStorage.setItem('user', JSON.stringify(user));
+                localStorage.setItem('token', 'temp-token-' + Date.now());
+                
+                alert('Sign up successful! Redirecting to dashboard...');
+                closeModals();
+                
+                // Redirect to dashboard
+                window.location.href = '/dashboard.html';
+            } catch (err) {
+                alert('Sign up failed: ' + err.message);
+            }
+        }
+
+        // Google OAuth (placeholder - needs Supabase setup)
+        async function signInWithGoogle() {
+            alert('Google OAuth will be available soon! For now, please use email/password.');
+            // TODO: Implement with Supabase
+            // const { data, error } = await supabase.auth.signInWithOAuth({
+            //     provider: 'google'
+            // });
         }
     </script>
 </body>
