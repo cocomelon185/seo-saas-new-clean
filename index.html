@@ -1,612 +1,226 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>AI Content & SEO Optimizer</title>
-  <style>
-    :root {
-      --bg: #f5f7fb;
-      --card-bg: #ffffff;
-      --primary: #2563eb;
-      --primary-soft: #dbeafe;
-      --border: #e2e8f0;
-      --text-main: #0f172a;
-      --text-muted: #64748b;
-      --danger: #b91c1c;
-    }
-
-    * {
-      box-sizing: border-box;
-    }
-
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
-      max-width: 980px;
-      margin: 24px auto;
-      padding: 0 16px 40px;
-      background-color: var(--bg);
-      color: var(--text-main);
-    }
-
-    h1 {
-      text-align: center;
-      margin-bottom: 6px;
-    }
-
-    .subtitle {
-      text-align: center;
-      font-size: 14px;
-      color: var(--text-muted);
-      margin-bottom: 24px;
-    }
-
-    .card {
-      background-color: var(--card-bg);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 20px 20px 24px;
-      box-shadow: 0 12px 30px rgba(15, 23, 42, 0.06);
-    }
-
-    .mode-toggle {
-      display: flex;
-      border-radius: 999px;
-      background: #eef2ff;
-      padding: 4px;
-      margin-bottom: 16px;
-    }
-
-    .mode-button {
-      flex: 1;
-      border: none;
-      background: transparent;
-      padding: 8px 12px;
-      font-size: 14px;
-      cursor: pointer;
-      border-radius: 999px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      color: var(--text-muted);
-    }
-
-    .mode-button.active {
-      background: #ffffff;
-      color: var(--primary);
-      box-shadow: 0 2px 6px rgba(37, 99, 235, 0.18);
-    }
-
-    .mode-label {
-      font-size: 12px;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      color: var(--text-muted);
-      margin-bottom: 8px;
-    }
-
-    .form-grid {
-      display: grid;
-      grid-template-columns: 1.2fr 1fr;
-      gap: 18px;
-    }
-
-    @media (max-width: 768px) {
-      .form-grid {
-        grid-template-columns: 1fr;
-      }
-    }
-
-    label {
-      display: block;
-      margin-top: 10px;
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--text-main);
-    }
-
-    .hint {
-      font-size: 12px;
-      color: var(--text-muted);
-      margin-top: 2px;
-    }
-
-    textarea,
-    input[type="text"],
-    select {
-      width: 100%;
-      margin-top: 5px;
-      padding: 8px 10px;
-      font-size: 14px;
-      border-radius: 6px;
-      border: 1px solid var(--border);
-      background-color: #ffffff;
-    }
-
-    textarea {
-      min-height: 160px;
-      resize: vertical;
-    }
-
-    input[type="text"]:focus,
-    textarea:focus,
-    select:focus {
-      outline: none;
-      border-color: var(--primary);
-      box-shadow: 0 0 0 1px var(--primary-soft);
-    }
-
-    .controls-row {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      margin-top: 8px;
-    }
-
-    .controls-row > div {
-      flex: 1;
-      min-width: 160px;
-    }
-
-    .primary-btn {
-      margin-top: 16px;
-      padding: 10px 18px;
-      font-size: 15px;
-      font-weight: 600;
-      cursor: pointer;
-      border-radius: 999px;
-      border: none;
-      background: var(--primary);
-      color: #ffffff;
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .primary-btn:disabled {
-      opacity: 0.7;
-      cursor: default;
-    }
-
-    .secondary-link {
-      margin-left: 10px;
-      font-size: 13px;
-      color: var(--text-muted);
-      cursor: pointer;
-      border: none;
-      background: none;
-      padding: 0;
-      text-decoration: underline;
-    }
-
-    .status-text {
-      margin-top: 8px;
-      font-size: 13px;
-      color: var(--text-muted);
-    }
-
-    .status-text.error {
-      color: var(--danger);
-    }
-
-    .result-card {
-      margin-top: 20px;
-      padding: 16px;
-      border-radius: 10px;
-      border: 1px solid var(--border);
-      background-color: #ffffff;
-    }
-
-    .result-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 8px;
-    }
-
-    .result-title {
-      font-size: 16px;
-      font-weight: 600;
-    }
-
-    .result-actions {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-
-    .result-actions button {
-      padding: 6px 10px;
-      font-size: 12px;
-      border-radius: 999px;
-      border: 1px solid var(--border);
-      background-color: #f8fafc;
-      cursor: pointer;
-    }
-
-    #result {
-      margin-top: 4px;
-      padding-top: 4px;
-      font-size: 14px;
-      color: var(--text-main);
-      white-space: pre-wrap;
-    }
-
-    .trust-text {
-      margin-top: 10px;
-      font-size: 11px;
-      color: var(--text-muted);
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ContentOptimizer AI - Professional SEO Tool</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+        
+        /* Navigation */
+        nav { background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.1); padding: 1rem 2rem; position: sticky; top: 0; z-index: 100; }
+        .nav-container { max-width: 1200px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; }
+        .logo { font-size: 1.5rem; font-weight: 800; color: #6366f1; }
+        .nav-btn { padding: 0.6rem 1.5rem; border-radius: 6px; border: none; font-weight: 600; cursor: pointer; margin-left: 0.5rem; }
+        .btn-signin { background: #fff; color: #6366f1; border: 1px solid #e5e7eb; }
+        .btn-signup { background: #6366f1; color: #fff; }
+        
+        /* Hero */
+        .hero { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #fff; padding: 5rem 2rem; text-align: center; }
+        .hero h1 { font-size: 3rem; margin-bottom: 1rem; }
+        .hero p { font-size: 1.2rem; margin-bottom: 2rem; opacity: 0.95; }
+        .hero-btn { padding: 1rem 2rem; font-size: 1.1rem; background: #fff; color: #6366f1; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; }
+        
+        /* Features */
+        .features { padding: 4rem 2rem; max-width: 1200px; margin: 0 auto; }
+        .features h2 { text-align: center; font-size: 2.5rem; margin-bottom: 3rem; }
+        .feature-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem; }
+        .feature-card { padding: 2rem; background: #f9fafb; border-radius: 12px; }
+        .feature-card h3 { font-size: 1.5rem; margin: 1rem 0; }
+        
+        /* Modal */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 200; align-items: center; justify-content: center; }
+        .modal.show { display: flex; }
+        .modal-content { background: #fff; padding: 2.5rem; border-radius: 16px; width: 90%; max-width: 400px; }
+        .modal-content h2 { margin-bottom: 1.5rem; text-align: center; }
+        .form-group { margin-bottom: 1.2rem; }
+        .form-group input { width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 6px; font-size: 1rem; }
+        .submit-btn { width: 100%; padding: 0.75rem; background: #6366f1; color: #fff; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; }
+        .close-modal { float: right; font-size: 1.5rem; cursor: pointer; }
+        
+        /* Dashboard (hidden initially) */
+        #dashboard { display: none; }
+        #landing { display: block; }
+    </style>
 </head>
 <body>
-  <h1>AI Content &amp; SEO Optimizer</h1>
-  <p class="subtitle">Paste existing content to optimize it, or generate a new SEO‑ready article from a keyword.</p>
+    <!-- Landing Page -->
+    <div id="landing">
+        <nav>
+            <div class="nav-container">
+                <div class="logo">⚡ ContentOptimizer AI</div>
+                <div>
+                    <button class="nav-btn btn-signin" onclick="showSignIn()">Sign In</button>
+                    <button class="nav-btn btn-signup" onclick="showSignUp()">Get Started</button>
+                </div>
+            </div>
+        </nav>
 
-  <div class="card">
-    <!-- Mode toggle -->
-    <div class="mode-toggle">
-      <button id="modeOptimizeBtn" class="mode-button active" type="button">
-        Optimize Existing Content
-      </button>
-      <button id="modeGenerateBtn" class="mode-button" type="button">
-        Generate New Article
-      </button>
-    </div>
-    <div class="mode-label" id="modeLabel">Mode: Optimize existing content</div>
+        <section class="hero">
+            <h1>AI-Powered SEO Content Optimization</h1>
+            <p>Transform your content with cutting-edge AI. Boost rankings and engage readers.</p>
+            <button class="hero-btn" onclick="showSignUp()">Start Free Trial</button>
+        </section>
 
-    <div class="form-grid">
-      <!-- Left side: main inputs -->
-      <div>
-        <!-- Content area (only for Optimize mode) -->
-        <div id="contentGroup">
-          <label for="content">Content</label>
-          <textarea
-            id="content"
-            placeholder="Paste your blog post, article or landing page copy here..."
-          ></textarea>
-          <div class="hint">We will rewrite and optimize your existing content while preserving your core message.</div>
-        </div>
-
-        <!-- Keyword (used in both modes) -->
-        <label for="keyword" style="margin-top: 14px;">Focus keyword</label>
-        <input
-          type="text"
-          id="keyword"
-          placeholder="e.g. best hiking shoes for flat feet"
-        />
-        <div class="hint">Use one main keyword or phrase you want to rank for.</div>
-      </div>
-
-      <!-- Right side: settings -->
-      <div>
-        <label for="tone">Tone</label>
-        <select id="tone">
-          <option value="">Auto (let AI decide)</option>
-          <option value="Professional">Professional</option>
-          <option value="Friendly">Friendly</option>
-          <option value="Conversational">Conversational</option>
-          <option value="Technical">Technical</option>
-        </select>
-        <div class="hint">Choose how you want the content to sound.</div>
-
-        <div class="controls-row">
-          <div>
-            <label for="wordCount">Target length</label>
-            <input
-              type="text"
-              id="wordCount"
-              placeholder="e.g. 1500 (optional)"
-            />
-            <div class="hint">Leave blank for default length.</div>
-          </div>
-        </div>
-
-        <button id="primaryBtn" class="primary-btn" type="button">
-          Optimize content
-        </button>
-        <button id="switchModeLink" class="secondary-link" type="button">
-          Switch to “Generate New Article”
-        </button>
-
-        <div id="statusText" class="status-text"></div>
-      </div>
+        <section class="features">
+            <h2>Powerful Features</h2>
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <div style="font-size: 3rem;">🚀</div>
+                    <h3>AI Optimization</h3>
+                    <p>Automatically improve keyword density, readability, and SEO structure.</p>
+                </div>
+                <div class="feature-card">
+                    <div style="font-size: 3rem;">✨</div>
+                    <h3>Smart Generation</h3>
+                    <p>Generate SEO-optimized articles from keywords instantly.</p>
+                </div>
+                <div class="feature-card">
+                    <div style="font-size: 3rem;">📊</div>
+                    <h3>Analytics</h3>
+                    <p>Track performance with detailed SEO scores and insights.</p>
+                </div>
+            </div>
+        </section>
     </div>
 
-    <!-- Result -->
-    <div class="result-card">
-      <div class="result-header">
-        <div class="result-title">Result</div>
-        <div class="result-actions">
-          <button type="button" id="copyTextBtn">Copy text</button>
-          <button type="button" id="copyHtmlBtn">Copy as HTML</button>
-          <button type="button" id="copyMarkdownBtn">Copy as Markdown</button>
+    <!-- Sign In Modal -->
+    <div id="signin-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeModals()">&times;</span>
+            <h2>Sign In</h2>
+            <form onsubmit="handleSignIn(event)">
+                <div class="form-group">
+                    <input type="email" placeholder="Email" required id="signin-email">
+                </div>
+                <div class="form-group">
+                    <input type="password" placeholder="Password" required id="signin-password">
+                </div>
+                <button type="submit" class="submit-btn">Sign In</button>
+            </form>
+            <p style="text-align: center; margin-top: 1rem;">Don't have an account? <a href="#" onclick="showSignUp()">Sign up</a></p>
         </div>
-      </div>
-      <div id="result">No result yet.</div>
-      <div class="trust-text">
-        AI‑generated content. Always review and edit before publishing. This tool is optimized for SEO‑friendly structure and readability.
-      </div>
     </div>
-  </div>
 
-  <script>
-    // Grab DOM elements
-    const modeOptimizeBtn = document.getElementById('modeOptimizeBtn');
-    const modeGenerateBtn = document.getElementById('modeGenerateBtn');
-    const modeLabel = document.getElementById('modeLabel');
-    const contentGroup = document.getElementById('contentGroup');
-    const primaryBtn = document.getElementById('primaryBtn');
-    const switchModeLink = document.getElementById('switchModeLink');
-    const statusText = document.getElementById('statusText');
-    const resultDiv = document.getElementById('result');
-    const copyTextBtn = document.getElementById('copyTextBtn');
-    const copyHtmlBtn = document.getElementById('copyHtmlBtn');
-    const copyMarkdownBtn = document.getElementById('copyMarkdownBtn');
+    <!-- Sign Up Modal -->
+    <div id="signup-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeModals()">&times;</span>
+            <h2>Create Account</h2>
+            <form onsubmit="handleSignUp(event)">
+                <div class="form-group">
+                    <input type="text" placeholder="Full Name" required id="signup-name">
+                </div>
+                <div class="form-group">
+                    <input type="email" placeholder="Email" required id="signup-email">
+                </div>
+                <div class="form-group">
+                    <input type="password" placeholder="Password" required id="signup-password">
+                </div>
+                <button type="submit" class="submit-btn">Create Account</button>
+            </form>
+            <p style="text-align: center; margin-top: 1rem;">Have an account? <a href="#" onclick="showSignIn()">Sign in</a></p>
+        </div>
+    </div>
 
-    console.log('JS loaded and running');
+    <!-- Dashboard (your existing optimizer tool) -->
+    <div id="dashboard">
+        <nav>
+            <div class="nav-container">
+                <div class="logo">⚡ ContentOptimizer AI</div>
+                <div>
+                    <span id="user-name" style="margin-right: 1rem;"></span>
+                    <button class="nav-btn btn-signin" onclick="logout()">Logout</button>
+                </div>
+            </div>
+        </nav>
+        <div style="padding: 2rem;">
+            <!-- Your existing optimizer tool will go here -->
+            <h1>Welcome to your Dashboard!</h1>
+            <p>Your optimizer tool will appear here after you paste the content.</p>
+        </div>
+    </div>
 
-    let currentMode = 'optimize'; // 'optimize' | 'generate'
-
-    function setMode(mode) {
-      currentMode = mode;
-      if (mode === 'optimize') {
-        modeOptimizeBtn.classList.add('active');
-        modeGenerateBtn.classList.remove('active');
-        contentGroup.style.display = 'block';
-        modeLabel.textContent = 'Mode: Optimize existing content';
-        primaryBtn.textContent = 'Optimize content';
-        switchModeLink.textContent = 'Switch to “Generate New Article”';
-        if (resultDiv.textContent.trim() === '') {
-          resultDiv.textContent = 'No result yet.';
+    <script>
+        function showSignIn() {
+            closeModals();
+            document.getElementById('signin-modal').classList.add('show');
         }
-      } else {
-        modeGenerateBtn.classList.add('active');
-        modeOptimizeBtn.classList.remove('active');
-        contentGroup.style.display = 'none';
-        modeLabel.textContent = 'Mode: Generate new article';
-        primaryBtn.textContent = 'Generate article';
-        switchModeLink.textContent = 'Switch to “Optimize Existing Content”';
-        if (resultDiv.textContent.trim() === '') {
-          resultDiv.textContent = 'No result yet.';
+        
+        function showSignUp() {
+            closeModals();
+            document.getElementById('signup-modal').classList.add('show');
         }
-      }
-      statusText.textContent = '';
-      statusText.classList.remove('error');
-    }
-
-    modeOptimizeBtn.addEventListener('click', () => setMode('optimize'));
-    modeGenerateBtn.addEventListener('click', () => setMode('generate'));
-    switchModeLink.addEventListener('click', () => {
-      setMode(currentMode === 'optimize' ? 'generate' : 'optimize');
-    });
-
-    function plainTextToHtml(text) {
-      const lines = text.split(/\r?\n/);
-      const htmlParts = [];
-
-      for (let line of lines) {
-        const trimmed = line.trim();
-
-        if (trimmed === '') {
-          continue;
+        
+        function closeModals() {
+            document.querySelectorAll('.modal').forEach(m => m.classList.remove('show'));
         }
-
-        if (trimmed.startsWith('### ')) {
-          htmlParts.push('<h3>' + trimmed.slice(4) + '</h3>');
-        } else if (trimmed.startsWith('## ')) {
-          htmlParts.push('<h2>' + trimmed.slice(3) + '</h2>');
-        } else if (trimmed.startsWith('# ')) {
-          htmlParts.push('<h1>' + trimmed.slice(2) + '</h1>');
-        } else if (/^\d+\.\s+/.test(trimmed)) {
-          htmlParts.push('<p>' + trimmed + '</p>');
-        } else if (trimmed.startsWith('- ')) {
-          htmlParts.push('<p>' + trimmed + '</p>');
-        } else {
-          htmlParts.push('<p>' + trimmed + '</p>');
+        
+        async function handleSignIn(e) {
+            e.preventDefault();
+            const email = document.getElementById('signin-email').value;
+            const password = document.getElementById('signin-password').value;
+            
+            try {
+                const res = await fetch('/api/signin', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    localStorage.setItem('token', data.token);
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                    showDashboard();
+                }
+            } catch (err) {
+                alert('Sign in failed');
+            }
         }
-      }
-
-      return htmlParts.join('\n');
-    }
-
-    function plainTextToMarkdown(text) {
-      return text.replace(/\r\n/g, '\n').trim();
-    }
-
-    copyTextBtn.addEventListener('click', () => {
-      const text = resultDiv.innerText || resultDiv.textContent;
-      if (!text || text.trim() === '' || text.trim() === 'No result yet.') {
-        return;
-      }
-      navigator.clipboard.writeText(text).then(() => {
-        statusText.textContent = 'Result copied to clipboard.';
-        statusText.classList.remove('error');
-      }).catch(() => {
-        statusText.textContent = 'Could not copy. Please select and copy manually.';
-        statusText.classList.add('error');
-      });
-    });
-
-    copyHtmlBtn.addEventListener('click', () => {
-      const text = resultDiv.innerText || resultDiv.textContent;
-      if (!text || text.trim() === '' || text.trim() === 'No result yet.') {
-        return;
-      }
-
-      const html = plainTextToHtml(text);
-
-      navigator.clipboard.writeText(html).then(() => {
-        statusText.textContent = 'HTML copied to clipboard.';
-        statusText.classList.remove('error');
-      }).catch(() => {
-        statusText.textContent = 'Could not copy HTML. Please try again.';
-        statusText.classList.add('error');
-      });
-    });
-
-    copyMarkdownBtn.addEventListener('click', () => {
-      const text = resultDiv.innerText || resultDiv.textContent;
-      if (!text || text.trim() === '' || text.trim() === 'No result yet.') {
-        return;
-      }
-
-      const md = plainTextToMarkdown(text);
-
-      navigator.clipboard.writeText(md).then(() => {
-        statusText.textContent = 'Markdown copied to clipboard.';
-        statusText.classList.remove('error');
-      }).catch(() => {
-        statusText.textContent = 'Could not copy Markdown. Please try again.';
-        statusText.classList.add('error');
-      });
-    });
-
-    async function handlePrimaryAction() {
-      const content = document.getElementById('content').value;
-      const keyword = document.getElementById('keyword').value.trim();
-      const tone = document.getElementById('tone').value;
-      const wordCount = document.getElementById('wordCount').value.trim();
-
-      statusText.textContent = '';
-      statusText.classList.remove('error');
-
-      if (!keyword && currentMode === 'generate') {
-        statusText.textContent = 'Please enter a focus keyword to generate an article.';
-        statusText.classList.add('error');
-        return;
-      }
-
-      if (currentMode === 'optimize') {
-        if (!content.trim()) {
-          statusText.textContent = 'Please paste some content to optimize.';
-          statusText.classList.add('error');
-          return;
+        
+        async function handleSignUp(e) {
+            e.preventDefault();
+            const name = document.getElementById('signup-name').value;
+            const email = document.getElementById('signup-email').value;
+            const password = document.getElementById('signup-password').value;
+            
+            try {
+                const res = await fetch('/api/signup', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, email, password })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    localStorage.setItem('token', data.token);
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                    showDashboard();
+                }
+            } catch (err) {
+                alert('Sign up failed');
+            }
         }
-
-        primaryBtn.disabled = true;
-        primaryBtn.textContent = 'Optimizing...';
-        resultDiv.textContent = 'Analyzing and optimizing your content...';
-
-        const payload = {
-          content: content,
-          focus_keyword: keyword || null,
-          tone: tone || null,
-          target_words: wordCount || null
-        };
-
-        try {
-          const response = await fetch('/api/optimize', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Accept': 'application/json'
-            },
-            body: JSON.stringify(payload)
-          });
-
-          if (!response.ok) {
-            throw new Error('Server error: ' + response.status);
-          }
-
-          const data = await response.json();
-
-          let text = '';
-
-          if (typeof data.seo_score !== 'undefined') {
-            text += `SEO score: ${data.seo_score}\n\n`;
-          }
-
-          if (data.issues && data.issues.length > 0) {
-            text += 'Issues:\n';
-            data.issues.forEach(issue => {
-              text += ` - ${issue}\n`;
-            });
-            text += '\n';
-          }
-
-          if (data.optimized_title) {
-            text += `Optimized title:\n${data.optimized_title}\n\n`;
-          }
-
-          if (data.optimized_meta_description) {
-            text += `Meta description:\n${data.optimized_meta_description}\n\n`;
-          }
-
-          if (data.optimized_headings && data.optimized_headings.length > 0) {
-            text += 'Headings:\n';
-            data.optimized_headings.forEach(h => {
-              text += ` - ${h}\n`;
-            });
-            text += '\n';
-          }
-
-          if (data.optimized_body) {
-            text += 'Body:\n';
-            text += data.optimized_body + '\n';
-          }
-
-          resultDiv.textContent = text || 'No details returned. Try again with more content.';
-          statusText.textContent = 'Optimization complete.';
-        } catch (err) {
-          console.error(err);
-          statusText.textContent = 'Something went wrong while optimizing. Please try again.';
-          statusText.classList.add('error');
-          resultDiv.textContent = 'No result yet.';
-        } finally {
-          primaryBtn.disabled = false;
-          primaryBtn.textContent = 'Optimize content';
+        
+        function showDashboard() {
+            const user = JSON.parse(localStorage.getItem('user'));
+            document.getElementById('user-name').textContent = `Hello, ${user.name}!`;
+            document.getElementById('landing').style.display = 'none';
+            document.getElementById('dashboard').style.display = 'block';
+            closeModals();
         }
-      } else {
-        primaryBtn.disabled = true;
-        primaryBtn.textContent = 'Generating...';
-        resultDiv.textContent = 'Generating a new SEO‑optimized article...';
-
-        const payload = {
-          keyword: keyword,
-          tone: tone || null
-        };
-
-        try {
-          const response = await fetch('/api/generate-content', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Accept': 'application/json'
-            },
-            body: JSON.stringify(payload)
-          });
-
-          if (!response.ok) {
-            throw new Error('Server error: ' + response.status);
-          }
-
-          const data = await response.json();
-
-          if (data && data.content) {
-            resultDiv.textContent = data.content;
-            statusText.textContent = 'Article generated successfully.';
-          } else {
-            resultDiv.textContent = 'No content returned. Try another keyword.';
-            statusText.textContent = 'Could not generate article. Please try again.';
-            statusText.classList.add('error');
-          }
-        } catch (err) {
-          console.error(err);
-          statusText.textContent = 'Something went wrong while generating. Please try again.';
-          statusText.classList.add('error');
-          resultDiv.textContent = 'No result yet.';
-        } finally {
-          primaryBtn.disabled = false;
-          primaryBtn.textContent = (currentMode === 'generate') ? 'Generate article' : 'Optimize content';
+        
+        function logout() {
+            localStorage.clear();
+            document.getElementById('landing').style.display = 'block';
+            document.getElementById('dashboard').style.display = 'none';
         }
-      }
-    }
-
-    primaryBtn.addEventListener('click', handlePrimaryAction);
-
-    setMode('optimize');
-  </script>
+        
+        // Check if already logged in
+        if (localStorage.getItem('token')) {
+            showDashboard();
+        }
+    </script>
 </body>
 </html>
