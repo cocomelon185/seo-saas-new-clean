@@ -118,9 +118,9 @@
         // 1. Sign up at https://razorpay.com
         // 2. Go to Dashboard > Settings > API Keys
         // 3. Generate Test Mode keys for testing
-        // 4. Replace 'YOUR_RAZORPAY_KEY_ID' below with your actual Key ID (starts with rzp_test_)
+        // 4. Replace 'rzp_test_R6LyCR200DlO69' below with your actual Key ID (starts with rzp_test_)
         // 5. For production, use Live Mode keysY)
-        const RAZORPAY_KEY_ID = 'YOUR_RAZORPAY_KEY_ID'
+        const RAZORPAY_KEY_ID = 'rzp_test_R6LyCR200DlO69'
 
         async function startFreeTrial() {
             const { data: { session } } = await supabase.auth.getSession()
