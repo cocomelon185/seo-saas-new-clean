@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ContentOptimizer AI - Professional SEO Tool</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -38,33 +39,30 @@
         .form-group { margin-bottom: 1.2rem; }
         .form-group input { width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 6px; font-size: 1rem; }
         .submit-btn { width: 100%; padding: 0.75rem; background: #6366f1; color: #fff; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; }
+        .google-btn { width: 100%; padding: 0.75rem; background: #fff; color: #333; border: 1px solid #d1d5db; border-radius: 6px; font-weight: 600; cursor: pointer; margin-bottom: 1rem; }
         .close-modal { float: right; font-size: 1.5rem; cursor: pointer; }
-        
-        /* Dashboard (hidden initially) */
-        #dashboard { display: none; }
-        #landing { display: block; }
+        .error { color: #ef4444; font-size: 0.875rem; margin-top: 0.5rem; }
     </style>
 </head>
 <body>
-    <!-- Landing Page -->
     <div id="landing">
         <nav>
             <div class="nav-container">
                 <div class="logo">⚡ ContentOptimizer AI</div>
                 <div>
-                                    <a href="referral.html" class="nav-btn btn-referral" style="margin-right: 15px; text-decoration: none;">🎁 Refer & Earn</a>
+                    <a href="referral.html" class="nav-btn" style="text-decoration: none;">🎁 Refer & Earn</a>
                     <button class="nav-btn btn-signin" onclick="showSignIn()">Sign In</button>
                     <button class="nav-btn btn-signup" onclick="showSignUp()">Get Started</button>
                 </div>
             </div>
         </nav>
-
+        
         <section class="hero">
             <h1>AI-Powered SEO Content Optimization</h1>
             <p>Transform your content with cutting-edge AI. Boost rankings and engage readers.</p>
             <button class="hero-btn" onclick="showSignUp()">Start Free Trial</button>
         </section>
-
+        
         <section class="features">
             <h2>Powerful Features</h2>
             <div class="feature-grid">
@@ -85,101 +83,14 @@
                 </div>
             </div>
         </section>
-    </div>        
-        <!-- Pricing Section -->
-        <section class="pricing" style="padding: 5rem 2rem; background: #f9fafb;">
-            <div style="max-width: 1200px; margin: 0 auto;">
-                <h2 style="text-align: center; font-size: 2.5rem; margin-bottom: 1rem;">Simple, Transparent Pricing</h2>
-                <p style="text-align: center; color: #6b7280; font-size: 1.2rem; margin-bottom: 3rem;">Start free, upgrade when you're ready. No credit card required.</p>
-                
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 2rem;">
-                    
-                    <!-- FREE TIER -->
-                    <div style="background: #fff; padding: 2.5rem; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08);">
-                        <h3 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 0.5rem;">Free</h3>
-                        <div style="font-size: 3rem; font-weight: 800; color: #6366f1; margin: 1rem 0;">$0<span style="font-size: 1.2rem; color: #6b7280; font-weight: 400;">/month</span></div>
-                        <p style="color: #6b7280; margin-bottom: 2rem;">Perfect for trying out AI optimization</p>
-                        
-                        <ul style="list-style: none; padding: 0;">
-                            <li style="padding: 0.75rem 0; border-bottom: 1px solid #e5e7eb;">✓ <strong>10 optimizations/month</strong></li>
-                            <li style="padding: 0.75rem 0; border-bottom: 1px solid #e5e7eb;">✓ Basic SEO score</li>
-                            <li style="padding: 0.75rem 0; border-bottom: 1px solid #e5e7eb;">✓ 1 user</li>
-                            <li style="padding: 0.75rem 0; border-bottom: 1px solid #e5e7eb;">✓ Community support</li>
-                        </ul>
-                        
-                        <button onclick="showSignUp()" style="width: 100%; margin-top: 2rem; padding: 1rem; background: #6366f1; color: #fff; border: none; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer;">Get Started Free</button>
-                    </div>
-                    
-                    <!-- STARTER TIER -->
-                    <div style="background: #fff; padding: 2.5rem; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); border: 3px solid #6366f1; position: relative;">
-                        <div style="position: absolute; top: -15px; right: 20px; background: #6366f1; color: #fff; padding: 0.5rem 1.5rem; border-radius: 20px; font-size: 0.85rem; font-weight: 600;">MOST POPULAR</div>
-                        <h3 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 0.5rem;">Starter</h3>
-                        <div style="font-size: 3rem; font-weight: 800; color: #6366f1; margin: 1rem 0;">$9.99<span style="font-size: 1.2rem; color: #6b7280; font-weight: 400;">/month</span></div>
-                        <p style="color: #6b7280; margin-bottom: 2rem;">For growing content creators</p>
-                        
-                        <ul style="list-style: none; padding: 0;">
-                            <li style="padding: 0.75rem 0; border-bottom: 1px solid #e5e7eb;">✓ <strong>100 optimizations/month</strong></li>
-                            <li style="padding: 0.75rem 0; border-bottom: 1px solid #e5e7eb;">✓ Advanced SEO analytics</li>
-                            <li style="padding: 0.75rem 0; border-bottom: 1px solid #e5e7eb;">✓ Priority AI processing</li>
-                            <li style="padding: 0.75rem 0; border-bottom: 1px solid #e5e7eb;">✓ 3 team members</li>
-                            <li style="padding: 0.75rem 0; border-bottom: 1px solid #e5e7eb;">✓ Email support</li>
-                        </ul>
-                        
-                        <button onclick="showSignUp()" style="width: 100%; margin-top: 2rem; padding: 1rem; background: #6366f1; color: #fff; border: none; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer;">Start 14-Day Trial</button>
-                    </div>
-                    
-                    <!-- PRO TIER -->
-                    <div style="background: #fff; padding: 2.5rem; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08);">
-                        <h3 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 0.5rem;">Pro</h3>
-                        <div style="font-size: 3rem; font-weight: 800; color: #6366f1; margin: 1rem 0;">$49<span style="font-size: 1.2rem; color: #6b7280; font-weight: 400;">/month</span></div>
-                        <p style="color: #6b7280; margin-bottom: 2rem;">For professional teams</p>
-                        
-                        <ul style="list-style: none; padding: 0;">
-                            <li style="padding: 0.75rem 0; border-bottom: 1px solid #e5e7eb;">✓ <strong>Unlimited optimizations</strong></li>
-                            <li style="padding: 0.75rem 0; border-bottom: 1px solid #e5e7eb;">✓ GPT-4 powered AI</li>
-                            <li style="padding: 0.75rem 0; border-bottom: 1px solid #e5e7eb;">✓ White-label reports</li>
-                            <li style="padding: 0.75rem 0; border-bottom: 1px solid #e5e7eb;">✓ 10 team members</li>
-                            <li style="padding: 0.75rem 0; border-bottom: 1px solid #e5e7eb;">✓ API access</li>
-                        </ul>
-                        
-                        <button onclick="showSignUp()" style="width: 100%; margin-top: 2rem; padding: 1rem; background: #6366f1; color: #fff; border: none; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer;">Start 14-Day Trial</button>
-                    </div>
-                    
-                    <!-- ENTERPRISE TIER -->
-                    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 2.5rem; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); color: #fff;">
-                        <h3 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 0.5rem; color: #fff;">Enterprise</h3>
-                        <div style="font-size: 3rem; font-weight: 800; margin: 1rem 0;">Custom</div>
-                        <p style="opacity: 0.95; margin-bottom: 2rem;">For large organizations</p>
-                        
-                        <ul style="list-style: none; padding: 0;">
-                            <li style="padding: 0.75rem 0; border-bottom: 1px solid rgba(255,255,255,0.2);">✓ Everything in Pro</li>
-                            <li style="padding: 0.75rem 0; border-bottom: 1px solid rgba(255,255,255,0.2);">✓ Custom AI training</li>
-                            <li style="padding: 0.75rem 0; border-bottom: 1px solid rgba(255,255,255,0.2);">✓ Dedicated support</li>
-                            <li style="padding: 0.75rem 0; border-bottom: 1px solid rgba(255,255,255,0.2);">✓ Unlimited users</li>
-                        </ul>
-                        
-                        <button onclick="showSignUp()" style="width: 100%; margin-top: 2rem; padding: 1rem; background: #fff; color: #6366f1; border: none; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer;">Contact Sales</button>
-                    </div>
-                </div>
-                
-                <!-- Trust badges -->
-                <div style="text-align: center; margin-top: 4rem; padding-top: 3rem; border-top: 1px solid #e5e7eb;">
-                    <p style="color: #6b7280; margin-bottom: 1.5rem;">Trusted by 50,000+ content creators worldwide</p>
-                    <div style="display: flex; justify-content: center; gap: 3rem; flex-wrap: wrap; opacity: 0.6; font-size: 0.95rem;">
-                        <div>💳 No credit card required</div>
-                        <div>🔒 Enterprise-grade security</div>
-                        <div>🚀 Cancel anytime</div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-
+    </div>
+    
     <!-- Sign In Modal -->
     <div id="signin-modal" class="modal">
         <div class="modal-content">
-            <span class="close-modal" onclick="closeModals()">&times;</span>
+            <span class="close-modal" onclick="closeModals()">×</span>
             <h2>Sign In</h2>
+            <button class="google-btn" onclick="signInWithGoogle()">🔐 Continue with Google</button>
             <form onsubmit="handleSignIn(event)">
                 <div class="form-group">
                     <input type="email" placeholder="Email" required id="signin-email">
@@ -187,185 +98,125 @@
                 <div class="form-group">
                     <input type="password" placeholder="Password" required id="signin-password">
                 </div>
+                <div id="signin-error" class="error"></div>
                 <button type="submit" class="submit-btn">Sign In</button>
             </form>
             <p style="text-align: center; margin-top: 1rem;">Don't have an account? <a href="#" onclick="showSignUp()">Sign up</a></p>
         </div>
     </div>
-
+    
     <!-- Sign Up Modal -->
     <div id="signup-modal" class="modal">
         <div class="modal-content">
-            <span class="close-modal" onclick="closeModals()">&times;</span>
+            <span class="close-modal" onclick="closeModals()">×</span>
             <h2>Create Account</h2>
+            <button class="google-btn" onclick="signInWithGoogle()">🔐 Continue with Google</button>
             <form onsubmit="handleSignUp(event)">
-                <div class="form-group">
-                    <input type="text" placeholder="Full Name" required id="signup-name">
-                </div>
                 <div class="form-group">
                     <input type="email" placeholder="Email" required id="signup-email">
                 </div>
                 <div class="form-group">
-                    <input type="password" placeholder="Password" required id="signup-password">
+                    <input type="password" placeholder="Password (min 6 characters)" required id="signup-password" minlength="6">
                 </div>
+                <div id="signup-error" class="error"></div>
                 <button type="submit" class="submit-btn">Create Account</button>
             </form>
             <p style="text-align: center; margin-top: 1rem;">Have an account? <a href="#" onclick="showSignIn()">Sign in</a></p>
         </div>
     </div>
-
-    <!-- Dashboard (your existing optimizer tool) -->
-    <div id="dashboard">
-        <nav>
-            <div class="nav-container">
-                <div class="logo">⚡ ContentOptimizer AI</div>
-                <div>
-                    <span id="user-name" style="margin-right: 1rem;"></span>
-                    <button class="nav-btn btn-signin" onclick="logout()">Logout</button>
-                </div>
-            </div>
-        </nav>
-        <div style="padding: 2rem;">
-            <!-- Your existing optimizer tool will go here -->
-            <h1>Welcome to your Dashboard!</h1>
-            <p>Your optimizer tool will appear here after you paste the content.</p>
-        </div>
-    </div>
-
+    
     <script>
+        // Initialize Supabase
+        const SUPABASE_URL = 'https://pydepmcijgknxtwwuhda.supabase.co'
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB5ZGVwbWNpamdrbbnh0d3d1aGRhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzUxNzA3MDUsImV4cCI6MjA1MDc0NjcwNX0.8vLT9jNzQVjc3M1O1JzdXBnYmFzZSIsInJlZiI6InB5ZGVwbWNpamdrb'
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+        
+        // Modal Functions
         function showSignIn() {
-            closeModals();
-            document.getElementById('signin-modal').classList.add('show');
+            closeModals()
+            document.getElementById('signin-modal').classList.add('show')
         }
         
         function showSignUp() {
-            closeModals();
-            document.getElementById('signup-modal').classList.add('show');
+            closeModals()
+            document.getElementById('signup-modal').classList.add('show')
         }
         
         function closeModals() {
-            document.querySelectorAll('.modal').forEach(m => m.classList.remove('show'));
+            document.querySelectorAll('.modal').forEach(m => m.classList.remove('show'))
+            document.getElementById('signin-error').textContent = ''
+            document.getElementById('signup-error').textContent = ''
         }
         
-        async function handleSignIn(e) {
-            e.preventDefault();
-            const email = document.getElementById('signin-email').value;
-            const password = document.getElementById('signin-password').value;
-            
-            try {
-                const res = await fetch('/api/signin', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, password })
-                });
-                const data = await res.json();
-                if (data.success) {
-                    localStorage.setItem('token', data.token);
-                    localStorage.setItem('user', JSON.stringify(data.user));
-                    showDashboard();
-                }
-            } catch (err) {
-                alert('Sign in failed');
-            }
-        }
-        
-        async function handleSignUp(e) {
-            e.preventDefault();
-            const name = document.getElementById('signup-name').value;
-            const email = document.getElementById('signup-email').value;
-            const password = document.getElementById('signup-password').value;
-            
-            try {
-                const res = await fetch('/api/signup', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name, email, password })
-                });
-                const data = await res.json();
-                if (data.success) {
-                    localStorage.setItem('token', data.token);
-                    localStorage.setItem('user', JSON.stringify(data.user));
-                    showDashboard();
-                }
-            } catch (err) {
-                alert('Sign up failed');
-            }
-        }
-        
-        function showDashboard() {
-            const user = JSON.parse(localStorage.getItem('user'));
-            document.getElementById('user-name').textContent = `Hello, ${user.name}!`;
-            document.getElementById('landing').style.display = 'none';
-            document.getElementById('dashboard').style.display = 'block';
-            closeModals();
-        }
-        
-        function logout() {
-            localStorage.clear();
-            document.getElementById('landing').style.display = 'block';
-            document.getElementById('dashboard').style.display = 'none';
-        handleAuth
-        
-        // Check if already logged in
-        if (localStorage.getItem('token')) {
-            showDashboard();
-        }
-
-                // Modal Functions
-        function showSignIn() {
-            document.getElementById('landing').style.display = 'none';
-            document.querySelector('.modal').style.display = 'flex';
-        }
-
-        function showSignUp() {
-            document.getElementById('landing').style.display = 'none';
-            document.querySelector('.modal').style.display = 'flex';
-            // Switch to signup view
-            document.querySelector('.modal-content h2').textContent = 'Create Account';
-        }
-
-        function closeModals() {
-            document.querySelector('.modal').style.display = 'none';
-            document.getElementById('landing').style.display = 'block';
-        }
-
-        // Simple authentication (will be replaced with Supabase)
-        async function handleAuth(event) {
-            event.preventDefault();
-            const password = document.getElementById('signup-password').value;
-            if (!email || !password) {
-            const email = document.getElementById('signup-email').value;                return;
-
-            try {
-                // Store user in localStorage (temporary solution)
-                const user = {
-                    email: email,
-                    name: email.split('@')[0],
-                    signupDate: new Date().toISOString(),
-                    plan: 'free'
-                };
-                
-                localStorage.setItem('user', JSON.stringify(user));
-                localStorage.setItem('token', 'temp-token-' + Date.now());
-                
-                alert('Sign up successful! Redirecting to dashboard...');
-                closeModals();
-                
-                // Redirect to dashboard
-                window.location.href = '/dashboard.html';
-            } catch (err) {
-                alert('Sign up failed: ' + err.message);
-            }
-        }
-
-        // Google OAuth (placeholder - needs Supabase setup)
+        // Google OAuth Sign In
         async function signInWithGoogle() {
-            alert('Google OAuth will be available soon! For now, please use email/password.');
-            // TODO: Implement with Supabase
-            // const { data, error } = await supabase.auth.signInWithOAuth({
-            //     provider: 'google'
-            // });
+            const { data, error } = await supabase.auth.signInWithOAuth({
+                provider: 'google',
+                options: {
+                    redirectTo: window.location.origin + '/dashboard.html'
+                }
+            })
+            if (error) {
+                alert('Google sign-in failed: ' + error.message)
+            }
         }
+        
+        // Email/Password Sign Up
+        async function handleSignUp(e) {
+            e.preventDefault()
+            const email = document.getElementById('signup-email').value
+            const password = document.getElementById('signup-password').value
+            const errorDiv = document.getElementById('signup-error')
+            
+            try {
+                const { data, error } = await supabase.auth.signUp({
+                    email: email,
+                    password: password,
+                    options: {
+                        emailRedirectTo: window.location.origin + '/dashboard.html'
+                    }
+                })
+                
+                if (error) throw error
+                
+                if (data.user) {
+                    alert('Success! Please check your email to verify your account.')
+                    closeModals()
+                }
+            } catch (error) {
+                errorDiv.textContent = error.message
+            }
+        }
+        
+        // Email/Password Sign In
+        async function handleSignIn(e) {
+            e.preventDefault()
+            const email = document.getElementById('signin-email').value
+            const password = document.getElementById('signin-password').value
+            const errorDiv = document.getElementById('signin-error')
+            
+            try {
+                const { data, error } = await supabase.auth.signInWithPassword({
+                    email: email,
+                    password: password
+                })
+                
+                if (error) throw error
+                
+                if (data.session) {
+                    window.location.href = '/dashboard.html'
+                }
+            } catch (error) {
+                errorDiv.textContent = error.message
+            }
+        }
+        
+        // Check if user is already logged in
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            if (session) {
+                window.location.href = '/dashboard.html'
+            }
+        })
     </script>
 </body>
 </html>
