@@ -112,7 +112,14 @@
     <script>
         const SUPABASE_URL = 'https://dbgjlstdfgpqomzdbdel.supabase.co'
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRiZ2psc3RkZmdwcW9temRiZGVsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzUxOTE1NDEsImV4cCI6MjA1MDc2NzU0MX0.5kpBzWqwbWdKM4iUGH0fv7ZAJvL_X7PaIcxIHpVCuII'
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KE
+                                                              
+        // TODO: Add your Razorpay credentials here
+        // 1. Sign up at https://razorpay.com
+        // 2. Go to Dashboard > Settings > API Keys
+        // 3. Generate Test Mode keys for testing
+        // 4. Replace 'YOUR_RAZORPAY_KEY_ID' below with your actual Key ID (starts with rzp_test_)
+        // 5. For production, use Live Mode keysY)
         const RAZORPAY_KEY_ID = 'YOUR_RAZORPAY_KEY_ID'
 
         async function startFreeTrial() {
