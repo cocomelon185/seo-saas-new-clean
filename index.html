@@ -34,7 +34,7 @@
 
     <div class="card" style="margin-top:18px">
       <p>This project is prepared for Vercel. Configure secret environment variables in your deployment platform (do not commit them to the repo).</p>
-      <a class="btn" href="#" onclick="alert('Demo')">Demo Action</a>
+      <a class="btn" href="#" id="demoBtn">Demo Action</a>
     </div>
 
     <div class="footer">Learn more in the README.md</div>
@@ -42,6 +42,17 @@
 
   <!-- Lazy-load Supabase client: only loaded at runtime if needed. The placeholders in META tags should be replaced by your deployment environment. -->
   <script>
+    // Demo button handler
+    document.addEventListener('DOMContentLoaded', function() {
+      const demoBtn = document.getElementById('demoBtn');
+      if (demoBtn) {
+        demoBtn.addEventListener('click', function(e) {
+          e.preventDefault();
+          alert('Demo');
+        });
+      }
+    });
+
     function loadSupabaseWhenNeeded() {
       if (window.supabaseLoaded) return;
       const url = document.querySelector('meta[name="supabase-url"]').content;
