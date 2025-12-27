@@ -17,6 +17,8 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Basic hardening with CSP configured to allow inline scripts
+// Note: 'unsafe-inline' is used for simplicity in this starter. For production,
+// consider using CSP nonces or moving all scripts to external files.
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
