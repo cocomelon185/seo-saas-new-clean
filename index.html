@@ -15,6 +15,7 @@
         .nav-container { max-width: 1200px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; }
         .logo { font-size: 1.5rem; font-weight: 800; color: #6366f1; }
         .nav-btn { padding: 0.6rem 1.5rem; border-radius: 6px; border: none; font-weight: 600; cursor: pointer; margin-left: 0.5rem; }
+        .nav-btn:disabled { opacity: 0.6; cursor: not-allowed; }
         .btn-signin { background: #fff; color: #6366f1; border: 1px solid #e5e7eb; }
         .btn-signup { background: #6366f1; color: #fff; }
         
@@ -50,16 +51,18 @@
             <div class="nav-container">
                 <div class="logo">⚡ ContentOptimizer AI</div>
                 <div>
-                    <a href="referral.html" class="nav-btn" style="text-decoration: none;">🎁 Refer & Earn</a>
-                    <button class="nav-btn btn-signin" onclick="showSignIn()">Sign In</button>
-                <button class="nav-btn btn-signup" onclick="window.location.href='pricing.html'">Get Started</button>                </div>
+                    <a href="referral.html" class="nav-btn" style="text-decoration: none;" rel="noopener noreferrer">🎁 Refer & Earn</a>
+                    <button id="nav-signin" class="nav-btn btn-signin" onclick="showSignIn()">Sign In</button>
+                    <button class="nav-btn btn-signup" onclick="window.location.href='pricing.html'">Get Started</button>
+                </div>
             </div>
         </nav>
         
         <section class="hero">
             <h1>AI-Powered SEO Content Optimization</h1>
             <p>Transform your content with cutting-edge AI. Boost rankings and engage readers.</p>
-            <button class="hero-btn" onclick="window.location.href='pricing.html'">Start Free Trial</button>        </section>
+            <button class="hero-btn" onclick="window.location.href='pricing.html'">Start Free Trial</button>
+        </section>
         
         <section class="features">
             <h2>Powerful Features</h2>
@@ -84,19 +87,19 @@
     </div>
     
     <!-- Sign In Modal -->
-    <div id="signin-modal" class="modal">
+    <div id="signin-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="signin-title" tabindex="-1">
         <div class="modal-content">
-            <span class="close-modal" onclick="closeModals()">×</span>
-            <h2>Sign In</h2>
-            <button class="google-btn" onclick="signInWithGoogle()">🔐 Continue with Google</button>
+            <button class="close-modal" aria-label="Close sign in dialog" onclick="closeModals()">×</button>
+            <h2 id="signin-title">Sign In</h2>
+            <button id="google-signin" class="google-btn" onclick="signInWithGoogle()">🔐 Continue with Google</button>
             <form onsubmit="handleSignIn(event)">
                 <div class="form-group">
-                    <input type="email" placeholder="Email" required id="signin-email">
+                    <input type="email" placeholder="Email" required id="signin-email" aria-label="Email">
                 </div>
                 <div class="form-group">
-                    <input type="password" placeholder="Password" required id="signin-password">
+                    <input type="password" placeholder="Password" required id="signin-password" aria-label="Password">
                 </div>
-                <div id="signin-error" class="error"></div>
+                <div id="signin-error" class="error" aria-live="polite"></div>
                 <button type="submit" class="submit-btn">Sign In</button>
             </form>
             <p style="text-align: center; margin-top: 1rem;">Don't have an account? <a href="#" onclick="showSignUp()">Sign up</a></p>
@@ -104,19 +107,19 @@
     </div>
     
     <!-- Sign Up Modal -->
-    <div id="signup-modal" class="modal">
+    <div id="signup-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="signup-title" tabindex="-1">
         <div class="modal-content">
-            <span class="close-modal" onclick="closeModals()">×</span>
-            <h2>Create Account</h2>
+            <button class="close-modal" aria-label="Close sign up dialog" onclick="closeModals()">×</button>
+            <h2 id="signup-title">Create Account</h2>
             <button class="google-btn" onclick="signInWithGoogle()">🔐 Continue with Google</button>
             <form onsubmit="handleSignUp(event)">
                 <div class="form-group">
-                    <input type="email" placeholder="Email" required id="signup-email">
+                    <input type="email" placeholder="Email" required id="signup-email" aria-label="Email">
                 </div>
                 <div class="form-group">
-                    <input type="password" placeholder="Password (min 6 characters)" required id="signup-password" minlength="6">
+                    <input type="password" placeholder="Password (min 6 characters)" required id="signup-password" minlength="6" aria-label="Password">
                 </div>
-                <div id="signup-error" class="error"></div>
+                <div id="signup-error" class="error" aria-live="polite"></div>
                 <button type="submit" class="submit-btn">Create Account</button>
             </form>
             <p style="text-align: center; margin-top: 1rem;">Have an account? <a href="#" onclick="showSignIn()">Sign in</a></p>
@@ -124,97 +127,104 @@
     </div>
     
     <script>
-        // Initialize Supabase
-            const SUPABASE_URL = 'https://dbgjlstdfgpqomzdbdel.supabase.co'
-                            const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRiZ2psc3RkZmdwcW9temRiZGVsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzUxOTE1NDEsImV4cCI6MjA1MDc2NzU0MX0.5kpBzWqwbWdKM4iUGH0fv7ZAJvL_X7PaIcxIHpVCuII'const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB5ZGVwbWNpamdrbbnh0d3d1aGRhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzUxNzA3MDUsImV4cCI6MjA1MDc0NjcwNX0.8vLT9jNzQVjc3M1O1JzdXBnYmFzZSIsInJlZiI6InB5ZGVwbWNpamdrb'
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
-        
+        // IMPORTANT: Do NOT commit your Supabase ANON key to source control. Replace the placeholder in deployment
+        // environment or configure your hosting (Vercel, Netlify, etc.) to inject the anon key securely.
+        const SUPABASE_URL = 'https://dbgjlstdfgpqomzdbdel.supabase.co';
+        const SUPABASE_ANON_KEY = 'REPLACE_WITH_SUPABASE_ANON_KEY'; // <-- replace securely in deployment environment
+
+        // Initialize Supabase client only if key is configured
+        let supabaseClient = null;
+        if (!SUPABASE_ANON_KEY || SUPABASE_ANON_KEY.startsWith('REPLACE')) {
+            console.warn('Supabase anon key not set. Auth features are disabled. Set SUPABASE_ANON_KEY in the deployment environment.');
+            // disable auth UI buttons early
+            document.addEventListener('DOMContentLoaded', () => {
+                document.querySelectorAll('#nav-signin, #google-signin').forEach(b => {
+                    if (b) { b.disabled = true; b.setAttribute('title', 'Sign in disabled: SUPABASE_ANON_KEY not configured'); }
+                });
+            });
+        } else if (window.supabase && typeof window.supabase.createClient === 'function') {
+            supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        }
+
         // Modal Functions
         function showSignIn() {
-            closeModals()
-            document.getElementById('signin-modal').classList.add('show')
+            closeModals();
+            document.getElementById('signin-modal').classList.add('show');
+            document.getElementById('signin-modal').focus();
         }
         
         function showSignUp() {
-            closeModals()
-            document.getElementById('signup-modal').classList.add('show')
+            closeModals();
+            document.getElementById('signup-modal').classList.add('show');
+            document.getElementById('signup-modal').focus();
         }
         
         function closeModals() {
-            document.querySelectorAll('.modal').forEach(m => m.classList.remove('show'))
-            document.getElementById('signin-error').textContent = ''
-            document.getElementById('signup-error').textContent = ''
+            document.querySelectorAll('.modal').forEach(m => m.classList.remove('show'));
+            const signinError = document.getElementById('signin-error'); if (signinError) signinError.textContent = '';
+            const signupError = document.getElementById('signup-error'); if (signupError) signupError.textContent = '';
         }
-        
+
+        // Close modals with Escape key for accessibility
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModals(); });
+
         // Google OAuth Sign In
         async function signInWithGoogle() {
-            const { data, error } = await supabase.auth.signInWithOAuth({
+            if (!supabaseClient) { alert('Sign-in is not configured. Please set your Supabase ANON key in the deployment environment.'); return; }
+            const { data, error } = await supabaseClient.auth.signInWithOAuth({
                 provider: 'google',
-                options: {
-                    redirectTo: window.location.origin + '/dashboard.html'
-                }
-            })
+                options: { redirectTo: window.location.origin + '/dashboard.html' }
+            });
             if (error) {
-                alert('Google sign-in failed: ' + error.message)
+                alert('Google sign-in failed: ' + (error.message || JSON.stringify(error)));
             }
         }
-        
+
         // Email/Password Sign Up
         async function handleSignUp(e) {
-            e.preventDefault()
-            const email = document.getElementById('signup-email').value
-            const password = document.getElementById('signup-password').value
-            const errorDiv = document.getElementById('signup-error')
-            
+            e.preventDefault();
+            if (!supabaseClient) { document.getElementById('signup-error').textContent = 'Sign-up is not configured on this deployment.'; return; }
+            const email = document.getElementById('signup-email').value;
+            const password = document.getElementById('signup-password').value;
+            const errorDiv = document.getElementById('signup-error');
             try {
-                const { data, error } = await supabase.auth.signUp({
+                const { data, error } = await supabaseClient.auth.signUp({
                     email: email,
                     password: password,
-                    options: {
-                        emailRedirectTo: window.location.origin + '/dashboard.html'
-                    }
-                })
-                
-                if (error) throw error
-                
+                    options: { emailRedirectTo: window.location.origin + '/dashboard.html' }
+                });
+                if (error) throw error;
                 if (data.user) {
-                    alert('Success! Please check your email to verify your account.')
-                    closeModals()
+                    alert('Success! Please check your email to verify your account.');
+                    closeModals();
                 }
-            } catch (error) {
-                errorDiv.textContent = error.message
+            } catch (err) {
+                errorDiv.textContent = err.message || JSON.stringify(err);
             }
         }
-        
+
         // Email/Password Sign In
         async function handleSignIn(e) {
-            e.preventDefault()
-            const email = document.getElementById('signin-email').value
-            const password = document.getElementById('signin-password').value
-            const errorDiv = document.getElementById('signin-error')
-            
+            e.preventDefault();
+            if (!supabaseClient) { document.getElementById('signin-error').textContent = 'Sign-in is not configured on this deployment.'; return; }
+            const email = document.getElementById('signin-email').value;
+            const password = document.getElementById('signin-password').value;
+            const errorDiv = document.getElementById('signin-error');
             try {
-                const { data, error } = await supabase.auth.signInWithPassword({
-                    email: email,
-                    password: password
-                })
-                
-                if (error) throw error
-                
-                if (data.session) {
-                    window.location.href = '/dashboard.html'
-                }
-            } catch (error) {
-                errorDiv.textContent = error.message
+                const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+                if (error) throw error;
+                if (data.session) { window.location.href = '/dashboard.html'; }
+            } catch (err) {
+                errorDiv.textContent = err.message || JSON.stringify(err);
             }
         }
-        
+
         // Check if user is already logged in
-        supabase.auth.getSession().then(({ data: { session } }) => {
-            if (session) {
-                window.location.href = '/dashboard.html'
-            }
-        })
+        if (supabaseClient) {
+            supabaseClient.auth.getSession().then(({ data: { session } }) => {
+                if (session) { window.location.href = '/dashboard.html'; }
+            }).catch(() => {/* ignore */});
+        }
     </script>
 </body>
 </html>
