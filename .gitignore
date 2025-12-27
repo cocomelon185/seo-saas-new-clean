@@ -1,2 +1,9 @@
+node_modules/
+database.db
+.DS_Store
 .env
-.env.save
+.env.local
+.env.*
+coverage/
+npm-debug.log
+yarn-error.log
