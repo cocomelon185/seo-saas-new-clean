@@ -1,64 +1,656 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>SEO SaaS</title>
-  <meta name="description" content="Lightweight SEO SaaS starter" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ContentOptimizer AI - AI-Powered SEO & Content Optimization</title>
+    <meta name="description" content="Transform your content with AI-powered SEO optimization. Get better rankings, more traffic, and higher conversions.">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-  <!-- Open Graph -->
-  <meta property="og:title" content="SEO SaaS" />
-  <meta property="og:description" content="Lightweight SEO SaaS starter" />
-  <meta property="og:type" content="website" />
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: #f7f9fc;
+            color: #333;
+            line-height: 1.6;
+        }
 
-  <!-- Preconnect for fonts and third-party origins -->
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
+        /* Navigation */
+        nav {
+            background: white;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
 
-  <!-- Styles -->
-  <link rel="stylesheet" href="/assets/styles.css">
+        .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
 
-  <!-- Do not include real keys in source. The placeholders below should be replaced at deploy-time or provided via env/config. -->
-  <meta name="supabase-url" content="REPLACE_WITH_SUPABASE_URL">
-  <meta name="supabase-anon-key" content="REPLACE_WITH_SUPABASE_ANON_KEY">
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: #667eea;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 30px;
+            align-items: center;
+        }
+
+        .nav-links a {
+            color: #666;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+
+        .nav-links a:hover {
+            color: #667eea;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: none;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: white;
+            color: #667eea;
+            border: 2px solid #667eea;
+        }
+
+        .btn-secondary:hover {
+            background: #f7f9fc;
+        }
+
+        /* Hero Section */
+        .hero {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 80px 20px;
+            text-align: center;
+        }
+
+        .hero h1 {
+            font-size: 48px;
+            margin-bottom: 20px;
+            font-weight: 800;
+        }
+
+        .hero p {
+            font-size: 20px;
+            margin-bottom: 30px;
+            opacity: 0.95;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .hero-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .hero-buttons .btn {
+            padding: 14px 32px;
+            font-size: 16px;
+        }
+
+        /* Features Section */
+        .features {
+            max-width: 1200px;
+            margin: 80px auto;
+            padding: 0 20px;
+        }
+
+        .features h2 {
+            text-align: center;
+            font-size: 36px;
+            margin-bottom: 50px;
+            color: #333;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+        }
+
+        .feature-card {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            transition: transform 0.3s;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        }
+
+        .feature-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+
+        .feature-card h3 {
+            font-size: 22px;
+            margin-bottom: 10px;
+            color: #667eea;
+        }
+
+        .feature-card p {
+            color: #666;
+            line-height: 1.6;
+        }
+
+        /* CTA Section */
+        .cta {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 60px 20px;
+            text-align: center;
+            margin: 80px 0;
+        }
+
+        .cta h2 {
+            font-size: 36px;
+            margin-bottom: 20px;
+        }
+
+        .cta p {
+            font-size: 18px;
+            margin-bottom: 30px;
+            opacity: 0.95;
+        }
+
+        .cta .btn {
+            background: white;
+            color: #667eea;
+        }
+
+        /* Footer */
+        footer {
+            background: #2c3e50;
+            color: white;
+            padding: 40px 20px;
+            text-align: center;
+        }
+
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .footer-links a {
+            color: white;
+            text-decoration: none;
+        }
+
+        .footer-links a:hover {
+            text-decoration: underline;
+        }
+
+        /* Auth Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            max-width: 450px;
+            width: 90%;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            position: relative;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            font-size: 28px;
+            cursor: pointer;
+            color: #999;
+            background: none;
+            border: none;
+        }
+
+        .modal-content h2 {
+            margin-bottom: 20px;
+            color: #667eea;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .modal-footer {
+            margin-top: 20px;
+            text-align: center;
+            color: #666;
+        }
+
+        .modal-footer a {
+            color: #667eea;
+            cursor: pointer;
+            text-decoration: underline;
+        }
+
+        .error-message {
+            background: #fee;
+            color: #c33;
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            display: none;
+        }
+
+        .error-message.show {
+            display: block;
+        }
+
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 36px;
+            }
+
+            .hero p {
+                font-size: 18px;
+            }
+
+            .nav-links {
+                display: none;
+            }
+        }
+    </style>
 </head>
 <body>
-  <div class="container">
-    <div class="header">
-      <div class="logo" aria-hidden="true"></div>
-      <div>
-        <h1 style="margin:0">SEO SaaS</h1>
-        <p style="margin:0;color:var(--muted)">Starter app — secure by default</p>
-      </div>
+    <!-- Navigation -->
+    <nav>
+        <div class="nav-container">
+            <a href="/" class="logo">⚡ ContentOptimizer AI</a>
+            <div class="nav-links">
+                <a href="#features">Features</a>
+                <a href="pricing.html">Pricing</a>
+                <a href="compare.html">Compare</a>
+                <a href="referral.html">Referral</a>
+                <button class="btn btn-secondary" id="signinBtn">Sign In</button>
+                <button class="btn btn-primary" id="signupBtn">Get Started</button>
+                <div id="userMenu" style="display: none;">
+                    <span id="userEmail" style="margin-right: 15px; color: #666;"></span>
+                    <button class="btn btn-primary" id="dashboardBtn">Dashboard</button>
+                    <button class="btn btn-secondary" id="signoutBtn">Sign Out</button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <h1>Transform Your Content with AI</h1>
+        <p>Boost your SEO rankings with AI-powered content optimization. Get better visibility, more traffic, and higher conversions.</p>
+        <div class="hero-buttons">
+            <button class="btn btn-primary" id="heroSignupBtn" style="background: white; color: #667eea;">Start Free Trial</button>
+            <a href="pricing.html" class="btn btn-secondary" style="border-color: white; color: white;">View Pricing</a>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features" id="features">
+        <h2>Powerful Features for Better Content</h2>
+        <div class="feature-grid">
+            <div class="feature-card">
+                <div class="feature-icon">🚀</div>
+                <h3>AI-Powered Optimization</h3>
+                <p>Leverage GPT-4 to analyze and optimize your content for maximum SEO impact. Get actionable suggestions in seconds.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">📊</div>
+                <h3>Real-Time SEO Scoring</h3>
+                <p>Get instant feedback on your content's SEO performance. Track keyword density, readability, and optimization score.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">✍️</div>
+                <h3>Content Generation</h3>
+                <p>Create SEO-optimized content from scratch. Just provide a keyword and let AI write engaging, rank-ready articles.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🎯</div>
+                <h3>Keyword Research</h3>
+                <p>Discover high-value keywords and get suggestions for related terms to expand your content strategy.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">📈</div>
+                <h3>Competitor Analysis</h3>
+                <p>Analyze top-ranking competitors and learn what makes their content successful. Stay ahead of the competition.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">💰</div>
+                <h3>Best Value</h3>
+                <p>Get enterprise features at a fraction of the cost. Plans starting at just ₹999/month with unlimited optimizations.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="cta">
+        <h2>Ready to Boost Your SEO?</h2>
+        <p>Join thousands of content creators who trust ContentOptimizer AI</p>
+        <button class="btn" id="ctaSignupBtn">Start Your Free Trial</button>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="footer-links">
+            <a href="privacy.html">Privacy Policy</a>
+            <a href="terms.html">Terms of Service</a>
+            <a href="referral.html">Referral Program</a>
+            <a href="pricing.html">Pricing</a>
+        </div>
+        <p>&copy; 2024 ContentOptimizer AI. All rights reserved.</p>
+    </footer>
+
+    <!-- Sign In Modal -->
+    <div id="signinModal" class="modal">
+        <div class="modal-content">
+            <button class="modal-close" id="signinCloseBtn">&times;</button>
+            <h2>Welcome Back</h2>
+            <div id="signinError" class="error-message"></div>
+            <form onsubmit="handleSignIn(event)">
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="signinEmail" required placeholder="your@email.com">
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="signinPassword" required placeholder="Enter your password">
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Sign In</button>
+            </form>
+            <div class="modal-footer">
+                Don't have an account? <a id="switchToSignup">Sign up</a>
+            </div>
+        </div>
     </div>
 
-    <div class="card" style="margin-top:18px">
-      <p>This project is prepared for Vercel. Configure secret environment variables in your deployment platform (do not commit them to the repo).</p>
-      <a class="btn" href="#" onclick="alert('Demo')">Demo Action</a>
+    <!-- Sign Up Modal -->
+    <div id="signupModal" class="modal">
+        <div class="modal-content">
+            <button class="modal-close" id="signupCloseBtn">&times;</button>
+            <h2>Get Started Free</h2>
+            <div id="signupError" class="error-message"></div>
+            <form onsubmit="handleSignUp(event)">
+                <div class="form-group">
+                    <label>Full Name</label>
+                    <input type="text" id="signupName" required placeholder="John Doe">
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="signupEmail" required placeholder="your@email.com">
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="signupPassword" required placeholder="At least 6 characters" minlength="6">
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Create Account</button>
+            </form>
+            <div class="modal-footer">
+                Already have an account? <a id="switchToSignin">Sign in</a>
+            </div>
+        </div>
     </div>
 
-    <div class="footer">Learn more in the README.md</div>
-  </div>
+    <script>
+        // Initialize Supabase
+        // Note: SUPABASE_ANON_KEY is safe to expose client-side (it's public by design)
+        // Row Level Security (RLS) policies protect your data
+        // TODO: Replace these with your own Supabase credentials from your project
+        const SUPABASE_URL = 'https://dbgjlstdfgpqomzdbdel.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRiZ2psc3RkZmdwcW9temRiZGVsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzc1NTc4MDQsImV4cCI6MjA1MzEzMzgwNH0.O-xtH1LlqZAA_kk8v4A_dUbdWsjLWD9sS-s_KV8Gp0I';
+        let supabase = null;
+        
+        try {
+            if (window.supabase) {
+                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            }
+        } catch (e) {
+            console.warn('Supabase not loaded:', e);
+        }
 
-  <!-- Lazy-load Supabase client: only loaded at runtime if needed. The placeholders in META tags should be replaced by your deployment environment. -->
-  <script>
-    function loadSupabaseWhenNeeded() {
-      if (window.supabaseLoaded) return;
-      const url = document.querySelector('meta[name="supabase-url"]').content;
-      const anon = document.querySelector('meta[name="supabase-anon-key"]').content;
-      if (!url || !anon || url.includes('REPLACE') || anon.includes('REPLACE')) return;
-      const s = document.createElement('script');
-      s.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js';
-      s.defer = true;
-      s.onload = () => {
-        window.supabase = supabase.createClient(url, anon);
-        window.supabaseLoaded = true;
-        console.info('Supabase client loaded');
-      };
-      document.head.appendChild(s);
-    }
-    // Example: only load when user interacts
-    document.addEventListener('click', loadSupabaseWhenNeeded, {once:true});
-  </script>
+        // Check if user is already logged in
+        async function checkAuth() {
+            if (!supabase) return; // Skip if Supabase not loaded
+            
+            try {
+                const { data: { session } } = await supabase.auth.getSession();
+                if (session) {
+                    document.getElementById('signinBtn').style.display = 'none';
+                    document.getElementById('signupBtn').style.display = 'none';
+                    document.getElementById('userMenu').style.display = 'flex';
+                    document.getElementById('userEmail').textContent = session.user.email;
+                }
+            } catch (e) {
+                console.warn('Error checking auth:', e);
+            }
+        }
+
+        // Auth Modal Functions
+        function showAuthModal(type) {
+            closeAuthModal();
+            if (type === 'signin') {
+                document.getElementById('signinModal').classList.add('show');
+            } else {
+                document.getElementById('signupModal').classList.add('show');
+            }
+        }
+
+        function closeAuthModal() {
+            document.getElementById('signinModal').classList.remove('show');
+            document.getElementById('signupModal').classList.remove('show');
+        }
+
+        function switchAuthModal(type) {
+            closeAuthModal();
+            showAuthModal(type);
+        }
+
+        // Handle Sign In
+        async function handleSignIn(event) {
+            event.preventDefault();
+            const email = document.getElementById('signinEmail').value;
+            const password = document.getElementById('signinPassword').value;
+
+            try {
+                const { data, error } = await supabase.auth.signInWithPassword({
+                    email: email,
+                    password: password
+                });
+
+                if (error) throw error;
+
+                // Success - redirect to dashboard
+                window.location.href = '/dashboard.html';
+            } catch (error) {
+                const errorDiv = document.getElementById('signinError');
+                errorDiv.textContent = error.message;
+                errorDiv.classList.add('show');
+            }
+        }
+
+        // Handle Sign Up
+        async function handleSignUp(event) {
+            event.preventDefault();
+            const name = document.getElementById('signupName').value;
+            const email = document.getElementById('signupEmail').value;
+            const password = document.getElementById('signupPassword').value;
+
+            try {
+                const { data, error } = await supabase.auth.signUp({
+                    email: email,
+                    password: password,
+                    options: {
+                        data: {
+                            full_name: name
+                        }
+                    }
+                });
+
+                if (error) throw error;
+
+                // Success - close modal and redirect
+                // Note: In production, you may want to show a success toast notification instead
+                closeAuthModal();
+                window.location.href = '/dashboard.html';
+            } catch (error) {
+                const errorDiv = document.getElementById('signupError');
+                errorDiv.textContent = error.message;
+                errorDiv.classList.add('show');
+            }
+        }
+
+        // Handle Sign Out
+        async function handleSignOut() {
+            await supabase.auth.signOut();
+            window.location.reload();
+        }
+
+        // Go to Dashboard
+        function goToDashboard() {
+            window.location.href = '/dashboard.html';
+        }
+
+        // Add event listeners for all buttons
+        function initializeEventListeners() {
+            // Navigation buttons
+            const signinBtn = document.getElementById('signinBtn');
+            const signupBtn = document.getElementById('signupBtn');
+            const dashboardBtn = document.getElementById('dashboardBtn');
+            const signoutBtn = document.getElementById('signoutBtn');
+            
+            if (signinBtn) signinBtn.addEventListener('click', () => showAuthModal('signin'));
+            if (signupBtn) signupBtn.addEventListener('click', () => showAuthModal('signup'));
+            if (dashboardBtn) dashboardBtn.addEventListener('click', goToDashboard);
+            if (signoutBtn) signoutBtn.addEventListener('click', handleSignOut);
+            
+            // Hero and CTA buttons
+            const heroSignupBtn = document.getElementById('heroSignupBtn');
+            const ctaSignupBtn = document.getElementById('ctaSignupBtn');
+            
+            if (heroSignupBtn) heroSignupBtn.addEventListener('click', () => showAuthModal('signup'));
+            if (ctaSignupBtn) ctaSignupBtn.addEventListener('click', () => showAuthModal('signup'));
+            
+            // Modal close buttons
+            const signinCloseBtn = document.getElementById('signinCloseBtn');
+            const signupCloseBtn = document.getElementById('signupCloseBtn');
+            
+            if (signinCloseBtn) signinCloseBtn.addEventListener('click', closeAuthModal);
+            if (signupCloseBtn) signupCloseBtn.addEventListener('click', closeAuthModal);
+            
+            // Modal switch links
+            const switchToSignup = document.getElementById('switchToSignup');
+            const switchToSignin = document.getElementById('switchToSignin');
+            
+            if (switchToSignup) switchToSignup.addEventListener('click', () => switchAuthModal('signup'));
+            if (switchToSignin) switchToSignin.addEventListener('click', () => switchAuthModal('signin'));
+        }
+
+        // Initialize - wait for DOM to be ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', function() {
+                checkAuth();
+                initializeEventListeners();
+            });
+        } else {
+            checkAuth();
+            initializeEventListeners();
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const signinModal = document.getElementById('signinModal');
+            const signupModal = document.getElementById('signupModal');
+            if (event.target === signinModal) {
+                closeAuthModal();
+            }
+            if (event.target === signupModal) {
+                closeAuthModal();
+            }
+        }
+    </script>
 </body>
 </html>
