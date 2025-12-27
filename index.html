@@ -477,6 +477,9 @@
 
     <script>
         // Initialize Supabase
+        // Note: SUPABASE_ANON_KEY is safe to expose client-side (it's public by design)
+        // Row Level Security (RLS) policies protect your data
+        // TODO: Replace these with your own Supabase credentials from your project
         const SUPABASE_URL = 'https://dbgjlstdfgpqomzdbdel.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRiZ2psc3RkZmdwcW9temRiZGVsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzc1NTc4MDQsImV4cCI6MjA1MzEzMzgwNH0.O-xtH1LlqZAA_kk8v4A_dUbdWsjLWD9sS-s_KV8Gp0I';
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -555,8 +558,9 @@
 
                 if (error) throw error;
 
-                // Success - show message and redirect
-                alert('Account created successfully! Please check your email to verify your account.');
+                // Success - close modal and redirect
+                // Note: In production, you may want to show a success toast notification instead
+                closeAuthModal();
                 window.location.href = '/dashboard.html';
             } catch (error) {
                 const errorDiv = document.getElementById('signupError');

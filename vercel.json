@@ -6,14 +6,30 @@
       "use": "@vercel/node"
     },
     {
-      "src": "api/**/*.js",
+      "src": "api/optimize.js",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "api/signin.js",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "api/signup.js",
       "use": "@vercel/node"
     }
   ],
   "routes": [
     {
-      "src": "/api/(.*)",
-      "dest": "/api/$1"
+      "src": "/api/optimize",
+      "dest": "/api/optimize.js"
+    },
+    {
+      "src": "/api/signin",
+      "dest": "/api/signin.js"
+    },
+    {
+      "src": "/api/signup",
+      "dest": "/api/signup.js"
     },
     {
       "src": "/(.*)",
