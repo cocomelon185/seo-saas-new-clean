@@ -1,20 +1,13 @@
 {
-  "name": "seo-saas-new-clean",
-  "version": "1.0.0",
-  "description": "Clean SEO SaaS starter",
-  "main": "server.js",
-  "scripts": {
-    "start": "node server.js"
-  },
-  "dependencies": {
-    "express": "^4.18.2",
-    "helmet": "^7.0.0",
-    "compression": "^1.7.4",
-    "express-rate-limit": "^6.7.0"
+    "name": "seo-saas-new-clean",
+    "version": "1.0.0",
+    "scripts": {
+        "start": "node server.js",
+        "build": "vercel build"
+    },
+    "dependencies": {
+        "express": "^6.7.0",
         "axios": "^1.6.2",
-        "@supabase/supabase-js": "^2.39.0"
-  },
-  "engines": {
-    "node": ">=18"
-  }
+        "dotenv": "^10.0.0"
+    }
 }
