@@ -80,16 +80,6 @@
       background-color: #e2e8f0;
       color: #64748b;
     }
-    .result-card {
-      margin-top: 20px;
-      padding: 20px;
-      background-color: #ffffff;
-      border-radius: 10px;
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    }
-    .result-card h3 {
-      margin-top: 0;
-    }
   </style>
 </head>
 <body>
@@ -99,14 +89,6 @@
       <p>Analyze, optimize, and rank higher</p>
       <input type="text" placeholder="Enter your URL here">
       <button>Analyze Now</button>
-    </div>
-
-    <div id="result" class="result-card" style="display: none;">
-      <h3>SEO Analysis Result</h3>
-      <p><strong>Score:</strong> <span id="seo-score"></span></p>
-      <p><strong>Keywords:</strong> <span id="seo-keywords"></span></p>
-      <p><strong>Suggestions:</strong></p>
-      <ul id="seo-suggestions"></ul>
     </div>
 
     <div class="features">
@@ -136,48 +118,48 @@
       <p>Contact us: info@seooptimizer.com</p>
     </div>
   </div>
-<script>
-  document.querySelector('.hero button').addEventListener('click', async () => {
-    const urlInput = document.querySelector('.hero input[type="text"]');
-    const url = urlInput.value.trim();
+  <script>
+    document.querySelector('.hero button').addEventListener('click', async () => {
+      const urlInput = document.querySelector('.hero input[type="text"]');
+      const url = urlInput.value.trim();
 
-    if (!url) {
-      alert('Please enter a URL.');
-      return;
-    }
-
-    try {
-      const response = await fetch('/api/analyze', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ url })
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to analyze the URL');
+      if (!url) {
+        alert('Please enter a URL.');
+        return;
       }
 
-      const data = await response.json();
+      try {
+        const response = await fetch('/api/analyze', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ url })
+        });
 
-      document.getElementById('seo-score').textContent = data.score;
-      document.getElementById('seo-keywords').textContent = data.keywords.join(', ');
-      
-      const suggestionsList = document.getElementById('seo-suggestions');
-      suggestionsList.innerHTML = '';
-      data.suggestions.forEach(suggestion => {
-        const li = document.createElement('li');
-        li.textContent = suggestion;
-        suggestionsList.appendChild(li);
-      });
+        if (!response.ok) {
+          throw new Error('Failed to analyze the URL');
+        }
 
-      document.getElementById('result').style.display = 'block';
-    } catch (error) {
-      console.error('Error:', error);
-      alert('An error occurred while analyzing the URL.');
-    }
-  });
-</script>
+        const data = await response.json();
+
+        document.getElementById('seo-score').textContent = data.score;
+        document.getElementById('seo-keywords').textContent = data.keywords.join(', ');
+        
+        const suggestionsList = document.getElementById('seo-suggestions');
+        suggestionsList.innerHTML = '';
+        data.suggestions.forEach(suggestion => {
+          const li = document.createElement('li');
+          li.textContent = suggestion;
+          suggestionsList.appendChild(li);
+        });
+
+        document.getElementById('result').style.display = 'block';
+      } catch (error) {
+        console.error('Error:', error);
+        alert('An error occurred while analyzing the URL.');
+      }
+    });
+  </script>
 </body>
 </html>
