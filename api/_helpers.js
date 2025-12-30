@@ -1,7 +1,8 @@
 // Helper function to parse request body
 function parseBody(req) {
   // If body is already parsed by Vercel, return it directly
-  if (req.body && typeof req.body === 'object') {
+  // Check for plain object (not null, not array)
+  if (req.body && typeof req.body === 'object' && !Array.isArray(req.body)) {
     return Promise.resolve(req.body);
   }
   
