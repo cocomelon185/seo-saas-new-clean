@@ -1,4 +1,3 @@
-// Vercel serverless function format (not Express)
 export default function handler(req, res) {
   // Enable CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
