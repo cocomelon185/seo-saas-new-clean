@@ -45,6 +45,31 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', uptime: process.uptime() });
 });
 
+app.use(express.json()); // Middleware to parse JSON request bodies
+
+// POST /api/analyze route
+app.post('/api/analyze', (req, res) => {
+  const { url } = req.body;
+
+  // Validate URL
+  try {
+    new URL(url);
+  } catch (err) {
+    return res.status(400).json({ error: 'Invalid URL' });
+  }
+
+  // Mock SEO data
+  const seoData = {
+    score: Math.floor(Math.random() * 101), // Random score between 0 and 100
+    keywords: ['SEO', 'optimization', 'content'],
+    titleAnalysis: 'Title is well-optimized',
+    metaDescriptionCheck: 'Meta description is present and optimized',
+    suggestions: ['Improve keyword density', 'Add alt text to images']
+  };
+
+  res.json(seoData);
+});
+
 // Example endpoint that requires OPENAI_API_KEY
 app.get('/api/health-check-openai', (req, res) => {
   if (!process.env.OPENAI_API_KEY) {
