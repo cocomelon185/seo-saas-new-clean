@@ -11,6 +11,29 @@
       padding: 0;
       background-color: #f5f7fb;
       color: #0f172a;
+      background: linear-gradient(135deg, #f5f7fb, #e2e8f0);
+    }
+    .hero button:hover {
+      background: linear-gradient(135deg, #764ba2, #667eea);
+    }
+    .features li, .pricing li {
+      background-color: #ffffff;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+      flex: 1;
+      max-width: 300px;
+      text-align: center;
+      transition: transform 0.3s;
+    }
+    .features li:hover, .pricing li:hover {
+      transform: translateY(-5px);
+    }
+    .features li::before {
+      content: attr(data-icon);
+      font-size: 2em;
+      display: block;
+      margin-bottom: 10px;
     }
     .container {
       max-width: 1200px;
@@ -91,12 +114,20 @@
       <button>Analyze Now</button>
     </div>
 
+    <div id="result" class="result-card" style="display: none;">
+      <h3>SEO Analysis Result</h3>
+      <p><strong>Score:</strong> <span id="seo-score"></span></p>
+      <p><strong>Keywords:</strong> <span id="seo-keywords"></span></p>
+      <p><strong>Suggestions:</strong></p>
+      <ul id="seo-suggestions"></ul>
+    </div>
+
     <div class="features">
       <h2>Features</h2>
       <ul>
-        <li>Content Analysis</li>
-        <li>Keyword Research</li>
-        <li>SEO Scoring</li>
+        <li data-icon="🔍">Content Analysis</li>
+        <li data-icon="🔑">Keyword Research</li>
+        <li data-icon="📈">SEO Scoring</li>
       </ul>
     </div>
 
@@ -119,7 +150,7 @@
     </div>
   </div>
   <script>
-    document.querySelector('.hero button').addEventListener('click', async () => {
+    document.querySelector('.hero button').addEventListener('click', async function() {
       const urlInput = document.querySelector('.hero input[type="text"]');
       const url = urlInput.value.trim();
 
