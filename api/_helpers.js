@@ -1,5 +1,10 @@
 // Helper function to parse request body
 function parseBody(req) {
+  // If body is already parsed by Vercel, return it directly
+  if (req.body && typeof req.body === 'object') {
+    return Promise.resolve(req.body);
+  }
+  
   return new Promise((resolve, reject) => {
     const chunks = [];
     let hasResolved = false;
