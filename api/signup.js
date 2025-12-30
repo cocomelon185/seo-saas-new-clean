@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const { parseBody } = require('./_helpers');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-12345';
 
@@ -10,7 +11,10 @@ module.exports = async (req, res) => {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { email, password, name } = req.body;
+  // Parse request body
+  const body = await parseBody(req);
+  const { email, password, name } = body;
+  
   if (!email || !password || !name) {
     return res.status(400).json({ error: 'All fields required' });
   }

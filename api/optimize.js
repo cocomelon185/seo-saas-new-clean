@@ -1,5 +1,6 @@
 const axios = require('axios');
 const { createClient } = require('@supabase/supabase-js');
+const { parseBody } = require('./_helpers');
 
 // Initialize Supabase client
 const supabase = createClient(
@@ -70,7 +71,9 @@ module.exports = async (req, res) => {
       return res.status(500).json({ error: 'OpenAI API key not configured' });
     }
 
-    const { content, keyword, tone } = req.body;
+    // Parse request body
+    const body = await parseBody(req);
+    const { content, keyword, tone } = body;
 
     if (!content || !keyword) {
       return res.status(400).json({ error: 'Content and keyword are required' });
