@@ -3,7 +3,9 @@ const app = express();
 
 app.use(express.json());
 
-app.post('/api/analyze', (req, res) => {
+// The route should be just '/analyze' not '/api/analyze'
+// because Vercel already routes /api/* to this file
+app.post('/analyze', (req, res) => {
   const { url } = req.body;
   
   try {
