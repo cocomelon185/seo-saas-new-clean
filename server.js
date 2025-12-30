@@ -3,7 +3,7 @@
  - compression for response gzip
  - express-rate-limit to limit requests
  - /health endpoint
- - serves index.html and assets
+ - serves index.html and other HTML/assets
  - uses process.env.OPENAI_API_KEY for server-side secret
 */
 
@@ -15,6 +15,8 @@ const rateLimit = require('express-rate-limit');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+console.log('Server file loaded');
 
 // Basic hardening
 app.use(helmet());
@@ -29,25 +31,36 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
-// Serve static assets from /assets and root index
-app.use('/assets', express.static(path.join(__dirname, 'assets'), {maxAge: '1d'}));
+// Serve everything in project root statically (HTML files, etc.)
+app.use(express.static(__dirname));
+
+// Serve static assets from /assets
+app.use(
+  '/assets',
+  express.static(path.join(__dirname, 'assets'), { maxAge: '1d' })
+);
 
 // Health endpoint
 app.get('/health', (req, res) => {
-  res.json({status: 'ok', uptime: process.uptime()});
+  res.json({ status: 'ok', uptime: process.uptime() });
 });
 
 // Example endpoint that requires OPENAI_API_KEY
 app.get('/api/health-check-openai', (req, res) => {
   if (!process.env.OPENAI_API_KEY) {
-    return res.status(500).json({error: 'OPENAI_API_KEY not configured on server'});
+    return res
+      .status(500)
+      .json({ error: 'OPENAI_API_KEY not configured on server' });
   }
   // Do not log or expose the key. This is just a presence check.
-  res.json({openai: 'configured'});
+  res.json({ openai: 'configured' });
 });
 
-// Serve index.html for all other routes (simple SPA support)
+// Serve index.html for non-file routes (simple SPA support)
 app.get('*', (req, res, next) => {
+  // If the path looks like a real file (has a dot), let static middleware handle it
+  if (req.path.includes('.')) return next();
+
   const indexPath = path.join(__dirname, 'index.html');
   res.sendFile(indexPath, (err) => {
     if (err) next(err);
@@ -57,7 +70,7 @@ app.get('*', (req, res, next) => {
 // Graceful error handling
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err && err.stack ? err.stack : err);
-  res.status(500).json({error: 'Internal Server Error'});
+  res.status(500).json({ error: 'Internal Server Error' });
 });
 
 // Catch unhandled rejections and uncaught exceptions to avoid silent crashes
