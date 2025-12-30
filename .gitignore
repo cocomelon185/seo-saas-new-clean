@@ -12,3 +12,5 @@ __pycache__/
 *.pyo
 node_modules/
 .aider*
+.vercel
+.env*.local
