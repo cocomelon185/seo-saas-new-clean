@@ -1,14 +1,19 @@
 // Helper function to parse request body
-async function parseBody(req) {
+function parseBody(req) {
   return new Promise((resolve, reject) => {
-    let body = '';
+    const chunks = [];
+    let hasResolved = false;
     
     req.on('data', chunk => {
-      body += chunk.toString();
+      chunks.push(chunk);
     });
     
     req.on('end', () => {
+      if (hasResolved) return;
+      hasResolved = true;
+      
       try {
+        const body = Buffer.concat(chunks).toString('utf8');
         // Try to parse as JSON
         if (body) {
           resolve(JSON.parse(body));
@@ -21,7 +26,11 @@ async function parseBody(req) {
       }
     });
     
-    req.on('error', reject);
+    req.on('error', (error) => {
+      if (hasResolved) return;
+      hasResolved = true;
+      reject(error);
+    });
   });
 }
 
