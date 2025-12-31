@@ -89,4 +89,48 @@ document.addEventListener('DOMContentLoaded', () => {
       analyzeBtn.textContent = 'Analyze Now';
     }
   });
+
+  // Add click handlers for feature and pricing cards - targeting <li> elements
+  console.log('Adding card click handlers...');
+  
+  // Features section - target li elements
+  const featuresSection = document.querySelector('.features');
+  if (featuresSection) {
+    const featureLis = featuresSection.querySelectorAll('ul > li');
+    console.log('Found feature items:', featureLis.length);
+    
+    featureLis.forEach(li => {
+      li.style.cursor = 'pointer';
+      li.addEventListener('click', function(e) {
+        e.stopPropagation();
+        const strong = this.querySelector('strong');
+        const title = strong ? strong.textContent : 'Feature';
+        const icon = this.getAttribute('data-icon') || '';
+        alert(icon + ' ' + title + '\n\n' + this.textContent.replace(title, '').trim() + '\n\nComing soon!');
+      });
+      console.log('Added handler for feature');
+    });
+  }
+  
+  // Pricing section - target li elements
+  const pricingSection = document.querySelector('.pricing');
+  if (pricingSection) {
+    const pricingLis = pricingSection.querySelectorAll('ul > li');
+    console.log('Found pricing items:', pricingLis.length);
+    
+    pricingLis.forEach(li => {
+      li.style.cursor = 'pointer';
+      li.addEventListener('click', function(e) {
+        e.stopPropagation();
+        const h3 = this.querySelector('h3');
+        const title = h3 ? h3.textContent : 'Plan';
+        const price = this.querySelector('strong')?.textContent || '';
+        const desc = this.querySelectorAll('p')[0]?.textContent || '';
+        alert(title + ' - ' + price + '\n\n' + desc + '\n\nSign up coming soon!');
+      });
+      console.log('Added handler for pricing');
+    });
+  }
+  
+  console.log('Card handlers setup complete!');
 });
