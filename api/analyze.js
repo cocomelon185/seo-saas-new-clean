@@ -1,3 +1,22 @@
+function normalizeUrl(url) {
+  if (!url) return '';
+  url = url.trim();
+  if (!/^https?:\/\//i.test(url)) {
+    url = 'https://' + url;
+  }
+  return url;
+}
+
+function isValidUrl(url) {
+  try {
+    const normalizedUrl = normalizeUrl(url);
+    const urlObject = new URL(normalizedUrl);
+    return urlObject.protocol === 'http:' || urlObject.protocol === 'https:';
+  } catch (error) {
+    return false;
+  }
+}
+
 export default async function handler(req, res) {
   // Enable CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -24,23 +43,28 @@ export default async function handler(req, res) {
     return;
   }
 
-  const { url } = body || {};
+  let { url } = body || {};
 
-  // Validate URL
-  try {
-    new URL(url);
-  } catch (err) {
+  // Normalize and validate URL
+  url = normalizeUrl(url);
+  if (!isValidUrl(url)) {
     res.status(400).json({ error: 'Invalid URL' });
     return;
   }
 
-  // Return mock SEO data
+  // Return mock SEO data (same shape as server.js)
   const seoData = {
     score: Math.floor(Math.random() * 101),
-    keywords: ['SEO', 'optimization', 'content'],
-    titleAnalysis: 'Title is well-optimized',
-    metaDescriptionCheck: 'Meta description present',
-    suggestions: ['Improve keyword density', 'Add alt text to images']
+    keywords: ['SEO', 'optimization', 'content', 'ranking', 'keywords'],
+    titleAnalysis: 'Title is well-optimized and contains target keywords',
+    metaDescriptionCheck: 'Meta description is present and optimized',
+    suggestions: [
+      'Improve keyword density in first paragraph',
+      'Add alt text to all images',
+      'Optimize page load speed',
+      'Add internal links to related content',
+      'Improve mobile responsiveness'
+    ]
   };
 
   res.status(200).json(seoData);
