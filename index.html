@@ -140,9 +140,37 @@
     </div>
 
     <div class="features">
-      <h2>Features</h2>
-      <ul>
-        <li data-icon="🔍"><strong>Content Analysis</strong><br>Deep dive into your content quality</li>
+  <h2>Features</h2>
+  <ul>
+    <!-- CONTENT ANALYSIS CARD = REAL TOOL -->
+    <li data-icon="🔍">
+      <strong>Content Analysis</strong><br>
+      <small>Paste your content and click Analyze.</small><br><br>
+      <textarea id="contentInput" rows="5" style="width:100%;" placeholder="Paste your content here..."></textarea>
+      <br /><br />
+      <button id="analyzeButton">Analyze Content</button>
+
+      <div id="analysisResult" class="result-card" style="margin-top:10px; display:none;">
+        <pre id="analysisText" style="white-space:pre-wrap;"></pre>
+      </div>
+    </li>
+
+    <!-- OTHER CARDS STILL SIMPLE -->
+    <li data-icon="🔑">
+      <strong>Keyword Research</strong><br>
+      Find the best keywords for your content. (Coming soon)
+    </li>
+    <li data-icon="📈">
+      <strong>SEO Scoring</strong><br>
+      Get actionable scores and insights. (Coming soon)
+    </li>
+  </ul>
+</div>
+``` [2][3]
+
+>
+</li>
+>
         <li data-icon="🔑"><strong>Keyword Research</strong><br>Find the best keywords for your niche</li>
         <li data-icon="📈"><strong>SEO Scoring</strong><br>Get actionable scores and insights</li>
       </ul>
