@@ -2,7 +2,7 @@ const cors = require('cors');
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-cconst express = require('express');
+const express = require('express');
 const helmet = require('helmet');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
