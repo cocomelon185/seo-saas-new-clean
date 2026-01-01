@@ -21,116 +21,161 @@ document.addEventListener('DOMContentLoaded', () => {
   const analyzeBtn = document.getElementById('analyzeBtn');
   const urlInput = document.getElementById('urlInput');
   const resultCard = document.querySelector('.result-card');
-  const scoreEl = document.getElementById('seo-score');
-  const keywordsEl = document.getElementById('seo-keywords');
-  const titleEl = document.getElementById('title-analysis');
-  const metaEl = document.getElementById('meta-desc');
-  const suggestionsEl = document.getElementById('seo-suggestions');
 
-  if (!analyzeBtn) {
-    console.error('Analyze button not found');
-    return;
-  }
+  // URL Analysis (existing feature)
+  if (analyzeBtn) {
+    analyzeBtn.addEventListener('click', async () => {
+      const rawUrl = urlInput ? urlInput.value : '';
+      const normalizedUrl = normalizeUrl(rawUrl);
 
-  analyzeBtn.addEventListener('click', async () => {
-    const rawUrl = urlInput ? urlInput.value : '';
-    const normalizedUrl = normalizeUrl(rawUrl);
-
-    if (!isValidUrl(normalizedUrl)) {
-      alert('Please enter a valid URL (example: example.com or https://example.com)');
-      return;
-    }
-
-    analyzeBtn.disabled = true;
-    analyzeBtn.textContent = 'Analyzing...';
-
-    try {
-      const res = await fetch('/api/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: normalizedUrl })
-      });
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || 'Analysis failed');
+      if (!isValidUrl(normalizedUrl)) {
+        alert('Please enter a valid URL');
+        return;
       }
 
-      const data = await res.json();
+      analyzeBtn.disabled = true;
+      analyzeBtn.textContent = 'Analyzing...';
 
-      if (resultCard) resultCard.style.display = 'block';
-      if (scoreEl && typeof data.score === 'number') {
-        scoreEl.textContent = data.score + '/100';
-      }
-      if (keywordsEl && data.keywords) {
-        keywordsEl.textContent = Array.isArray(data.keywords)
-          ? data.keywords.join(', ')
-          : String(data.keywords);
-      }
-      if (titleEl && data.titleAnalysis) {
-        titleEl.textContent = data.titleAnalysis;
-      }
-      if (metaEl && (data.metaDescriptionCheck || data.metaDesc)) {
-        metaEl.textContent = data.metaDescriptionCheck || data.metaDesc;
-      }
-      if (suggestionsEl && Array.isArray(data.suggestions)) {
-        suggestionsEl.innerHTML = '';
+      try {
+        const res = await fetch('/api/analyze', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: normalizedUrl })
+        });
+
+        if (!res.ok) throw new Error('Analysis failed');
+        const data = await res.json();
+
+        if (resultCard) resultCard.style.display = 'block';
+        document.getElementById('seo-score').textContent = data.score + '/100';
+        document.getElementById('seo-keywords').textContent = data.keywords.join(', ');
+        document.getElementById('title-analysis').textContent = data.titleAnalysis;
+        document.getElementById('meta-desc').textContent = data.metaDescriptionCheck || data.metaDesc;
+
+        const ul = document.getElementById('seo-suggestions');
+        ul.innerHTML = '';
         data.suggestions.forEach(s => {
           const li = document.createElement('li');
           li.textContent = s;
-          suggestionsEl.appendChild(li);
+          ul.appendChild(li);
         });
+      } catch (err) {
+        alert(err.message || 'Failed to analyze URL');
+      } finally {
+        analyzeBtn.disabled = false;
+        analyzeBtn.textContent = 'Analyze Now';
       }
-    } catch (err) {
-      console.error(err);
-      alert(err.message || 'Failed to analyze URL');
-    } finally {
-      analyzeBtn.disabled = false;
-      analyzeBtn.textContent = 'Analyze Now';
-    }
-  });
+    });
+  }
 
-  // Add click handlers for feature and pricing cards - targeting <li> elements
-  console.log('Adding card click handlers...');
-  
-  // Features section - target li elements
+  // Feature Cards Click Handlers
   const featuresSection = document.querySelector('.features');
   if (featuresSection) {
     const featureLis = featuresSection.querySelectorAll('ul > li');
-    console.log('Found feature items:', featureLis.length);
     
-    featureLis.forEach(li => {
+    featureLis.forEach((li) => {
       li.style.cursor = 'pointer';
       li.addEventListener('click', function(e) {
         e.stopPropagation();
         const strong = this.querySelector('strong');
-        const title = strong ? strong.textContent : 'Feature';
-        const icon = this.getAttribute('data-icon') || '';
-        alert(icon + ' ' + title + '\n\n' + this.textContent.replace(title, '').trim() + '\n\nComing soon!');
+        const title = strong ? strong.textContent : '';
+        
+        if (title.includes('Content Analysis')) {
+          handleContentAnalysis();
+        } else if (title.includes('Keyword Research')) {
+          handleKeywordResearch();
+        } else if (title.includes('SEO Scoring')) {
+          alert('📊 SEO Scoring\n\nUse the URL analyzer above to get your SEO score!');
+        }
       });
-      console.log('Added handler for feature');
     });
   }
-  
-  // Pricing section - target li elements
+
+  // Pricing Cards
   const pricingSection = document.querySelector('.pricing');
   if (pricingSection) {
     const pricingLis = pricingSection.querySelectorAll('ul > li');
-    console.log('Found pricing items:', pricingLis.length);
     
     pricingLis.forEach(li => {
       li.style.cursor = 'pointer';
-      li.addEventListener('click', function(e) {
-        e.stopPropagation();
+      li.addEventListener('click', function() {
         const h3 = this.querySelector('h3');
-        const title = h3 ? h3.textContent : 'Plan';
-        const price = this.querySelector('strong')?.textContent || '';
-        const desc = this.querySelectorAll('p')[0]?.textContent || '';
-        alert(title + ' - ' + price + '\n\n' + desc + '\n\nSign up coming soon!');
+        const title = h3 ? h3.textContent.trim() : '';
+        
+        if (title.includes('Free')) {
+          alert('Free Tier - $0/month\n\n✓ Basic SEO analysis\n✓ 10 URLs/month\n✓ Email support\n\nSign up coming soon!');
+        } else if (title.includes('Pro')) {
+          alert('Pro Tier - $29/month\n\n✓ Advanced analysis\n✓ Unlimited URLs\n✓ Priority support\n✓ API access\n\nUpgrade coming soon!');
+        }
       });
-      console.log('Added handler for pricing');
     });
   }
-  
-  console.log('Card handlers setup complete!');
 });
+
+// Content Analysis Feature
+async function handleContentAnalysis() {
+  
+
+  
+  if (!content || content.trim().length === 0) {
+    return;
+  }
+  
+  try
+    const res = await fetch('/api/content-analysis', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: content.trim() })
+    });
+    
+    if (!res.ok) throw new Error('Analysis failed');
+    
+    const data = await res.json();
+    
+    let result = '📊 Content Analysis Results\n\n';
+    result += `📝 Word Count: ${data.wordCount}\n`;
+    result += `📏 Characters: ${data.charCount}\n`;
+    result += `📄 Sentences: ${data.sentences}\n`;
+    result += `📖 Readability: ${data.readabilityScore}/100\n\n`;
+    result += '📌 Suggestions:\n';
+    data.suggestions.forEach(s => result += `• ${s}\n`);
+    
+    alert(result);
+  } catch (error) {
+    alert('❌ Analysis failed: ' + error.message);
+  }
+}
+
+// Keyword Research Feature
+async function handleKeywordResearch() {
+  const keyword = prompt('🔑 Keyword Research\n\nEnter your main keyword or topic:');
+  
+  if (!keyword || keyword.trim().length === 0) {
+    return;
+  }
+  
+  try {
+    const res = await fetch('/api/keyword-research', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ keyword: keyword.trim() })
+    });
+    
+    if (!res.ok) throw new Error('Research failed');
+    
+    const data = await res.json();
+    
+    let result = '🔍 Keyword Research Results\n\n';
+    result += `Main Keyword: ${data.mainKeyword}\n\n`;
+    result += 'Related Keywords:\n';
+    data.relatedKeywords.forEach((kw, i) => {
+      result += `${i + 1}. ${kw.keyword}\n   📊 ${kw.volume} | 🎯 ${kw.difficulty}\n`;
+    });
+    result += '\n📌 Suggestions:\n';
+    data.suggestions.forEach(s => result += `• ${s}\n`);
+    
+    alert(result);
+  } catch (error) {
+    alert('❌ Research failed: ' + error.message);
+  }
+}
