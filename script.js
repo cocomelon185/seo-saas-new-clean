@@ -18,6 +18,8 @@ function isValidUrl(url) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+  const DEFAULT_URL = window.DEFAULT_ANALYZE_URL || 'https://your-website.com';
+  const KEYWORDS_SELECTOR = '#seo-keywords';
   const analyzeBtn = document.getElementById('analyzeBtn');
   const urlInput = document.getElementById('urlInput');
   const resultCard = document.querySelector('.result-card');
@@ -93,6 +95,27 @@ document.addEventListener('DOMContentLoaded', () => {
   // Add click handlers for feature and pricing cards - targeting <li> elements
   console.log('Adding card click handlers...');
   
+  const heroSection = document.querySelector('.hero');
+  const scrollToAnalyzer = () => {
+    if (heroSection) {
+      heroSection.scrollIntoView({ behavior: 'smooth' });
+    }
+    if (urlInput) {
+      urlInput.focus({ preventScroll: true });
+    }
+  };
+
+  const triggerAnalysis = (focusEl) => {
+    if (!analyzeBtn) return;
+    if (urlInput && (!urlInput.value || !isValidUrl(normalizeUrl(urlInput.value)))) {
+      urlInput.value = DEFAULT_URL;
+    }
+    analyzeBtn.click();
+    if (focusEl) {
+      focusEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  };
+
   // Features section - target li elements
   const featuresSection = document.querySelector('.features');
   if (featuresSection) {
@@ -104,9 +127,16 @@ document.addEventListener('DOMContentLoaded', () => {
       li.addEventListener('click', function(e) {
         e.stopPropagation();
         const strong = this.querySelector('strong');
-        const title = strong ? strong.textContent : 'Feature';
-        const icon = this.getAttribute('data-icon') || '';
-        alert(icon + ' ' + title + '\n\n' + this.textContent.replace(title, '').trim() + '\n\nComing soon!');
+        const title = strong ? strong.textContent.trim() : 'Feature';
+        const key = this.dataset.feature || title;
+        if (key === 'content') {
+          scrollToAnalyzer();
+        } else if (key === 'keyword') {
+          const focusTarget = document.querySelector(KEYWORDS_SELECTOR)?.closest('.result-card') || resultCard;
+          triggerAnalysis(focusTarget);
+        } else {
+          triggerAnalysis(resultCard || null);
+        }
       });
       console.log('Added handler for feature');
     });
@@ -123,10 +153,12 @@ document.addEventListener('DOMContentLoaded', () => {
       li.addEventListener('click', function(e) {
         e.stopPropagation();
         const h3 = this.querySelector('h3');
-        const title = h3 ? h3.textContent : 'Plan';
-        const price = this.querySelector('strong')?.textContent || '';
-        const desc = this.querySelectorAll('p')[0]?.textContent || '';
-        alert(title + ' - ' + price + '\n\n' + desc + '\n\nSign up coming soon!');
+        const title = h3 ? h3.textContent.trim() : 'Plan';
+        const planKey = (this.dataset.plan || title).toLowerCase();
+        const planAnchors = { free: '#free', pro: '#pro' };
+        const plan = planAnchors[planKey] || '';
+        const target = plan ? `pricing.html${plan}` : 'pricing.html';
+        window.location.href = target;
       });
       console.log('Added handler for pricing');
     });
