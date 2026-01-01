@@ -127,6 +127,7 @@
       <p>Analyze, optimize, and rank higher</p>
       <input type="text" id="urlInput" placeholder="Enter your URL here">
       <button id="analyzeBtn">Analyze Now</button>
+      <div id="error-message" style="color: red; display: none;"></div>
     </div>
 
     <div id="result" class="result-card">
@@ -203,7 +204,8 @@
       const url = urlInput.value.trim();
 
       if (!url) {
-        alert('Please enter a URL.');
+        document.getElementById('error-message').textContent = 'Please enter a URL.';
+        document.getElementById('error-message').style.display = 'block';
         return;
       }
 
@@ -216,8 +218,10 @@
           body: JSON.stringify({ url })
         });
 
+        document.getElementById('error-message').style.display = 'none';
         if (!response.ok) {
-          throw new Error('Failed to analyze the URL');
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to analyze the URL');
         }
 
         const data = await response.json();
@@ -239,7 +243,8 @@
         document.getElementById('result').scrollIntoView({ behavior: 'smooth' });
       } catch (error) {
         console.error('Error:', error);
-        alert('An error occurred while analyzing the URL. Make sure the server is running.');
+        document.getElementById('error-message').textContent = 'An error occurred: ' + error.message;
+        document.getElementById('error-message').style.display = 'block';
       }
     });
   </script>
