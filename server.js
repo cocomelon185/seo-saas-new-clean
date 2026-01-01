@@ -116,13 +116,14 @@ app.post('/api/keyword-research', async (req, res) => {
     res.json({
       mainKeyword: keyword,
       relatedKeywords: [
-        { keyword: `${keyword} guide`, volume: '1K-10K', difficulty: 'Medium' },
-        { keyword: `best ${keyword}`, volume: '10K-100K', difficulty: 'High' },
-        { keyword: `${keyword} tips`, volume: '1K-10K', difficulty: 'Low' }
+        { keyword: `${keyword} guide`, volume: '1K-10K', difficulty: 'Easy–Medium' },
+        { keyword: `best ${keyword}`, volume: '10K-100K', difficulty: 'Medium–Hard' },
+        { keyword: `${keyword} tips`, volume: '100-1K', difficulty: 'Easy' }
       ],
       suggestions: [
-        'Focus on long-tail keywords',
-        'Target low-difficulty keywords first'
+        'Start with easier terms to build authority',
+        'Create a main pillar page for your keyword',
+        'Use long-tail variations to capture niche traffic'
       ]
     });
   } catch (err) {
