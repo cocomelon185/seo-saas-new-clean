@@ -132,6 +132,49 @@ app.post('/api/keyword-research', async (req, res) => {
   }
 });
 
+app.post('/api/seo-score', (req, res) => {
+  const { url, wordCount, readabilityScore } = req.body;
+
+  if (typeof wordCount !== 'number' || typeof readabilityScore !== 'number') {
+    return res.status(400).json({ error: 'wordCount and readabilityScore must be numbers' });
+  }
+
+  let score = 50;
+  const factors = [];
+
+  if (wordCount >= 800) {
+    score += 20;
+    factors.push('Good content length (800+ words)');
+  } else if (wordCount >= 300) {
+    score += 10;
+    factors.push('Decent content length (300–799 words)');
+  } else {
+    score -= 10;
+    factors.push('Content is quite short (< 300 words)');
+  }
+
+  if (readabilityScore >= 60 && readabilityScore <= 80) {
+    score += 15;
+    factors.push('Good readability (60–80)');
+  } else if (readabilityScore < 40) {
+    score -= 10;
+    factors.push('Content is hard to read (readability < 40)');
+  }
+
+  score = Math.max(0, Math.min(100, score));
+
+  let grade;
+  if (score >= 85) {
+    grade = 'Excellent';
+  } else if (score >= 70) {
+    grade = 'Good';
+  } else {
+    grade = 'Needs improvement';
+  }
+
+  res.json({ score, grade, factors });
+});
+
 // Start server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server on port ${PORT}`));

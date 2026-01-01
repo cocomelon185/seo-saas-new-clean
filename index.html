@@ -197,7 +197,14 @@
     </li>
     <li data-icon="📈">
       <strong>SEO Scoring</strong><br>
-      Get actionable scores and insights. (Coming soon)
+      <small>Get actionable scores and insights.</small><br><br>
+      <div id="seo-scoring-result" class="result-card" style="margin-top:10px; display:none;">
+        <h3>SEO Scoring Results</h3>
+        <p><strong>Overall SEO Score:</strong> <span id="seo-overall-score"></span></p>
+        <p><strong>Grade:</strong> <span id="seo-grade"></span></p>
+        <p><strong>Factors:</strong></p>
+        <ul id="seo-factors"></ul>
+      </div>
     </li>
   </ul>
 </div>
@@ -272,7 +279,42 @@
         document.getElementById('error-message').style.display = 'block';
       }
     });
-    document.getElementById('analyzeContentBtn').addEventListener('click', async function() {
+    async function performSeoScoring(url, wordCount, readabilityScore) {
+      try {
+        const response = await fetch('/api/seo-score', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ url, wordCount, readabilityScore })
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to compute SEO score');
+        }
+
+        const data = await response.json();
+
+        document.getElementById('seo-overall-score').textContent = data.score;
+        document.getElementById('seo-grade').textContent = data.grade;
+
+        const factorsList = document.getElementById('seo-factors');
+        factorsList.innerHTML = '';
+        data.factors.forEach(factor => {
+          const li = document.createElement('li');
+          li.textContent = factor;
+          factorsList.appendChild(li);
+        });
+
+        document.getElementById('seo-scoring-result').style.display = 'block';
+        document.getElementById('seo-scoring-result').scrollIntoView({ behavior: 'smooth' });
+      } catch (error) {
+        console.error('Error:', error);
+        document.getElementById('error-message').textContent = 'An error occurred: ' + error.message;
+        document.getElementById('error-message').style.display = 'block';
+      }
+    }
       const contentInput = document.getElementById('contentInput');
       const content = contentInput.value.trim();
 
@@ -313,6 +355,9 @@
 
         document.getElementById('content-analysis-result').style.display = 'block';
         document.getElementById('content-analysis-result').scrollIntoView({ behavior: 'smooth' });
+
+        const url = document.getElementById('urlInput').value.trim();
+        performSeoScoring(url, data.wordCount, data.readabilityScore);
       } catch (error) {
         console.error('Error:', error);
         document.getElementById('error-message').textContent = 'An error occurred: ' + error.message;
