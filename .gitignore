@@ -14,3 +14,10 @@ node_modules/
 .aider*
 .vercel
 .env*.local
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/

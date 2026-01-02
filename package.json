@@ -7,14 +7,20 @@
     "start": "node server.js"
   },
   "dependencies": {
-    "express": "^4.18.2",
-    "helmet": "^7.0.0",
-    "compression": "^1.7.4",
-    "express-rate-limit": "^6.7.0",
+    "@supabase/supabase-js": "^2.39.0",
     "axios": "^1.6.2",
-    "@supabase/supabase-js": "^2.39.0"
+    "compression": "^1.8.1",
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "express-rate-limit": "^6.11.2",
+    "helmet": "^7.2.0",
+    "node-fetch": "^3.3.2"
   },
   "engines": {
     "node": ">=18"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.57.0",
+    "@types/node": "^25.0.3"
   }
 }
