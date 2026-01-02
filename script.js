@@ -23,7 +23,8 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    analysisResult.innerHTML = "Loading...";
+    analysisResult.style.display = "block";
+    analysisResult.innerHTML = "<p>Loading...</p>";
 
     try {
       const response = await fetch("/api/page-report", {
@@ -48,7 +49,7 @@ document.addEventListener("DOMContentLoaded", () => {
         keyword_ideas = [],
       } = data || {};
 
-      analysisResult.style.display = 'block';
+      analysisResult.style.display = "block";
       analysisResult.innerHTML = `
         <h3>Analysis Results</h3>
         <p><strong>Score:</strong> ${score ?? "N/A"}</p>
@@ -74,7 +75,8 @@ document.addEventListener("DOMContentLoaded", () => {
       `;
     } catch (error) {
       console.error("Frontend error:", error);
-      analysisResult.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
+      analysisResult.style.display = "block";
+      analysisResult.innerHTML = `<p class="error-text">Error: ${error.message}</p>`;
     }
   });
 });
