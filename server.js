@@ -71,6 +71,33 @@ app.post('/api/analyze', async (req, res) => {
   }
 });
 
+app.post("/api/page-report", (req, res) => {
+  const body = req.body || {};
+  if (typeof body !== "object") {
+    return res.status(400).json({ error: "Invalid request body" });
+  }
+
+  const response = {
+    score: 72,
+    quick_wins: [
+      "Add your primary keyword to the H1.",
+      "Include the target keyword in the first 100 words.",
+      "Add 2–3 internal links to related pages.",
+      "Improve meta title to include a benefit-driven phrase."
+    ],
+    content_brief:
+      "Create a clear, benefit-focused page targeting SaaS founders. Use one primary keyword in the H1, answer 2–3 main user questions, and end with a strong CTA.",
+    keyword_ideas: [
+      "saas seo checklist",
+      "seo for saas landing pages",
+      "on-page seo for startups",
+      "content brief for saas pages"
+    ]
+  };
+
+  return res.status(200).json(response);
+});
+
 // Content analysis route
 app.post('/api/content-analysis', async (req, res) => {
   try {
