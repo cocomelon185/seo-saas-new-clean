@@ -69,26 +69,9 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Feature Cards Click Handlers
-  const featuresSection = document.querySelector('.features');
-  if (featuresSection) {
-    const featureLis = featuresSection.querySelectorAll('ul > li');
-    
-    featureLis.forEach((li) => {
-      li.style.cursor = 'pointer';
-      li.addEventListener('click', function(e) {
-        e.stopPropagation();
-        const strong = this.querySelector('strong');
-        const title = strong ? strong.textContent : '';
-        
-        if (title.includes('Content Analysis')) {
-          handleContentAnalysis();
-        } else if (title.includes('Keyword Research')) {
-          handleKeywordResearch();
-        } else if (title.includes('SEO Scoring')) {
-          // alert('📊 SEO Scoring\n\nUse the URL analyzer above to get your SEO score!');
-        }
-      });
-    });
+  const keywordResearchBtn = document.getElementById('keywordResearchBtn');
+  if (keywordResearchBtn) {
+    keywordResearchBtn.addEventListener('click', handleKeywordResearch);
   }
 
   // Pricing Cards
