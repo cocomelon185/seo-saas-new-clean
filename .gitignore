@@ -21,3 +21,15 @@ node_modules/
 /blob-report/
 /playwright/.cache/
 /playwright/.auth/
+
+# Local docs & backups (do not deploy)
+Documents/
+index.html.backup3
+script.js.old
+script.js.save
+server-features.js
+server.js.backup
+server.js.old
+
+# Optional local-only config
+playwright.config.ts
