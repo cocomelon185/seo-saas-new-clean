@@ -118,7 +118,31 @@
       color: #64748b;
       border-radius: 15px;
     }
-  </style>
+    .pricing-tabs {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+    .pricing-tabs button {
+      min-width: 100px;
+      padding: 10px 20px;
+      border: 2px solid #e2e8f0;
+      border-radius: 25px;
+      background-color: #ffffff;
+      color: #0f172a;
+      cursor: pointer;
+      transition: background-color 0.3s, color 0.3s;
+      margin: 0 10px;
+    }
+    .pricing-tabs button.active {
+      background-color: #667eea;
+      color: #ffffff;
+      border-color: #667eea;
+    }
+    .pricing-tabs button:hover {
+      background-color: #764ba2;
+      color: #ffffff;
+    }
 </head>
 <body>
   <div class="container">
