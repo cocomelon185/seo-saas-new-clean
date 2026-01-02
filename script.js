@@ -48,6 +48,7 @@ document.addEventListener("DOMContentLoaded", () => {
         keyword_ideas = [],
       } = data || {};
 
+      analysisResult.style.display = 'block';
       analysisResult.innerHTML = `
         <h3>Analysis Results</h3>
         <p><strong>Score:</strong> ${score ?? "N/A"}</p>
@@ -76,46 +77,4 @@ document.addEventListener("DOMContentLoaded", () => {
       analysisResult.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
     }
   });
-});
-document.addEventListener("DOMContentLoaded", () => {
-    const analyzeButton = document.getElementById('analyze-button');
-    const analysisResult = document.getElementById('analysis-result');
-
-    analyzeButton.addEventListener('click', async () => {
-        const url = document.getElementById('url-input').value.trim();
-        const content = document.getElementById('content-input').value.trim();
-
-        if (!url) {
-            alert('Please enter a URL to analyze.');
-            return;
-        }
-
-        analysisResult.innerHTML = 'Loading...';
-
-        try {
-            const response = await fetch('/api/page-report', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ url, content })
-            });
-
-            if (!response.ok) {
-                throw new Error('Failed to fetch analysis');
-            }
-
-            const data = await response.json();
-            analysisResult.innerHTML = `
-                <h3>Analysis Results</h3>
-                <p>Score: ${data.score}</p>
-                <h4>Quick Wins</h4>
-                <ul>${data.quick_wins.map(win => `<li>${win}</li>`).join('')}</ul>
-                <h4>Content Brief</h4>
-                <p>${data.content_brief}</p>
-                <h4>Keyword Ideas</h4>
-                <ul>${data.keyword_ideas.map(idea => `<li>${idea}</li>`).join('')}</ul>
-            `;
-        } catch (error) {
-            analysisResult.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
-        }
-    });
 });
