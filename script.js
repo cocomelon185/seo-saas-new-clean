@@ -85,7 +85,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (title.includes('Keyword Research')) {
           handleKeywordResearch();
         } else if (title.includes('SEO Scoring')) {
-          alert('📊 SEO Scoring\n\nUse the URL analyzer above to get your SEO score!');
+          // alert('📊 SEO Scoring\n\nUse the URL analyzer above to get your SEO score!');
         }
       });
     });
@@ -103,9 +103,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const title = h3 ? h3.textContent.trim() : '';
         
         if (title.includes('Free')) {
-          alert('Free Tier - $0/month\n\n✓ Basic SEO analysis\n✓ 10 URLs/month\n✓ Email support\n\nSign up coming soon!');
+          // alert('Free Tier - $0/month\n\n✓ Basic SEO analysis\n✓ 10 URLs/month\n✓ Email support\n\nSign up coming soon!');
         } else if (title.includes('Pro')) {
-          alert('Pro Tier - $29/month\n\n✓ Advanced analysis\n✓ Unlimited URLs\n✓ Priority support\n✓ API access\n\nUpgrade coming soon!');
+          // alert('Pro Tier - $29/month\n\n✓ Advanced analysis\n✓ Unlimited URLs\n✓ Priority support\n✓ API access\n\nUpgrade coming soon!');
         }
       });
     });
