@@ -1,203 +1,79 @@
-function normalizeUrl(url) {
-  if (!url) return '';
-  url = url.trim();
-  if (!/^https?:\/\//i.test(url)) {
-    url = 'https://' + url;
-  }
-  return url;
-}
+document.addEventListener("DOMContentLoaded", () => {
+  console.log("DOM loaded, wiring Analyze button");
 
-function isValidUrl(url) {
-  try {
-    const normalizedUrl = normalizeUrl(url);
-    const urlObject = new URL(normalizedUrl);
-    return urlObject.protocol === 'http:' || urlObject.protocol === 'https:';
-  } catch (error) {
-    return false;
-  }
-}
+  const analyzeButton = document.getElementById("analyze-button");
+  const analysisResult = document.getElementById("analysis-result");
 
-document.addEventListener('DOMContentLoaded', () => {
-  const analyzeBtn = document.getElementById('analyzeBtn');
-
-  // Pricing Tabs
-  const monthlyTab = document.getElementById('monthlyTab');
-  const yearlyTab = document.getElementById('yearlyTab');
-  const monthlyPricing = document.getElementById('monthlyPricing');
-  const yearlyPricing = document.getElementById('yearlyPricing');
-
-  if (monthlyTab && yearlyTab) {
-    monthlyTab.addEventListener('click', () => {
-      monthlyTab.classList.add('active');
-      yearlyTab.classList.remove('active');
-      monthlyPricing.style.display = 'block';
-      yearlyPricing.style.display = 'none';
-    });
-
-    yearlyTab.addEventListener('click', () => {
-      yearlyTab.classList.add('active');
-      monthlyTab.classList.remove('active');
-      yearlyPricing.style.display = 'block';
-      monthlyPricing.style.display = 'none';
-    });
-  }
-  const urlInput = document.getElementById('urlInput');
-  const resultCard = document.querySelector('.result-card');
-
-  // URL Analysis (existing feature)
-  if (analyzeBtn) {
-    analyzeBtn.addEventListener('click', async () => {
-      const rawUrl = urlInput ? urlInput.value : '';
-      const normalizedUrl = normalizeUrl(rawUrl);
-
-      if (!isValidUrl(normalizedUrl)) {
-        alert('Please enter a valid URL');
-        return;
-      }
-
-      analyzeBtn.disabled = true;
-      analyzeBtn.textContent = 'Analyzing...';
-
-      try {
-        const res = await fetch('/api/analyze', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url: normalizedUrl })
-        });
-
-        if (!res.ok) throw new Error('Analysis failed');
-        const data = await res.json();
-
-        if (resultCard) resultCard.style.display = 'block';
-        document.getElementById('seo-score').textContent = data.score + '/100';
-        document.getElementById('seo-keywords').textContent = data.keywords.join(', ');
-        document.getElementById('title-analysis').textContent = data.titleAnalysis;
-        document.getElementById('meta-desc').textContent = data.metaDescriptionCheck || data.metaDesc;
-
-        const ul = document.getElementById('seo-suggestions');
-        ul.innerHTML = '';
-        data.suggestions.forEach(s => {
-          const li = document.createElement('li');
-          li.textContent = s;
-          ul.appendChild(li);
-        });
-      } catch (err) {
-        alert(err.message || 'Failed to analyze URL');
-      } finally {
-        analyzeBtn.disabled = false;
-        analyzeBtn.textContent = 'Analyze Now';
-      }
-    });
+  if (!analyzeButton || !analysisResult) {
+    console.error("Analyze button or analysis result container not found");
+    return;
   }
 
-  // Feature Cards Click Handlers
-  const analyzeContentBtn = document.getElementById('analyzeContentBtn');
-  const keywordResearchBtn = document.getElementById('keywordResearchBtn');
+  analyzeButton.addEventListener("click", async () => {
+    console.log("Analyze clicked");
 
-  if (analyzeContentBtn) {
-    analyzeContentBtn.addEventListener('click', handleContentAnalysis);
-  }
-  if (keywordResearchBtn) {
-    keywordResearchBtn.addEventListener('click', handleKeywordResearch);
-  }
+    const urlInput = document.getElementById("url-input");
+    const contentInput = document.getElementById("content-input");
 
-  // Pricing Cards
-  const pricingSection = document.querySelector('.pricing');
-  if (pricingSection) {
-    const pricingLis = pricingSection.querySelectorAll('ul > li');
-    
-    pricingLis.forEach(li => {
-      li.style.cursor = 'pointer';
-      li.addEventListener('click', function() {
-        const h3 = this.querySelector('h3');
-        const title = h3 ? h3.textContent.trim() : '';
-        
-        if (title.includes('Free')) {
-          // alert('Free Tier - $0/month\n\n✓ Basic SEO analysis\n✓ 10 URLs/month\n✓ Email support\n\nSign up coming soon!');
-        } else if (title.includes('Pro')) {
-          // alert('Pro Tier - $29/month\n\n✓ Advanced analysis\n✓ Unlimited URLs\n✓ Priority support\n✓ API access\n\nUpgrade coming soon!');
-        }
+    const url = urlInput ? urlInput.value.trim() : "";
+    const content = contentInput ? contentInput.value.trim() : "";
+
+    if (!url) {
+      alert("Please enter a URL to analyze.");
+      return;
+    }
+
+    analysisResult.innerHTML = "Loading...";
+
+    try {
+      const response = await fetch("/api/page-report", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url, content }),
       });
-    });
-  }
+
+      if (!response.ok) {
+        const text = await response.text();
+        console.error("API error response:", text);
+        throw new Error(`Failed to fetch analysis (status ${response.status})`);
+      }
+
+      const data = await response.json();
+      console.log("API data:", data);
+
+      const {
+        score,
+        quick_wins = [],
+        content_brief = "",
+        keyword_ideas = [],
+      } = data || {};
+
+      analysisResult.innerHTML = `
+        <h3>Analysis Results</h3>
+        <p><strong>Score:</strong> ${score ?? "N/A"}</p>
+
+        <h4>Quick Wins</h4>
+        ${
+          quick_wins.length
+            ? `<ul>${quick_wins.map((win) => `<li>${win}</li>`).join("")}</ul>`
+            : "<p>No quick wins returned.</p>"
+        }
+
+        <h4>Content Brief</h4>
+        <p>${content_brief || "No brief returned."}</p>
+
+        <h4>Keyword Ideas</h4>
+        ${
+          keyword_ideas.length
+            ? `<ul>${keyword_ideas
+                .map((idea) => `<li>${idea}</li>`)
+                .join("")}</ul>`
+            : "<p>No keyword ideas returned.</p>"
+        }
+      `;
+    } catch (error) {
+      console.error("Frontend error:", error);
+      analysisResult.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
+    }
+  });
 });
-
-// Content Analysis Feature
-async function handleContentAnalysis() {
-  
-
-  
-  if (!content || content.trim().length === 0) {
-    return;
-  }
-  
-  try {
-    const res = await fetch('/api/content-analysis', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content: content.trim() })
-    });
-    
-    if (!res.ok) throw new Error('Analysis failed');
-    
-    const data = await res.json();
-    
-    let result = '📊 Content Analysis Results\n\n';
-    result += `📝 Word Count: ${data.wordCount}\n`;
-    result += `📏 Characters: ${data.charCount}\n`;
-    result += `📄 Sentences: ${data.sentences}\n`;
-    result += `📖 Readability: ${data.readabilityScore}/100\n\n`;
-    result += '📌 Suggestions:\n';
-    data.suggestions.forEach(s => result += `• ${s}\n`);
-    
-    alert(result);
-  } catch (error) {
-    alert('❌ Analysis failed: ' + error.message);
-  }
-}
-
-// Keyword Research Feature
-async function handleKeywordResearch() {
-  const keywordInput = document.getElementById('keywordInput');
-  const keyword = keywordInput.value.trim();
-
-  if (!keyword) {
-    document.getElementById('error-message').textContent = 'Please enter a keyword.';
-    document.getElementById('error-message').style.display = 'block';
-    return;
-  }
-  try {
-    const res = await fetch('/api/keyword-research', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ keyword: keyword.trim() })
-    });
-    
-    if (!res.ok) throw new Error('Research failed');
-    
-    const data = await res.json();
-    
-    document.getElementById('main-keyword').textContent = data.mainKeyword;
-
-    const relatedKeywordsList = document.getElementById('related-keywords-list');
-    relatedKeywordsList.innerHTML = '';
-    data.relatedKeywords.forEach((kw) => {
-      const li = document.createElement('li');
-      li.textContent = `${kw.keyword} — volume: ${kw.volume}, difficulty: ${kw.difficulty}`;
-      relatedKeywordsList.appendChild(li);
-    });
-
-    const keywordSuggestionsList = document.getElementById('keyword-suggestions');
-    keywordSuggestionsList.innerHTML = '';
-    data.suggestions.forEach(suggestion => {
-      const li = document.createElement('li');
-      li.textContent = suggestion;
-      keywordSuggestionsList.appendChild(li);
-    });
-
-    document.getElementById('keyword-research-result').style.display = 'block';
-    document.getElementById('keyword-research-result').scrollIntoView({ behavior: 'smooth' });
-  } catch (error) {
-    alert('❌ Research failed: ' + error.message);
-  }
-}
