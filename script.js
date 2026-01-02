@@ -121,7 +121,7 @@ async function handleContentAnalysis() {
     return;
   }
   
-  try
+  try {
     const res = await fetch('/api/content-analysis', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
