@@ -148,16 +148,26 @@ async function handleKeywordResearch() {
     
     const data = await res.json();
     
-    let result = '🔍 Keyword Research Results\n\n';
-    result += `Main Keyword: ${data.mainKeyword}\n\n`;
-    result += 'Related Keywords:\n';
-    data.relatedKeywords.forEach((kw, i) => {
-      result += `${i + 1}. ${kw.keyword}\n   📊 ${kw.volume} | 🎯 ${kw.difficulty}\n`;
+    document.getElementById('main-keyword').textContent = data.mainKeyword;
+
+    const relatedKeywordsList = document.getElementById('related-keywords-list');
+    relatedKeywordsList.innerHTML = '';
+    data.relatedKeywords.forEach((kw) => {
+      const li = document.createElement('li');
+      li.textContent = `${kw.keyword} — volume: ${kw.volume}, difficulty: ${kw.difficulty}`;
+      relatedKeywordsList.appendChild(li);
     });
-    result += '\n📌 Suggestions:\n';
-    data.suggestions.forEach(s => result += `• ${s}\n`);
-    
-    alert(result);
+
+    const keywordSuggestionsList = document.getElementById('keyword-suggestions');
+    keywordSuggestionsList.innerHTML = '';
+    data.suggestions.forEach(suggestion => {
+      const li = document.createElement('li');
+      li.textContent = suggestion;
+      keywordSuggestionsList.appendChild(li);
+    });
+
+    document.getElementById('keyword-research-result').style.display = 'block';
+    document.getElementById('keyword-research-result').scrollIntoView({ behavior: 'smooth' });
   } catch (error) {
     alert('❌ Research failed: ' + error.message);
   }
