@@ -185,7 +185,11 @@
 
     <div class="pricing">
       <h2>Pricing</h2>
-      <ul>
+      <div class="pricing-tabs">
+        <button id="monthlyTab" class="active">Monthly</button>
+        <button id="yearlyTab">Yearly</button>
+      </div>
+      <ul id="monthlyPricing" class="pricing-list">
         <li>
           <h3>Free Tier</h3>
           <p>Basic features for personal use</p>
@@ -195,6 +199,18 @@
           <h3>Pro Tier</h3>
           <p>Advanced features for professionals</p>
           <p><strong>$29/month</strong></p>
+        </li>
+      </ul>
+      <ul id="yearlyPricing" class="pricing-list" style="display: none;">
+        <li>
+          <h3>Free Tier</h3>
+          <p>Basic features for personal use</p>
+          <p><strong>$0/year</strong></p>
+        </li>
+        <li>
+          <h3>Pro Tier</h3>
+          <p>Advanced features for professionals</p>
+          <p><strong>$290/year</strong></p>
         </li>
       </ul>
     </div>

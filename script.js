@@ -19,6 +19,28 @@ function isValidUrl(url) {
 
 document.addEventListener('DOMContentLoaded', () => {
   const analyzeBtn = document.getElementById('analyzeBtn');
+
+  // Pricing Tabs
+  const monthlyTab = document.getElementById('monthlyTab');
+  const yearlyTab = document.getElementById('yearlyTab');
+  const monthlyPricing = document.getElementById('monthlyPricing');
+  const yearlyPricing = document.getElementById('yearlyPricing');
+
+  if (monthlyTab && yearlyTab) {
+    monthlyTab.addEventListener('click', () => {
+      monthlyTab.classList.add('active');
+      yearlyTab.classList.remove('active');
+      monthlyPricing.style.display = 'block';
+      yearlyPricing.style.display = 'none';
+    });
+
+    yearlyTab.addEventListener('click', () => {
+      yearlyTab.classList.add('active');
+      monthlyTab.classList.remove('active');
+      yearlyPricing.style.display = 'block';
+      monthlyPricing.style.display = 'none';
+    });
+  }
   const urlInput = document.getElementById('urlInput');
   const resultCard = document.querySelector('.result-card');
 
