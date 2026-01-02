@@ -69,7 +69,12 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Feature Cards Click Handlers
+  const analyzeContentBtn = document.getElementById('analyzeContentBtn');
   const keywordResearchBtn = document.getElementById('keywordResearchBtn');
+
+  if (analyzeContentBtn) {
+    analyzeContentBtn.addEventListener('click', handleContentAnalysis);
+  }
   if (keywordResearchBtn) {
     keywordResearchBtn.addEventListener('click', handleKeywordResearch);
   }
