@@ -131,12 +131,14 @@ async function handleContentAnalysis() {
 
 // Keyword Research Feature
 async function handleKeywordResearch() {
-  const keyword = prompt('🔑 Keyword Research\n\nEnter your main keyword or topic:');
-  
-  if (!keyword || keyword.trim().length === 0) {
+  const keywordInput = document.getElementById('keywordInput');
+  const keyword = keywordInput.value.trim();
+
+  if (!keyword) {
+    document.getElementById('error-message').textContent = 'Please enter a keyword.';
+    document.getElementById('error-message').style.display = 'block';
     return;
   }
-  
   try {
     const res = await fetch('/api/keyword-research', {
       method: 'POST',
