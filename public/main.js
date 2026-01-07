@@ -3,7 +3,7 @@
 async function runAudit(urlToAudit) {
   try {
     // Call the new competitive scoring endpoint
-    const response = await fetch('http://127.0.0.1:8001/api/audit', {
+    const response = await fetch('https://seo-saas-new-clean-production.up.railway.app/api/audit', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ url: urlToAudit }),
@@ -110,7 +110,7 @@ function updateCompletedCount(url, container) {
   }
 
   if (total > 0) {
-    fetch('http://127.0.0.1:8001/api/audit/progress', {
+    fetch('https://seo-saas-new-clean-production.up.railway.app/api/audit/progress', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ url, completed: done, total })
