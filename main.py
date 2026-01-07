@@ -1,117 +1,89 @@
-from fastapi import FastAPI, Depends
-from starlette.middleware.cors import CORSMiddleware
+
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import List, Optional
+import requests, json, re, uvicorn
+from bs4 import BeautifulSoup
+from collections import Counter
 from datetime import datetime
-from sqlmodel import Session
+from pathlib import Path
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+from reportlab.lib.pagesizes import letter
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib.units import inch
+from io import BytesIO
+from fastapi.responses import StreamingResponse
 
-from db import create_db_and_tables, get_session, OptimizationLog
-
+limiter = Limiter(key_func=get_remote_address)
 app = FastAPI()
+@app.get("/health")
+def health():
+    return {"status": "ok"}
 
-# Enable CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+app.state.limiter = limiter
+ANALYTICS_FILE = Path("analytics.jsonl")
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
-# Create database tables on startup
-# Request/Response Models
-class OptimizeRequest(BaseModel):
-    content: str
-    focus_keyword: Optional[str] = None
-    tone: Optional[str] = None
+class AuditRequest(BaseModel):
+    url: str
 
-class OptimizeResponse(BaseModel):
-    seo_score: int
-    issues: List[str]
-    optimized_title: str
-    optimized_meta_description: str
-    optimized_headings: List[str]
-    optimized_body: str
+def log_analytics(et, d):
+    with open(ANALYTICS_FILE, "a") as f:
+        f.write(json.dumps({"ts": datetime.now().isoformat(), "et": et, "d": d}) + "\n")
 
-def dummy_analyze_and_optimize(req: OptimizeRequest) -> OptimizeResponse:
-    text = req.content
-    keyword = req.focus_keyword.strip().lower() if req.focus_keyword else ""
+def calculate_score(soup, tc):
+    s, i = 100, []
+    t = soup.title.string if soup.title else ""
+    if not t: s -= 20; i.append({"sev": "High", "msg": "Missing title"})
+    elif len(t) < 30: s -= 5; i.append({"sev": "Med", "msg": "Title short"})
+    if not soup.find("meta", {"name": "description"}): s -= 20; i.append({"sev": "High", "msg": "No meta desc"})
+    if not soup.find("h1"): s -= 20; i.append({"sev": "High", "msg": "No H1"})
+    wc = len(tc.split())
+    if wc < 300: s -= 20; i.append({"sev": "High", "msg": f"Thin ({wc} words)"})
+    return max(0, s), i
 
-    issues: List[str] = []
+def extract_keywords(text):
+    words = re.findall(r"\w+", text.lower())
+    return [w for w, c in Counter(words).most_common(10) if len(w) > 4]
 
-    # Check word count
-    word_count = len(text.split())
-    if word_count < 400:
-        issues.append(f"Content is short ({word_count} words). Aim for at least 400–800 words for many topics.")
+@app.get("/api/analysis")
+@limiter.limit("10/minute")
+async def analyze(request: Request, url: str):
+    r = requests.get(url, headers={"User-Agent": "Bot"}, timeout=10)
+    soup = BeautifulSoup(r.text, "html.parser")
+    s, i = calculate_score(soup, soup.get_text())
+    log_analytics("analyzed", {"url": url, "score": s})
+    return {"score": s, "issues": i, "keywords": extract_keywords(soup.get_text())}
 
-    # Check keyword usage
-    if keyword:
-        keyword_lower = text.lower()
-        if keyword not in keyword_lower:
-            issues.append(f"Focus keyword '{keyword}' not found in content. Include it in the first 100 words.")
-        else:
-            keyword_count = keyword_lower.count(keyword)
-            if keyword_count < 3:
-                issues.append(f"Focus keyword appears only {keyword_count} time(s). Aim for 3-5 mentions naturally distributed.")
+@app.post("/api/export/pdf")
+@limiter.limit("5/minute")
+async def pdf(request: Request, data: AuditRequest):
+    r = requests.get(data.url, headers={"User-Agent": "Bot"}, timeout=10)
+    soup = BeautifulSoup(r.text, "html.parser")
+    s, i = calculate_score(soup, soup.get_text())
+    buf = BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=letter)
+    styles = getSampleStyleSheet()
+    story = [Paragraph("SEO Audit", styles["Heading1"]), Spacer(1, 0.2*inch), Paragraph(f"URL: {data.url}", styles["Normal"]), Paragraph(f"Score: {s}/100", styles["Normal"]), Spacer(1, 0.2*inch), Paragraph("Issues:", styles["Heading2"])]
+    for issue in i:
+        story.append(Paragraph(f"• {issue['sev']}: {issue['msg']}", styles["Normal"]))
+    doc.build(story)
+    buf.seek(0)
+    log_analytics("pdf_exported", {"url": data.url})
+    return StreamingResponse(buf, media_type="application/pdf", headers={"Content-Disposition": "attachment; filename=audit.pdf"})
 
-    # Check for meta description length
-    first_sentence = text.split('.')[0] if '.' in text else text[:160]
-    if len(first_sentence) > 160:
-        issues.append("Meta description candidate is too long. Keep it under 160 characters.")
+@app.get("/api/analytics/stats")
+async def stats():
+    if not ANALYTICS_FILE.exists():
+        return {"total_analyses": 0}
+    total = errors = 0
+    with open(ANALYTICS_FILE) as f:
+        for line in f:
+            e = json.loads(line)
+            if e.get("et") == "analyzed": total += 1
+    return {"total_analyses": total}
 
-    # Calculate SEO score
-    seo_score = 100
-    seo_score -= len(issues) * 10
-    seo_score = max(0, seo_score)
-
-    # Generate optimized title
-    if keyword:
-        optimized_title = f"{keyword} – Simple SEO Analysis"
-    else:
-        optimized_title = "Content Optimization – Simple SEO Analysis"
-
-    # Generate meta description
-    optimized_meta_description = f"Learn how to improve your content for '{keyword}' with basic on-page SEO suggestions." if keyword else "Optimize your content with basic on-page SEO suggestions."
-
-    # Generate headings
-    optimized_headings = [
-        f"Introduction to {keyword}" if keyword else "Introduction",
-        f"How to optimize content for {keyword}" if keyword else "How to optimize your content",
-        "Key takeaways"
-    ]
-
-    # Return optimized body (unchanged for now, but you could enhance this)
-    optimized_body = text
-
-    return OptimizeResponse(
-        seo_score=seo_score,
-        issues=issues,
-        optimized_title=optimized_title,
-        optimized_meta_description=optimized_meta_description,
-        optimized_headings=optimized_headings,
-        optimized_body=optimized_body,
-    )
-
-@app.post("/api/optimize-content")
-def optimize_content(
-    request: OptimizeRequest,
-    session: Session = Depends(get_session)
-):
-    # Call the analysis function with the request object
-    result = dummy_analyze_and_optimize(request)  # Pass request object directly [web:302]
-    
-    # Log the optimization usage to the database
-    log = OptimizationLog(
-        user_id=1,  # Placeholder for now; will be user's ID after auth is added
-        seo_score=result.seo_score,
-        content_length=len(request.content),
-    )
-    session.add(log)
-    session.commit()
-
-    return result
-
-# Health check endpoint
-@app.get("/")
-def read_root():
-    return {"message": "SEO Optimizer API is running"}
+if __name__ == "__main__":
+    uvicorn.run(app, host="127.0.0.1", port=8001)
