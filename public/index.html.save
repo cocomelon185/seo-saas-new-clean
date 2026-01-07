@@ -1,0 +1,556 @@
+# Open the file in nano editor
+nano public/index.html
+# Open the file in nano editor
+nano public/index.html
+# Open the file in nano editor
+nano public/index.html
+# Open the file in nano editor
+nano public/index.html
+# Open the file in nano editor
+nano public/index.html
+# Open the file in nano editor
+nano public/index.html
+# Open the file in nano editor
+nano public/index.html
+# Open the file in nano editor
+nano public/index.html
+# Open the file in nano editor
+nano public/index.html
+# Open the file in nano editor
+nano public/index.html
+# Open the file in nano editor
+nano public/index.html
+# Open the file in nano editor
+nano public/index.html
+# Open the file in nano editor
+nano public/index.html
+# Open the file in nano editor
+nano public/index.html
+# Open the file in nano editor
+nano public/index.html
+# Open the file in nano editor
+nano public/index.html
+# Open the file in nano editor
+nano public/index.html
+# Open the file in nano editor
+nano public/index.html
+# Open the file in nano editor
+nano public/index.html
+# Open the file in nano editor
+nano public/index.html
+# Open the file in nano editor
+nano public/index.html
+# Open the file in nano editor
+nano public/index.html
+# Open the file in nano editor
+nano public/index.html
+# Open the file in nano editor
+nano public/index.html
+# Open the file in nano editor
+nano public/index.html
+# Open the file in nano editor
+nano public/index.html
+# Open the file in nano editor
+nano public/index.html
+# Open the file in nano editor
+nano public/index.html
+# Open the file in nano editor
+nano public/index.html
+# Open the file in nano editor
+nano public/index.html
+# Open the file in nano editor
+nano public/index.html
+# Open the file in nano editor
+nano public/index.html
+# Open the file in nano editor
+nano public/index.html
+# Open the file in nano editor
+nano public/index.html
+# Open the file in nano editor
+nano public/index.html
+# Open the file in nano editor
+nano public/index.html
+# Open the file in nano editor
+nano public/index.html
+# Open the file in nano editor
+nano public/index.html
+# Open the file in nano editor
+nano public/index.html
+# Open the file in nano editor
+nano public/index.html
+# Open the file in nano editor
+nano public/index.html
+# Open the file in nano editor
+nano public/index.html
+# Open the file in nano editor
+nano public/index.html
+# Open the file in nano editor
+nano public/index.html
+# Open the file in nano editor
+nano public/index.html
+# Open the file in nano editor
+nano public/index.html
+# Open the file in nano editor
+nano public/index.html
+# Open the file in nano editor
+nano public/index.html
+# Open the file in nano editor
+nano public/index.html
+# Open the file in nano editor
+nano public/index.html
+# Open the file in nano editor
+nano public/index.html
+# Open the file in nano editor
+nano public/index.html
+# Open the file in nano editor
+nano public/index.html
+# Open the file in nano editor
+nano public/index.html
+# Open the file in nano editor
+nano public/index.html
+# Open the file in nano editor
+nano public/index.html
+# Open the file in nano editor
+nano public/index.html
+# Open the file in nano editor
+nano public/index.html
+# Open the file in nano editor
+nano public/index.html
+# Open the file in nano editor
+nano public/index.html
+# Open the file in nano editor
+nano public/index.html
+# Open the file in nano editor
+nano public/index.html
+# Open the file in nano editor
+nano public/index.html
+# Open the file in nano editor
+nano public/index.html
+# Open the file in nano editor
+nano public/index.html
+# Open the file in nano editor
+nano public/index.html
+# Open the file in nano editor
+nano public/index.html
+# Open the file in nano editor
+nano public/index.html
+# Open the file in nano editor
+nano public/index.html
+# Open the file in nano editor
+nano public/index.html
+# Open the file in nano editor
+nano public/index.html
+# Open the file in nano editor
+nano public/index.html
+# Open the file in nano editor
+nano public/index.html
+# Open the file in nano editor
+nano public/index.html
+# Open the file in nano editor
+nano public/index.html
+# Open the file in nano editor
+nano public/index.html
+# Open the file in nano editor
+nano public/index.html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI-Powered SEO Content Optimizer</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: linear-gradient(135deg, #f5f7fb 0%, #e2e8f0 100%);
+      color: #0f172a;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .hero {
+      text-align: center;
+      padding: 60px 20px;
+      background-color: #ffffff;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      margin-bottom: 40px;
+      border-radius: 15px;
+    }
+    .hero h1 {
+      font-size: 2.5em;
+      margin-bottom: 10px;
+    }
+    .hero p {
+      font-size: 1.2em;
+      color: #64748b;
+    }
+    .hero input[type="text"] {
+      padding: 12px;
+      font-size: 1em;
+      width: 60%;
+      max-width: 400px;
+      margin-top: 20px;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+    }
+    .hero button {
+      padding: 12px 30px;
+      font-size: 1em;
+      margin-top: 20px;
+      margin-left: 10px;
+      border: none;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #ffffff;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+    .hero button:hover {
+      transform: translateY(-2px);
+      background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+    }
+    .result-card {
+      margin: 30px auto;
+      padding: 30px;
+      background-color: #ffffff;
+      border-radius: 15px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      max-width: 800px;
+      display: none;
+    }
+    .result-card h3 {
+      margin-top: 0;
+      color: #667eea;
+    }
+    .result-card .score {
+      font-size: 3em;
+      font-weight: bold;
+      color: #10b981;
+    }
+    .features, .pricing {
+      margin-bottom: 40px;
+    }
+    .features h2, .pricing h2 {
+      text-align: center;
+      margin-bottom: 30px;
+      font-size: 2em;
+    }
+    .features ul, .pricing ul {
+      list-style: none;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      gap: 30px;
+      flex-wrap: wrap;
+    }
+    .features li, .pricing li {
+      background-color: #ffffff;
+      padding: 30px;
+      border-radius: 15px;
+      box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+      flex: 1;
+      max-width: 300px;
+      text-align: center;
+      transition: transform 0.3s;
+    }
+    .features li:hover, .pricing li:hover {
+      transform: translateY(-5px);
+    }
+    .features li::before {
+      content: attr(data-icon);
+      font-size: 3em;
+      display: block;
+      margin-bottom: 15px;
+    }
+    .footer {
+      text-align: center;
+      padding: 30px;
+      background-color: #e2e8f0;
+      color: #64748b;
+      border-radius: 15px;
+    }
+    .pricing-tabs {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 40px;
+    }
+    .pricing-tabs button {
+      min-width: 120px;
+      padding: 12px 24px;
+      font-size: 16px;
+      border: 2px solid #ddd;
+      border-radius: 8px;
+      background-color: #ffffff;
+      color: #333;
+      cursor: pointer;
+      transition: background-color 0.3s, color 0.3s;
+      margin: 0 10px;
+    }
+    .pricing-tabs button.active {
+      background-color: #6366f1;
+      color: #ffffff;
+      border-color: #6366f1;
+    }
+    .pricing-tabs button:hover {
+      background-color: #764ba2;
+      color: #ffffff;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="hero">
+      <h1>AI-Powered SEO Content Optimizer</h1>
+      <p>Analyze, optimize, and rank higher</p>
+      <input type="text" id="urlInput" placeholder="Enter your URL here">
+      <div id="error-message" style="color: red; display: none;"></div>
+      <button id="analyzeBtn">Analyze Now</button>
+      <div id="error-message" style="color: red; display: none;"></div>
+      <div id="error-message" style="color: red; display: none;"></div>
+    </div>
+
+    <div id="result" class="result-card">
+      <h3>SEO Analysis Results</h3>
+      <div class="score" id="seo-score"></div>
+      <p><strong>Keywords:</strong> <span id="seo-keywords"></span></p>
+      <p><strong>Title Analysis:</strong> <span id="title-analysis"></span></p>
+      <p><strong>Meta Description:</strong> <span id="meta-desc"></span></p>
+      <p><strong>Suggestions:</strong></p>
+      <ul id="seo-suggestions"></ul>
+    </div>
+
+    <div class="features">
+  <h2>Features</h2>
+  <ul>
+    <!-- CONTENT ANALYSIS CARD = REAL TOOL -->
+    <li data-icon="🔍">
+      <strong>Content Analysis</strong><br>
+      <small>Paste your content and click Analyze.</small><br><br>
+      <textarea id="contentInput" rows="5" style="width:100%;" placeholder="Paste your content here..."></textarea>
+      <br /><br />
+      <button id="analyzeContentBtn">Analyze Content</button>
+
+      <div id="content-analysis-result" class="result-card" style="margin-top:10px; display:none;">
+        <h3>Content Analysis Results</h3>
+        <p><strong>Word Count:</strong> <span id="word-count"></span></p>
+        <p><strong>Sentences:</strong> <span id="sentence-count"></span></p>
+        <p><strong>Readability Score:</strong> <span id="readability-score"></span></p>
+        <p><strong>Suggestions:</strong></p>
+        <ul id="content-suggestions"></ul>
+      </div>
+    </li>
+
+    <!-- KEYWORD RESEARCH CARD = REAL TOOL -->
+    <li data-icon="🔑">
+      <strong>Keyword Research</strong><br>
+      <small>Enter a seed keyword and click Run Keyword Research.</small><br><br>
+      <input type="text" id="keywordInput" style="width:100%;" placeholder="Enter your seed keyword here...">
+      <br /><br />
+      <button id="keywordResearchBtn">Run Keyword Research</button>
+
+      <div id="keyword-research-result" class="result-card" style="margin-top:10px; display:none;">
+        <h3>Keyword Research Results</h3>
+        <p><strong>Main Keyword:</strong> <span id="main-keyword"></span></p>
+        <p><strong>Related Keywords:</strong></p>
+        <ul id="related-keywords-list"></ul>
+        <p><strong>Suggestions:</strong></p>
+        <ul id="keyword-suggestions"></ul>
+      </div>
+    </li>
+  </ul>
+</div>
+
+    <div class="pricing">
+      <h2>Pricing</h2>
+      <div class="pricing-tabs">
+        <button id="monthlyTab" class="active">Monthly</button>
+        <button id="yearlyTab">Yearly</button>
+      </div>
+      <ul id="monthlyPricing" class="pricing-list">
+        <li>
+          <h3>Free Tier</h3>
+          <p>Basic features for personal use</p>
+          <p><strong>$0/month</strong></p>
+        </li>
+        <li>
+          <h3>Pro Tier</h3>
+          <p>Advanced features for professionals</p>
+          <p><strong>$29/month</strong></p>
+        </li>
+      </ul>
+      <ul id="yearlyPricing" class="pricing-list" style="display: none;">
+        <li>
+          <h3>Free Tier</h3>
+          <p>Basic features for personal use</p>
+          <p><strong>$0/year</strong></p>
+        </li>
+        <li>
+          <h3>Pro Tier</h3>
+          <p>Advanced features for professionals</p>
+          <p><strong>$290/year</strong></p>
+        </li>
+      </ul>
+    </div>
+
+    <div class="footer">
+      <p>Contact us: info@seooptimizer.com</p>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // Kill any inline “coming soon” onclick popups
+      const popupElements = document.querySelectorAll(
+        '.feature-card[onclick], button[onclick], a[onclick]'
+      );
+      popupElements.forEach(el => {
+        el.removeAttribute('onclick');
+      });
+
+      const analyzeContentBtn = document.getElementById('analyzeContentBtn');
+      const keywordResearchBtn = document.getElementById('keywordResearchBtn');
+
+      const analyzeBtn = document.getElementById('analyzeBtn');
+
+      if (analyzeBtn) {
+        analyzeBtn.addEventListener('click', async function () {
+          const urlInput = document.getElementById('inputUrl');
+          const url = urlInput.value.trim();
+
+          if (!url) {
+            document.getElementById('error-message').textContent = 'Please enter a URL to analyze.';
+            document.getElementById('error-message').style.display = 'block';
+            return;
+          }
+
+          try {
+            analyzeBtn.textContent = 'Running...';
+            analyzeBtn.disabled = true;
+
+            const response = await fetch('http://127.0.0.1:8001/api/analysis?url=' + encodeURIComponent(url));
+
+            if (!response.ok) {
+              throw new Error('Failed to analyze the page');
+            }
+
+            const data = await response.json();
+
+            document.getElementById('error-message').style.display = 'none';
+            document.getElementByI
+
+      if (analyzeContentBtn) {
+        analyzeContentBtn.addEventListener('click', async function () {
+          const contentInput = document.getElementById('contentInput');
+          const content = contentInput.value.trim();
+
+          if (!content) {
+            document.getElementById('error-message').textContent = 'Please enter content to analyze.';
+            document.getElementById('error-message').style.display = 'block';
+            return;
+          }
+
+          try {
+            const response = await fetch('http://127.0.0.1:8001/api/content-analysis', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({ content })
+            });
+
+            document.getElementById('error-message').style.display = 'none';
+            if (!response.ok) {
+              const errorData = await response.json();
+              throw new Error(errorData.error || 'Failed to analyze the content');
+            }
+
+            const data = await response.json();
+
+            document.getElementById('word-count').textContent = data.wordCount;
+            document.getElementById('sentence-count').textContent = data.sentences;
+            document.getElementById('readability-score').textContent = data.readabilityScore;
+
+            const suggestionsList = document.getElementById('content-suggestions');
+            suggestionsList.innerHTML = '';
+            data.suggestions.forEach(suggestion => {
+              const li = document.createElement('li');
+              li.textContent = suggestion;
+              suggestionsList.appendChild(li);
+            });
+
+            document.getElementById('content-analysis-result').style.display = 'block';
+            document.getElementById('content-analysis-result').scrollIntoView({ behavior: 'smooth' });
+
+            const url = document.getElementById('urlInput').value.trim();
+            performSeoScoring(url, data.wordCount, data.readabilityScore);
+          } catch (error) {
+            console.error('Error:', error);
+            document.getElementById('error-message').textContent = 'An error occurred: ' + error.message;
+            document.getElementById('error-message').style.display = 'block';
+          }
+        });
+      }
+
+      if (keywordResearchBtn) {
+        keywordResearchBtn.addEventListener('click', async function () {
+          const keywordInput = document.getElementById('keywordInput');
+          const keyword = keywordInput.value.trim();
+
+          if (!keyword) {
+            document.getElementById('error-message').textContent = 'Please enter a keyword.';
+            document.getElementById('error-message').style.display = 'block';
+            return;
+          }
+
+          try {
+            const response = await fetch('http://127.0.0.1:8001/api/keyword-research', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({ keyword })
+            });
+
+            document.getElementById('error-message').style.display = 'none';
+            if (!response.ok) {
+              const errorData = await response.json();
+              throw new Error(errorData.error || 'Failed to perform keyword research');
+            }
+
+            const data = await response.json();
+
+            document.getElementById('main-keyword').textContent = data.mainKeyword;
+
+            const relatedKeywordsList = document.getElementById('related-keywords-list');
+            relatedKeywordsList.innerHTML = '';
+            data.relatedKeywords.forEach(({ keyword, volume, difficulty }) => {
+              const li = document.createElement('li');
+              li.textContent = `${keyword} — volume: ${volume}, difficulty: ${difficulty}`;
+              relatedKeywordsList.appendChild(li);
+            });
+
+            const keywordSuggestionsList = document.getElementById('keyword-suggestions');
+            keywordSuggestionsList.innerHTML = '';
+            data.suggestions.forEach(suggestion => {
+              const li = document.createElement('li');
+              li.textContent = suggestion;
+              keywordSuggestionsList.appendChild(li);
+            });
+
+            document.getElementById('keyword-research-result').style.display = 'block';
+            document.getElementById('keyword-research-result').scrollIntoView({ behavior: 'smooth' });
+          } catch (error) {
+            console.error('Error:', error);
+            document.getElementById('error-message').textContent = 'An error occurred: ' + error.message;
+            document.getElementById('error-message').style.display = 'block';
+          }
+        });
+      }
+    });
+  </script>
+<script src="./script.js"></script>
+</body>
+</html>

@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SEO Analysis Tool - For Solo SaaS Founders & Bloggers</title>
+  <style>
+    :root {
+      --bg-dark: #0f172a;
+      --bg-card: #1e293b;
+      --border-color: #334155;
+      --text-primary: #f1f5f9;
+      --text-muted: #94a3b8;
+      --accent: #3b82f6;
+      --accent-hover: #2563eb;
+      --radius: 8px;
+      --radius-pill: 20px;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: var(--bg-dark);
+      color: var(--text-primary);
+      line-height: 1.6;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+
+    h1 {
+      font-size: 32px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .subtitle {
+      font-size: 16px;
+      color: var(--text-muted);
+    }
+
+    .section {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+
+    .section-title {
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 16px;
+    }
+
+    .input-group {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    input[type="text"],
+    input[type="url"],
+    select {
+      flex: 1;
+      padding: 10px 14px;
+      background: var(--bg-dark);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius);
+      color: var(--text-primary);
+      font-size: 14px;
+    }
+
+    input::placeholder {
+      color: var(--text-muted);
+    }
+
+    button {
+      padding: 10px 20px;
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: var(--radius);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    button:hover {
+      background: var(--accent-hover);
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .score-container {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .score-circle {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      border: 4px solid var(--border-color);
+      background: var(--bg-dark);
+    }
+
+    .score-number {
+      font-size: 36px;
+      font-weight: 700;
+      transition: color 0.3s;
+    }
+
+    .score-number.score-excellent {
+      color: #10b981;
+    }
+
+    .score-number.score-good {
+      color: #22c55e;
+    }
+
+    .score-number.score-getting-there {
+      color: #f59e0b;
+    }
+
+    .score-number.score-needs-work {
+      color: #ef4444;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: var(--radius-pill);
+      font-size: 13px;
+      font-weight: 500;
+      border: 1px solid;
+      transition: all 0.3s;
+    }
+
+    .pill-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      transition: background 0.3s;
+    }
+
+    .quick-wins-card {
+      background: rgba(59, 130, 246, 0.05);
+      border: 1px solid rgba(59, 130, 246, 0.2);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-bottom: 20px;
+    }
+
+    .quick-wins-title {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      color: #60a5fa;
+    }
+
+    .quick-list {
+      list-style: none;
+    }
+
+    .quick-item {
+      display: flex;
+      gap: 10px;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+    }
+
+    .quick-item:last-child {
+      border-bottom: none;
+    }
+
+    .quick-icon {
+      flex-shrink: 0;
+      font-size: 16px;
+    }
+
+    .quick-text {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    .issue-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .issue-row:last-child {
+      border-bottom: none;
+    }
+
+    .severity-chip {
+      padding: 4px 10px;
+      border-radius: var(--radius-pill);
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .severity-high {
+      background: rgba(239, 68, 68, 0.2);
+      color: #f87171;
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    .severity-medium {
+      background: rgba(245, 158, 11, 0.2);
+      color: #fbbf24;
+      border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+
+    .severity-low {
+      background: rgba(148, 163, 184, 0.2);
+      color: #cbd5e1;
+      border: 1px solid rgba(148, 163, 184, 0.3);
+    }
+
+    .chip {
+      display: inline-block;
+      padding: 6px 12px;
+      background: rgba(59, 130, 246, 0.1);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      border-radius: var(--radius-pill);
+      font-size: 12px;
+      color: #93c5fd;
+      margin: 4px;
+    }
+
+    #audit-result {
+      margin-top: 16px;
+      font-size: 14px;
+      line-height: 1.8;
+    }
+
+    #audit-result ul {
+      list-style: none;
+      margin-top: 8px;
+    }
+
+    #audit-result li {
+      padding: 12px;
+      margin-bottom: 8px;
+      background: var(--bg-dark);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius);
+      transition: all 0.2s;
+    }
+
+    .audit-issue-checkbox {
+      margin-right: 10px;
+      cursor: pointer;
+    }
+
+    .issue-done {
+      opacity: 0.5;
+      text-decoration: line-through;
+    }
+
+    .issue-details {
+      margin-top: 8px;
+      padding-left: 28px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .severity-badge {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: var(--radius-pill);
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      margin-right: 8px;
+    }
+
+    .severity-badge.severity-high {
+      background: rgba(239, 68, 68, 0.2);
+      color: #f87171;
+    }
+
+    .severity-badge.severity-medium {
+      background: rgba(245, 158, 11, 0.2);
+      color: #fbbf24;
+    }
+
+    .severity-badge.severity-low {
+      background: rgba(148, 163, 184, 0.2);
+      color: #cbd5e1;
+    }
+
+    .kw-pill {
+      display: inline-block;
+      padding: 4px 10px;
+      background: rgba(59, 130, 246, 0.1);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      border-radius: var(--radius-pill);
+      font-size: 11px;
+      color: #93c5fd;
+      margin: 2px;
+    }
+
+    .kw-container {
+      margin-top: 4px;
+    }
+
+    #brief-results {
+      margin-top: 20px;
+      display: none;
+    }
+
+    #brief-error {
+      display: none;
+      color: #f87171;
+      margin-top: 10px;
+      font-size: 13px;
+    }
+
+    .brief-section {
+      margin-bottom: 16px;
+    }
+
+    .brief-section h3 {
+      font-size: 16px;
+      margin-bottom: 8px;
+      color: var(--text-primary);
+    }
+
+    .brief-section ul {
+      list-style: disc;
+      padding-left: 20px;
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+
+    .brief-section ul li {
+      margin-bottom: 6px;
+      background: none;
+      border: none;
+      padding: 0;
+    }
+
+    #brief-topic-intent {
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+      padding: 12px;
+      background: var(--bg-dark);
+      border-radius: var(--radius);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>SEO Analysis Tool</h1>
+      <p class="subtitle">Built for solo SaaS founders and bloggers · Get results under 60 seconds</p>
+    </header>
+
+    <section class="section">
+      <h2 class="section-title">Analyze a page</h2>
+      <div class="input-group">
+        <input type="url" id="pageUrlInput" placeholder="Enter URL (e.g., https://example.com)">
+        <button id="runAnalysisButton">Run analysis</button>
+      </div>
+
+      <div class="score-container">
+        <div class="score-circle">
+          <span class="score-number" id="scoreValue">--</span>
+        </div>
+        <div>
+          <div id="scoreBandLabel" style="font-size: 18px; font-weight: 600; margin-bottom: 6px;">Needs work</div>
+          <div class="pill" id="scoreBandPill">
+            <span class="pill-dot" id="scoreBandDot"></span>
+            <span id="scoreBandText">Needs work</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="quick-wins-card">
+        <div class="quick-wins-title">⚡ Quick wins (next 10–15 minutes)</div>
+        <ul class="quick-list" id="quickWinsList">
+          <li class="quick-item">
+            <div class="quick-icon">📋</div>
+            <div class="quick-text">Run analysis to see quick wins...</div>
+          </li>
+        </ul>
+      </div>
+
+      <div style="margin-bottom: 20px;">
+        <strong style="display: block; margin-bottom: 8px;">All issues:</strong>
+        <div id="issuesList">
+          <div style="color: var(--text-muted); font-size: 13px;">No issues yet. Run analysis above.</div>
+        </div>
+      </div>
+
+      <div style="margin-bottom: 20px;">
+        <strong style="display: block; margin-bottom: 8px;">Keyword ideas:</strong>
+        <div id="keywordIdeas">
+          <span class="chip">Run analysis to see keywords</span>
+        </div>
+      </div>
+
+      <div>
+        <strong style="display: block; margin-bottom: 8px;">Content brief:</strong>
+        <p id="contentBrief" style="color: var(--text-muted); font-size: 14px; line-height: 1.6;">
+          Run analysis to get a content brief tailored to your page's score.
+        </p>
+      </div>
+    </section>
+
+<!-- ========== FINISH LINE SECTION 1 ========== -->
+
+    <section class="section">
+      <h2 class="section-title">Improve existing pages</h2>
+      <div class="input-group">
+        <input type="url" id="audit-url" placeholder="Enter page URL">
+        <button id="audit-run-btn">Run audit</button>
+      </div>
+      <div id="audit-result"></div>
+    </section>
+
+    <section class="section">
+      <h2 class="section-title">Create content that ranks</h2>
+      <div class="input-group">
+        <select id="brief-input-type">
+          <option value="keyword">Keyword</option>
+          <option value="url">Competitor URL</option>
+        </select>
+        <input type="text" id="brief-input-value" placeholder="Enter keyword or URL">
+        <button id="brief-generate-btn">Generate brief</button>
+      </div>
+      <div id="brief-error"></div>
+      <div id="brief-results">
+        <div id="brief-topic-intent"></div>
+        <div class="brief-section">
+          <h3>Suggested outline:</h3>
+          <ul id="brief-outline"></ul>
+        </div>
+        <div class="brief-section">
+          <h3>SEO checklist:</h3>
+          <ul id="brief-checklist"></ul>
+        </div>
+        <div class="brief-section">
+          <h3>Primary keywords:</h3>
+          <ul id="brief-primary-keywords"></ul>
+        </div>
+        <div class="brief-section">
+          <h3>Secondary keywords:</h3>
+          <ul id="brief-secondary-keywords"></ul>
+        </div>
+        <div class="brief-section">
+          <h3>Internal linking suggestions:</h3>
+          <ul id="brief-internal-links"></ul>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+<!-- ========== FINISH LINE SECTION 2 ========== -->
+
+
+  <script src="./script.js"></script>
+  <script src="./main.js"></script>
+</body>
+</html>
+
+<!-- ========== FINISH LINE SECTION 3 - FILE COMPLETE ========== -->

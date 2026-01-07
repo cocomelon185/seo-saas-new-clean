@@ -1,0 +1,250 @@
+// Basic frontend interactions for the SEO SaaS UI
+
+// Helper: run audit for a URL and update main score/quick wins/keywords UI
+async function runPageAuditAndUpdateUI(url) {
+  const res = await fetch('http://127.0.0.1:8001/api/audit', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url, mode: selectedMode }),
+  });
+  if (!res.ok) throw new Error(`Audit failed: ${res.status}`);
+  const data = await res.json();
+
+  // 1) Score with color bands
+  const scoreValueEl = document.getElementById('scoreValue');
+  const score = data.overall_score ?? 0;
+  
+  if (scoreValueEl) {
+    scoreValueEl.textContent = score;
+    
+    // Reset and add color class based on score band
+    scoreValueEl.className = 'score-number';
+    if (score >= 85) {
+      scoreValueEl.classList.add('score-excellent');
+    } else if (score >= 67) {
+      scoreValueEl.classList.add('score-good');
+    } else if (score >= 50) {
+      scoreValueEl.classList.add('score-getting-there');
+    } else {
+      scoreValueEl.classList.add('score-needs-work');
+    }
+  }
+
+  // 2) Update score band label and pill
+  const scoreBandLabel = document.getElementById('scoreBandLabel');
+  const scoreBandText = document.getElementById('scoreBandText');
+  const scoreBandDot = document.getElementById('scoreBandDot');
+  const scoreBandPill = document.getElementById('scoreBandPill');
+  
+  let bandLabel = 'Needs work';
+  let bandColor = '#ef4444';
+  let pillBg = 'rgba(239, 68, 68, 0.1)';
+  let pillBorder = 'rgba(239, 68, 68, 0.3)';
+  
+  if (score >= 85) {
+    bandLabel = 'Excellent';
+    bandColor = '#10b981';
+    pillBg = 'rgba(16, 185, 129, 0.1)';
+    pillBorder = 'rgba(16, 185, 129, 0.3)';
+  } else if (score >= 67) {
+    bandLabel = 'Good';
+    bandColor = '#22c55e';
+    pillBg = 'rgba(34, 197, 94, 0.1)';
+    pillBorder = 'rgba(34, 197, 94, 0.3)';
+  } else if (score >= 50) {
+    bandLabel = 'Getting there';
+    bandColor = '#f59e0b';
+    pillBg = 'rgba(245, 158, 11, 0.1)';
+    pillBorder = 'rgba(245, 158, 11, 0.3)';
+  }
+  
+  if (scoreBandLabel) scoreBandLabel.textContent = bandLabel;
+  if (scoreBandText) scoreBandText.textContent = bandLabel;
+  if (scoreBandDot) scoreBandDot.style.background = bandColor;
+  if (scoreBandPill) {
+    scoreBandPill.style.background = pillBg;
+    scoreBandPill.style.borderColor = pillBorder;
+  }
+
+  // 3) Quick wins - SMART FILTERING for fast, high-impact fixes
+  const quickWinsList = document.getElementById('quickWinsList');
+  if (quickWinsList) {
+    const quickWinIssues = selectQuickWins(data.issues || []);
+
+    quickWinsList.innerHTML = '';
+    
+    if (quickWinIssues.length === 0) {
+      const li = document.createElement('li');
+      li.className = 'quick-item';
+      li.innerHTML = `
+        <div class="quick-icon">✓</div>
+        <div class="quick-text">No critical issues found. Focus on content depth and internal linking.</div>
+      `;
+      quickWinsList.appendChild(li);
+    } else {
+      quickWinIssues.forEach((issue) => {
+        const li = document.createElement('li');
+        li.className = 'quick-item';
+        
+        const icon = issue.severity.toLowerCase() === 'high' ? '⚠️' : '📋';
+        
+        li.innerHTML = `
+          <div class="quick-icon">${icon}</div>
+          <div class="quick-text">${issue.summary}</div>
+        `;
+        quickWinsList.appendChild(li);
+      });
+    }
+  }
+
+  // 4) Full issues list with severity labels
+  const issuesContainer = document.getElementById('issuesList');
+  if (issuesContainer) {
+    issuesContainer.innerHTML = '';
+    (data.issues || []).forEach((issue) => {
+      const row = document.createElement('div');
+      row.className = 'issue-row';
+
+      const sev = document.createElement('span');
+      sev.className = `severity-chip severity-${issue.severity.toLowerCase()}`;
+      sev.textContent = issue.severity;
+
+      const text = document.createElement('span');
+      text.textContent = issue.summary;
+
+      row.appendChild(sev);
+      row.appendChild(text);
+      issuesContainer.appendChild(row);
+    });
+  }
+
+  // 5) Keyword ideas
+  const keywordsEl = document.getElementById('keywordIdeas');
+  if (keywordsEl) {
+    keywordsEl.innerHTML = '';
+    
+    if (data.keywords && data.keywords.length > 0) {
+      (data.keywords || []).forEach((k) => {
+        const chip = document.createElement('span');
+        chip.className = 'chip';
+        chip.textContent = k;
+        keywordsEl.appendChild(chip);
+      });
+    } else {
+      keywordsEl.innerHTML = '<span class="chip">No keywords extracted</span>';
+    }
+  }
+
+  // 6) Content brief
+  const contentBrief = document.getElementById('contentBrief');
+  if (contentBrief) {
+    if (score < 50) {
+      contentBrief.textContent = 'Focus on fixing critical issues first: add missing title/meta tags, expand content to 800+ words, and structure with clear H2/H3 headings.';
+    } else if (score < 67) {
+      contentBrief.textContent = 'You\'re on the right track. Strengthen this page by adding internal links, optimizing title/meta length, and ensuring all images have alt text.';
+    } else {
+      contentBrief.textContent = 'This page has solid fundamentals. To compete at the top, focus on content depth (1,500+ words), add schema markup, and build more contextual internal links.';
+    }
+  }
+}
+
+// ========== FINISH LINE SECTION 1 ==========
+
+
+// SMART QUICK WINS SELECTOR
+// Prioritizes fast fixes (under 15 min) with high impact
+// Returns max 3 issues
+function selectQuickWins(issues) {
+  // Priority order: fastest + highest impact first
+  const quickWinPriority = [
+    'missing h1 heading',
+    'no meta description',
+    'no title tag found',
+    'title length needs tweaking',
+    'title is too short',
+    'title is too long',
+    'missing canonical tag',
+    'add more internal links',
+    'missing subheadings',
+    'meta description could be better',
+    'meta description too short',
+    'meta description too long',
+  ];
+
+  // Filter: only High or Medium severity
+  const eligible = issues.filter((i) => 
+    i.severity.toLowerCase() === 'high' || i.severity.toLowerCase() === 'medium'
+  );
+
+  // Sort by priority
+  const sorted = eligible.sort((a, b) => {
+    const summaryA = a.summary.toLowerCase();
+    const summaryB = b.summary.toLowerCase();
+    
+    let indexA = quickWinPriority.findIndex((keyword) => summaryA.includes(keyword));
+    let indexB = quickWinPriority.findIndex((keyword) => summaryB.includes(keyword));
+    
+    // If not in priority list, put at end
+    if (indexA === -1) indexA = 999;
+    if (indexB === -1) indexB = 999;
+    
+    // If same priority, High comes before Medium
+    if (indexA === indexB) {
+      const severityRank = { high: 0, medium: 1 };
+      return (severityRank[a.severity.toLowerCase()] ?? 2) - (severityRank[b.severity.toLowerCase()] ?? 2);
+    }
+    
+    return indexA - indexB;
+  });
+
+  // Return top 3
+  return sorted.slice(0, 3);
+}
+
+// Wire up the top "Run analysis" button in the Analyze a page section
+document.addEventListener('DOMContentLoaded', () => {
+  const runBtn = document.getElementById('runButton');
+  const urlInput = document.getElementById('inputUrl');
+
+  if (runBtn && urlInput) {
+    runBtn.addEventListener('click', async () => {
+      const url = urlInput.value.trim();
+      if (!url) return;
+
+      runBtn.disabled = true;
+      const originalText = runBtn.textContent;
+      runBtn.textContent = 'Running...';
+
+      try {
+        await runPageAuditAndUpdateUI(url);
+      } catch (err) {
+        console.error(err);
+        alert('Could not run audit. Check the console for details.');
+      } finally {
+        runBtn.disabled = false;
+        runBtn.textContent = originalText;
+      }
+    });
+  }
+});
+
+
+// ========== MODE TOGGLE FUNCTIONALITY ==========
+let selectedMode = 'both'; // Track which mode is selected
+
+document.addEventListener('DOMContentLoaded', () => {
+  const modeToggle = document.getElementById('modeToggle');
+  
+  if (modeToggle) {
+    const toggleOptions = modeToggle.querySelectorAll('.toggle-option');
+    
+    toggleOptions.forEach(option => {
+      option.addEventListener('click', () => {
+        toggleOptions.forEach(opt => opt.classList.remove('active'));
+        option.classList.add('active');
+        selectedMode = option.getAttribute('data-mode');
+        console.log('Mode selected:', selectedMode);
+      });
+    });
+  }
+});// ========== FINISH LINE SECTION 2 - FILE COMPLETE ==========

@@ -1,0 +1,25 @@
+
+// ========== MODE TOGGLE FUNCTIONALITY ==========
+let selectedMode = 'both'; // Track which mode is selected
+
+document.addEventListener('DOMContentLoaded', () => {
+  const modeToggle = document.getElementById('modeToggle');
+  
+  if (modeToggle) {
+    const toggleOptions = modeToggle.querySelectorAll('.toggle-option');
+    
+    toggleOptions.forEach(option => {
+      option.addEventListener('click', () => {
+        // Remove active class from all options
+        toggleOptions.forEach(opt => opt.classList.remove('active'));
+        
+        // Add active class to clicked option
+        option.classList.add('active');
+        
+        // Update selectedMode
+        selectedMode = option.getAttribute('data-mode');
+        console.log('Mode selected:', selectedMode);
+      });
+    });
+  }
+});

@@ -1,0 +1,384 @@
+from fastapi import FastAPI, Depends
+from starlette.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from typing import List, Optional
+from datetime import datetime
+from sqlmodel import Session
+import httpx
+from bs4 import BeautifulSoup
+
+from db import create_db_and_tables, get_session, OptimizationLog
+
+app = FastAPI()
+
+# Enable CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Create database tables on startup
+@app.on_event("startup")
+def on_startup():
+    create_db_and_tables()
+
+# =========================
+# Optimize content models
+# =========================
+
+class OptimizeRequest(BaseModel):
+    content: str
+    focus_keyword: Optional[str] = None
+    tone: Optional[str] = None
+
+class OptimizeResponse(BaseModel):
+    seo_score: int
+    issues: List[str]
+    optimized_title: str
+    optimized_meta_description: str
+    optimized_headings: List[str]
+    optimized_body: str
+
+def dummy_analyze_and_optimize(req: OptimizeRequest) -> OptimizeResponse:
+    text = req.content
+    keyword = req.focus_keyword.strip().lower() if req.focus_keyword else ""
+
+    issues: List[str] = []
+
+    # Check word count
+    word_count = len(text.split())
+    if word_count < 400:
+        issues.append(f"Content is short ({word_count} words). Aim for at least 400–800 words for many topics.")
+
+    # Check keyword usage
+    if keyword:
+        keyword_lower = text.lower()
+        if keyword not in keyword_lower:
+            issues.append(f"Focus keyword '{keyword}' not found in content. Include it in the first 100 words.")
+        else:
+            keyword_count = keyword_lower.count(keyword)
+            if keyword_count < 3:
+                issues.append(
+                    f"Focus keyword appears only {keyword_count} time(s). Aim for 3–5 mentions naturally distributed."
+                )
+
+    # Check for meta description length
+    first_sentence = text.split('.')[0] if '.' in text else text[:160]
+    if len(first_sentence) > 160:
+        issues.append("Meta description candidate is too long. Keep it under 160 characters.")
+
+    # Calculate SEO score
+    seo_score = 100
+    seo_score -= len(issues) * 10
+    seo_score = max(0, seo_score)
+
+    # Generate optimized title
+    if keyword:
+        optimized_title = f"{keyword} – Simple SEO Analysis"
+    else:
+        optimized_title = "Content Optimization – Simple SEO Analysis"
+
+    # Generate meta description
+    optimized_meta_description = (
+        f"Learn how to improve your content for '{keyword}' with basic on-page SEO suggestions."
+        if keyword
+        else "Optimize your content with basic on-page SEO suggestions."
+    )
+
+    # Generate headings
+    optimized_headings = [
+        f"Introduction to {keyword}" if keyword else "Introduction",
+        f"How to optimize content for {keyword}" if keyword else "How to optimize your content",
+        "Key takeaways",
+    ]
+
+    optimized_body = text
+
+    return OptimizeResponse(
+        seo_score=seo_score,
+        issues=issues,
+        optimized_title=optimized_title,
+        optimized_meta_description=optimized_meta_description,
+        optimized_headings=optimized_headings,
+        optimized_body=optimized_body,
+    )
+
+@app.post("/api/optimize-content")
+def optimize_content(
+    request: OptimizeRequest,
+    session: Session = Depends(get_session),
+):
+    result = dummy_analyze_and_optimize(request)
+
+    log = OptimizationLog(
+        user_id=1,  # Placeholder for now
+        seo_score=result.seo_score,
+        content_length=len(request.content),
+    )
+    session.add(log)
+    session.commit()
+
+    return result
+
+# =========================
+# Page audit models & API with REAL SCORING
+# =========================
+
+class AuditRequest(BaseModel):
+    url: str
+
+class AuditIssue(BaseModel):
+    severity: str
+    summary: str
+    impact: Optional[str] = None
+    recommended_action: Optional[str] = None
+
+class AuditResponse(BaseModel):
+    url: str
+    page_type: str
+    topic: str
+    overall_score: int
+    issues: List[AuditIssue]
+    keywords: List[str]
+    created_at: datetime
+
+
+def calculate_seo_score_and_issues(html: str, url: str):
+    """
+    Calculate real SEO score (0-100) and generate issues based on competitive standards.
+    
+    Scoring breakdown (competitive with Surfer/Frase):
+    - Content Quality & Relevance: 40 pts
+    - Core On-Page Tags: 30 pts
+    - Technical SEO Foundation: 20 pts
+    - Performance & UX: 10 pts
+    
+    Score bands:
+    - 0-49: "Needs work"
+    - 50-66: "Getting there"
+    - 67-84: "Good" (Surfer's recommended minimum)
+    - 85-100: "Excellent"
+    """
+    soup = BeautifulSoup(html, 'html.parser')
+    score = 0
+    issues = []
+
+    # --- CONTENT QUALITY & RELEVANCE (40 points) ---
+    
+    # Word count (up to 30 pts)
+    text_content = soup.get_text(separator=' ', strip=True)
+    word_count = len(text_content.split())
+    
+    if word_count < 300:
+        score += 0
+        issues.append(AuditIssue(
+            severity="High",
+            summary="Content is too thin",
+            impact="Your page won't rank well with under 300 words. Google favors in-depth content.",
+            recommended_action=f"Add {800 - word_count} more words. Aim for 800+ to compete. Current: {word_count}"
+        ))
+    elif word_count < 800:
+        score += 10
+        issues.append(AuditIssue(
+            severity="Medium",
+            summary="Content needs more depth",
+            impact="Pages under 800 words rarely rank on page 1 for competitive topics.",
+            recommended_action=f"Expand to 1,000–1,500 words. Just {800 - word_count} more to go! Current: {word_count}"
+        ))
+    elif word_count < 1500:
+        score += 20
+    elif word_count < 2500:
+        score += 30
+    else:
+        score += 30  # 2500+ words, excellent depth
+    
+    # Heading structure (10 pts)
+    h2_tags = soup.find_all('h2')
+    h3_tags = soup.find_all('h3')
+    
+    if len(h2_tags) >= 2 and len(h3_tags) >= 1:
+        score += 10
+    elif len(h2_tags) >= 1:
+        score += 5
+        issues.append(AuditIssue(
+            severity="Medium",
+            summary="Add more subheadings",
+            impact="Readers (and Google) love skimmable content. Headings improve readability by 60%.",
+            recommended_action="Break content into sections with 3–4 H2s and 2–3 H3s. Takes 5 minutes."
+        ))
+    else:
+        issues.append(AuditIssue(
+            severity="Medium",
+            summary="Missing subheadings",
+            impact="Without H2/H3 tags, your page looks like a wall of text. Hard to read = high bounce rate.",
+            recommended_action="Add at least 3 H2 headings. Quick win: turn your main points into subheads."
+        ))
+
+    # --- CORE ON-PAGE TAGS (30 points) ---
+    
+    # Title tag (10 pts)
+    title_tag = soup.find('title')
+    if title_tag and title_tag.string:
+        title_text = title_tag.string.strip()
+        title_length = len(title_text)
+        
+        if 50 <= title_length <= 60:
+            score += 10
+        elif 40 <= title_length <= 70:
+            score += 5
+            issues.append(AuditIssue(
+                severity="Medium",
+                summary="Title length needs tweaking",
+                impact="Google cuts off titles at 60 characters. Yours might get truncated in search results.",
+                recommended_action=f"Trim or expand to 50–60 characters. Currently {title_length}. 2-minute fix."
+            ))
+        else:
+            score += 5
+            issues.append(AuditIssue(
+                severity="Medium",
+                summary=f"Title is too {'short' if title_length < 40 else 'long'}",
+                impact="Title tags are your #1 clickability factor. Poor length = fewer clicks.",
+                recommended_action=f"Rewrite to 50–60 characters. Currently {title_length}. Include your main keyword."
+            ))
+    else:
+        issues.append(AuditIssue(
+            severity="High",
+            summary="No title tag found",
+            impact="Without a title, Google won't know what your page is about. This kills your rankings.",
+            recommended_action="Add a title tag (50–60 chars) with your primary keyword. Critical 1-minute fix."
+        ))
+    
+    # H1 tag (10 pts)
+    h1_tag = soup.find('h1')
+    if h1_tag and h1_tag.get_text(strip=True):
+        score += 10
+    else:
+        issues.append(AuditIssue(
+            severity="High",
+            summary="Missing H1 heading",
+            impact="Your H1 tells Google (and readers) what the page is about. No H1 = confused visitors + low rankings.",
+            recommended_action="Add one clear H1 at the top with your main keyword. 30-second fix."
+        ))
+    
+    # Meta description (10 pts)
+    meta_desc = soup.find('meta', attrs={'name': 'description'})
+    if meta_desc and meta_desc.get('content'):
+        desc_text = meta_desc.get('content').strip()
+        desc_length = len(desc_text)
+        
+        if 120 <= desc_length <= 160:
+            score += 10
+        elif 80 <= desc_length <= 180:
+            score += 5
+            issues.append(AuditIssue(
+                severity="Medium",
+                summary="Meta description could be better",
+                impact="Your snippet might get cut off or look awkward in search results.",
+                recommended_action=f"Adjust to 120–160 characters. Currently {desc_length}. Quick rewrite: 3 min."
+            ))
+        else:
+            score += 5
+            issues.append(AuditIssue(
+                severity="Medium",
+                summary=f"Meta description too {'short' if desc_length < 80 else 'long'}",
+                impact="A bad meta description means fewer people click your result in Google.",
+                recommended_action=f"Rewrite to 120–160 characters. Currently {desc_length}. Make it compelling!"
+            ))
+    else:
+        issues.append(AuditIssue(
+            severity="High",
+            summary="No meta description",
+            impact="Google creates its own snippet—usually bad. You lose control of your first impression.",
+            recommended_action="Write a 120–160 character description with your keyword. 2-minute fix."
+        ))
+
+    # --- TECHNICAL SEO FOUNDATION (20 points) ---
+    
+    # Internal links (7 pts)
+    internal_links = [a for a in soup.find_all('a', href=True) 
+                      if a['href'].startswith('/') or (a['href'].startswith('http') and url.split('/')[2] in a['href'])]
+    
+    if len(internal_links) >= 3:
+        score += 7
+    elif len(internal_links) >= 1:
+        score += 3
+        issues.append(AuditIssue(
+            severity="Medium",
+            summary="Add more internal links",
+            impact="Internal links help Google discover your content and boost your other pages.",
+            recommended_action=f"Link to {3 - len(internal_links)} related posts. Currently {len(internal_links)}. Quick copy-paste job."
+        ))
+    else:
+        issues.append(AuditIssue(
+            severity="Low",
+            summary="No internal links found",
+            impact="You're not passing link juice to your other pages. Missed SEO opportunity.",
+            recommended_action="Add 3–5 links to related content. Helps Google crawl your site better."
+        ))
+    
+    # Images with alt text (5 pts)
+    images = soup.find_all('img')
+    images_with_alt = [img for img in images if img.get('alt')]
+    
+    if len(images) == 0:
+        score += 5  # No images, no penalty
+    elif len(images_with_alt) / len(images) >= 0.5:
+        score += 5
+    else:
+        score += 2
+        issues.append(AuditIssue(
+            severity="Low",
+            summary="Images missing alt text",
+            impact="Alt text = accessibility + image SEO. You're leaving easy wins on the table.",
+            recommended_action=f"Add alt text to {len(images) - len(images_with_alt)} images. Currently {len(images_with_alt)}/{len(images)}. 5 min total."
+        ))
+    
+    # Canonical tag (4 pts)
+    canonical = soup.find('link', attrs={'rel': 'canonical'})
+    if canonical and canonical.get('href'):
+        score += 4
+    else:
+        issues.append(AuditIssue(
+            severity="Medium",
+            summary="Missing canonical tag",
+            impact="Without a canonical, Google might think you have duplicate content. Rankings suffer.",
+            recommended_action="Add a canonical tag to your <head>. Copy-paste from any SEO guide. 1-minute fix."
+        ))
+    
+    # Schema markup (4 pts)
+    schema = soup.find('script', attrs={'type': 'application/ld+json'})
+    if schema:
+        score += 4
+    else:
+        issues.append(AuditIssue(
+            severity="Low",
+            summary="No schema markup",
+            impact="Schema helps you get rich snippets (stars, prices, etc.) in Google. More clicks = more traffic.",
+            recommended_action="Add Article or Product schema with a schema generator tool. 5–10 minutes."
+        ))
+
+    # --- PERFORMANCE & UX (10 points) ---
+    
+    # HTTPS (5 pts)
+    if url.startswith('https://'):
+        score += 5
+    else:
+        issues.append(AuditIssue(
+            severity="Low",
+            summary="Not using HTTPS",
+            impact="Google prefers secure sites. HTTP = red warning in browsers = lost trust + lower rankings.",
+            recommended_action="Get a free SSL certificate (Let's Encrypt). Most hosts do this in one click."
+        ))
+    
+    # Mobile viewport (5 pts)
+    viewport = soup.find('meta', attrs={'name': 'viewport'})
+    if viewport:
+        score += 5
+    else:
+        issues.append(AuditIssue(
+            severity="Low",
+            summary="Missing mobile viewport tag",
+            impact="Without this

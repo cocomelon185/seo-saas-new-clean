@@ -1,0 +1,133 @@
+const PORT = 3001;
+// server.js  (Phase 2+3: simple API + static frontend + page-report)
+
+const express = require('express');
+const cors = require('cors');
+const helmet = require('helmet');
+const compression = require('compression');
+const path = require('path');
+
+const pageReportRouter = require('./api/page-report');  // remove extra "c"
+const briefRouter = require('./api/brief');
+
+const app = express();
+const PORT = 3000;
+
+console.log('Server file loaded (Phase 2+3 baseline)');
+
+// Basic security & middleware
+app.use(cors());
+app.use(helmet({ contentSecurityPolicy: false }));
+app.use(compression());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Serve static frontend assets from project root and /public
+app.use(express.static(__dirname));
+app.use(express.static(path.join(__dirname, 'public')));
+
+// API routes
+app.use('/api/page-report', pageReportRouter);
+app.use('/api/brief', briefRouter);
+
+// Start server
+app.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
+});
+
+// -------- Simple API endpoints (Phase 2) --------
+
+// Content analysis endpoint
+app.post('/api/content-analysis', (req, res) => {
+  const { content } = req.body || {};
+
+  if (!content || typeof content !== 'string') {
+    return res.status(400).json({ error: 'Content is required for analysis.' });
+  }
+
+  const words = content.trim().split(/\s+/).filter(Boolean);
+  const sentences = content.split(/[.!?]+/).filter(s => s.trim().length > 0);
+
+  const wordCount = words.length;
+  const sentenceCount = sentences.length;
+
+  // Very rough readability proxy
+  const avgWordsPerSentence = sentenceCount ? wordCount / sentenceCount : wordCount;
+  let readabilityScore = 100;
+
+  if (avgWordsPerSentence > 25) readabilityScore = 40;
+  else if (avgWordsPerSentence > 20) readabilityScore = 55;
+  else if (avgWordsPerSentence > 15) readabilityScore = 70;
+  else if (avgWordsPerSentence > 10) readabilityScore = 80;
+
+  const suggestions = [];
+
+  if (wordCount < 300) {
+    suggestions.push('Increase content length to at least 800–1200 words for competitive topics.');
+  }
+  if (avgWordsPerSentence > 20) {
+    suggestions.push('Shorten long sentences to improve readability and scannability.');
+  }
+  if (sentences.length < 5) {
+    suggestions.push('Add more descriptive sentences and subtopics to cover the subject in depth.');
+  }
+  if (suggestions.length === 0) {
+    suggestions.push('Content length and sentence structure look solid. Focus on keyword coverage and internal links.');
+  }
+
+  res.json({
+    wordCount,
+    sentences: sentenceCount,
+    readabilityScore,
+    suggestions,
+  });
+});
+
+// Keyword research endpoint (stubbed, Phase 2)
+app.post('/api/keyword-research', (req, res) => {
+  const { keyword } = req.body || {};
+  const mainKeyword = (keyword || '').toString().trim();
+
+  if (!mainKeyword) {
+    return res.status(400).json({ error: 'Keyword is required.' });
+  }
+
+  const relatedKeywords = [
+    { keyword: `${mainKeyword} tool`, volume: 1900, difficulty: 48 },
+    { keyword: `${mainKeyword} software`, volume: 1300, difficulty: 52 },
+    { keyword: `best ${mainKeyword}`, volume: 900, difficulty: 44 },
+  ];
+
+  const suggestions = [
+    'Target a main “hub” page for the core keyword and supporting cluster pages for variations.',
+    'Use the main keyword in title, H1, URL, and first 100 words where relevant.',
+    'Add internal links between pages that target related keyword variations.',
+  ];
+
+  res.json({
+    mainKeyword,
+    relatedKeywords,
+    suggestions,
+  });
+});
+
+// -------- Page report endpoint (Phase 3 dashboard) --------
+
+app.use('/api/page-report', pageReportRouter);
+
+// -------- Frontend route --------
+
+// Serve the main HTML shell
+app.get('/', (req, res) => {
+  const filePath = path.join(__dirname, 'index.html');
+  res.sendFile(filePath, err => {
+    if (err) {
+      console.error('Error sending index.html:', err);
+      res.status(500).send('Error loading page');
+    }
+  });
+});
+
+app.listen(PORT, () => {
+  console.log(`Server on port ${PORT}`);
+});

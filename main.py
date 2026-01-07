@@ -19,10 +19,6 @@ app.add_middleware(
 )
 
 # Create database tables on startup
-@app.on_event("startup")
-def on_startup():
-    create_db_and_tables()
-
 # Request/Response Models
 class OptimizeRequest(BaseModel):
     content: str
