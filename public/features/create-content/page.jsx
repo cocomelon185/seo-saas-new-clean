@@ -103,14 +103,16 @@ export default function CreateContentPage() {
               </div>
             )}
 
-            {/* Export Toolbar */}
+ {/* Export Toolbar */}
             <ExportToolbar
               onExportMarkdown={handleExportMarkdown}
               onExportJSON={handleExportJSON}
               onDownloadMarkdown={handleDownloadMarkdown}
               onDownloadJSON={handleDownloadJSON}
               copiedSection={briefState.copiedSection}
+              briefState={briefState}
             />
+
           </div>
         </div>
       )}
