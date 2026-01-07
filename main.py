@@ -84,6 +84,108 @@ async def stats():
             e = json.loads(line)
             if e.get("et") == "analyzed": total += 1
     return {"total_analyses": total}
+@app.get("/api/brief")
+@limiter.limit("10/minute")
+async def brief(request: Request, topic: str = "", url: str = ""):
+    """Generate a content brief with outline, keywords, and checklist"""
+    
+    # Determine if we're using topic or URL
+    is_url = bool(url)
+    input_text = url if is_url else topic
+    
+    if not input_text:
+        raise HTTPException(status_code=400, detail="Provide either 'topic' or 'url' parameter")
+    
+    try:
+        # If URL provided, fetch and extract text
+        if is_url:
+            r = requests.get(input_text, headers={"User-Agent": "Bot"}, timeout=10)
+            soup = BeautifulSoup(r.text, "html.parser")
+            text = soup.get_text()
+            brief_topic = soup.title.string if soup.title else input_text
+        else:
+            brief_topic = topic
+            text = topic
+        
+        # Extract keywords
+        primary_keywords = [brief_topic] + extract_keywords(text)[:4] if text else [brief_topic]
+        
+        # Generate secondary keywords
+        secondary_keywords = [
+            f"{brief_topic} guide",
+            f"{brief_topic} tips",
+            f"{brief_topic} best practices",
+            f"{brief_topic} checklist",
+            f"{brief_topic} examples"
+        ]
+        
+        # Generate 5-point outline
+        outline = [
+            {
+                "title": f"Introduction to {brief_topic}",
+                "description": f"Define {brief_topic} and explain why it matters. Include overview of what readers will learn."
+            },
+            {
+                "title": f"Why {brief_topic} Matters",
+                "description": f"Show business impact and benefits. Include real-world examples or case studies."
+            },
+            {
+                "title": f"Step-by-Step Implementation",
+                "description": f"Provide detailed walkthrough with actionable steps, tips, and best practices."
+            },
+            {
+                "title": f"Common Mistakes & FAQs",
+                "description": f"Address misconceptions and answer frequently asked questions about {brief_topic}."
+            },
+            {
+                "title": f"Conclusion & Call-to-Action",
+                "description": f"Summarize key takeaways and include clear CTA that matches search intent."
+            }
+        ]
+        
+        # Generate SEO checklist
+        checklist = [
+            f"Include '{brief_topic}' in title, H1, and first 100 words",
+            f"Add at least 3-5 internal links to related pages",
+            f"Use clear H2/H3 headings for each section",
+            f"Answer 3-5 common reader questions",
+            f"Include specific CTA that matches search intent"
+        ]
+        
+        # Word count recommendation
+        word_count = {"min": 1200, "max": 1800}
+        
+        # Internal linking strategy
+        internal_links = {
+            "strategy": "Link to your main product/pricing page, 1-2 related guides, and contact page.",
+            "examples": [
+                "Link to pricing page for feature benefits",
+                "Link to related guide or tutorial",
+                "Link to case study for social proof"
+            ]
+        }
+        
+        # Log the request
+        log_analytics("brief_generated", {"topic": brief_topic, "is_url": is_url})
+        
+        # Return the complete brief
+        return {
+            "topic": brief_topic,
+            "intent": "informational",
+            "outline": outline,
+            "word_count": word_count,
+            "keywords": {
+                "primary": primary_keywords,
+                "secondary": secondary_keywords
+            },
+            "checklist": checklist,
+            "internal_links": internal_links
+        }
+    
+    except Exception as e:
+        log_analytics("brief_error", {"error": str(e)})
+        raise HTTPException(status_code=500, detail=f"Error generating brief: {str(e)}")
+
 
 if __name__ == "__main__":
     uvicorn.run(app, host="127.0.0.1", port=8001)
