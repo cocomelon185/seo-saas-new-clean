@@ -16,7 +16,17 @@ from reportlab.lib.units import inch
 from io import BytesIO
 from fastapi.responses import StreamingResponse
 
-limiter = Limiter(key_func=get_remote_address)
+
+# Railway-compatible remote address extraction
+def get_remote_address_railway(request):
+    """Get client IP, handling Railway's X-Forwarded-For header"""
+    if "x-forwarded-for" in request.headers:
+        return request.headers["x-forwarded-for"].split(",")[0].strip()
+    if request.client:
+        return request.client.host
+    return "127.0.0.1"
+
+limiter = Limiter(key_func=get_remote_address_railway)
 app = FastAPI()
 @app.get("/health")
 def health():
@@ -206,4 +216,8 @@ async def brief(request: Request, topic: str = "", url: str = ""):
 
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="127.0.0.1", port=8001)
+import os
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 8001))
+    uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 8001)))
