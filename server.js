@@ -9,7 +9,7 @@ app.use(express.static('public'));
 
 // Start Python backend as a subprocess
 console.log('Starting Python backend...');
-const pythonProcess = spawn('python', ['main.py'], {
+const pythonProcess = spawn('python3', ['main.py'], {
   stdio: 'inherit',
   detached: false
 });
