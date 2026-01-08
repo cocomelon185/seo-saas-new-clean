@@ -15,7 +15,7 @@ from io import BytesIO
 from fastapi.responses import StreamingResponse
 
 
-app = FastAPI()
+aapp = FastAPI()
 @app.get("/health")
 def health():
     return {"status": "ok"}
