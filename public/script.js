@@ -52,7 +52,7 @@ if (!document.querySelector('style[data-error-animation]')) {
 
 // Helper: run audit for a URL and update main score/quick wins/keywords UI
 async function runPageAuditAndUpdateUI(url) {
-  const res = await fetch('https://seo-saas-new-clean-production.up.railway.app/api/analysis?url=' + encodeURIComponent(url));
+  const res = await fetch('/api/analysis?url=' + encodeURIComponent(url));
   
   if (!res.ok) {
     if (res.status === 404) throw new Error('Site not found (404)');
