@@ -21,9 +21,6 @@ app = FastAPI()
 def health():
     return {"status": "ok"}
 
-@app.get("/")
-async def root():
-    return {"status": "ok", "message": "rankypulse backend running"}
 
 @app.get("/api/test")
 def test():
