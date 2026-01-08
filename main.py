@@ -20,6 +20,11 @@ app = FastAPI()
 def health():
     return {"status": "ok"}
 
+@app.get("/api/test")
+def test():
+    return {"status": "ok", "message": "API is working"}
+
+
 ANALYTICS_FILE = Path("analytics.jsonl")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
