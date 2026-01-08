@@ -51,23 +51,10 @@ def extract_keywords(text):
 @app.get("/api/analysis")
 @limiter.limit("10/minute")
 async def analyze(request: Request, url: str):
-    import logging
-    logger = logging.getLogger("seo-analyzer")
-    
-    logger.info(f"[ANALYZE] Received URL: {url}")
-    
     try:
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
-        }
-        logger.info(f"[ANALYZE] Fetching with headers: {headers}")
-        
-        r = requests.get(url, headers=headers, timeout=10)
-        logger.info(f"[ANALYZE] Status code: {r.status_code}, URL: {r.url}")
-        
+        r = requests.get(url, headers={"User-Agent": "Bot"}, timeout=10)
         r.raise_for_status()
     except requests.exceptions.RequestException as e:
-        logger.error(f"[ANALYZE] RequestException: {str(e)}")
         return {"error": f"Failed to fetch URL: {str(e)}", "score": 0, "issues": [], "keywords": []}
     
     soup = BeautifulSoup(r.text, "html.parser")

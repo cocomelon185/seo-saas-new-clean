@@ -430,7 +430,7 @@ nano public/index.html
             analyzeBtn.textContent = 'Running...';
             analyzeBtn.disabled = true;
 
-            const response = await fetch('http://127.0.0.1:8001/api/analysis?url=' + encodeURIComponent(url));
+            const response = await fetch('/api/analysis?url=' + encodeURIComponent(url));
 
             if (!response.ok) {
               throw new Error('Failed to analyze the page');
@@ -453,7 +453,7 @@ nano public/index.html
           }
 
           try {
-            const response = await fetch('http://127.0.0.1:8001/api/content-analysis', {
+            const response = await fetch('/api/content-analysis', {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json'
@@ -506,7 +506,7 @@ nano public/index.html
           }
 
           try {
-            const response = await fetch('http://127.0.0.1:8001/api/keyword-research', {
+            const response = await fetch('/api/keyword-research', {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json'

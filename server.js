@@ -24,7 +24,7 @@ app.use('/api', (req, res) => {
   const options = {
     hostname: 'localhost',
     port: 8001,
-    path: req.url,
+    path: '/api' + req.url,
     method: req.method
   };
   
