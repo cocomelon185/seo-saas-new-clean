@@ -23,7 +23,7 @@ app.use('/api', (req, res) => {
   // Forward to Python backend running on port 5000
   const options = {
     hostname: 'localhost',
-    port: 5000,
+    port: 8001,
     path: req.url,
     method: req.method
   };
