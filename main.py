@@ -2,7 +2,7 @@
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-import requests, json, re, uvicorn
+import requests, json, re, uvicorn, os
 from bs4 import BeautifulSoup
 from collections import Counter
 from datetime import datetime
@@ -222,3 +222,9 @@ async def brief(request: Request, topic: str = "", url: str = ""):
         log_analytics("brief_error", {"error": str(e)})
         raise HTTPException(status_code=500, detail=f"Error generating brief: {str(e)}")
 
+
+
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.environ.get("PORT", 8001))
+    uvicorn.run(app, host="0.0.0.0", port=port)
