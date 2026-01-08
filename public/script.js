@@ -1,5 +1,5 @@
 // API Configuration
-const API_BASE_URL = 'https://seo-saas-new-clean-production.up.railway.app';
+const API_BASE_URL = ''; // Use relative URLs (works with custom domain)
 
 // ========== ERROR HANDLING HELPERS ==========
 
