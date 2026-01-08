@@ -13,10 +13,11 @@ app.use(express.json());
 // Serve all static files from the "public" folder
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Serve index.html for the root URL
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+// Serve /features/create-content
+app.get('/features/create-content', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'features', 'create-content', 'index.html'));
 });
+
 
 // Helper: compute a simple score based on issue severities
 function computeScore(issues) {
