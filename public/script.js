@@ -1,3 +1,6 @@
+// API Configuration
+const API_BASE_URL = 'https://seo-saas-new-clean-production.up.railway.app';
+
 // ========== ERROR HANDLING HELPERS ==========
 
 // Helper: Validate URL format
@@ -52,7 +55,7 @@ if (!document.querySelector('style[data-error-animation]')) {
 
 // Helper: run audit for a URL and update main score/quick wins/keywords UI
 async function runPageAuditAndUpdateUI(url) {
-  const res = await fetch('/api/analysis?url=' + encodeURIComponent(url));
+  const res = await fetch(`${API_BASE_URL}/api/analysis?url=' + encodeURIComponent(url));
   
   if (!res.ok) {
     if (res.status === 404) throw new Error('Site not found (404)');
