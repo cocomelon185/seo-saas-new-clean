@@ -7,8 +7,6 @@ from bs4 import BeautifulSoup
 from collections import Counter
 from datetime import datetime
 from pathlib import Path
-from slowapi import Limiter
-from slowapi.util import get_remote_address
 from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet
@@ -17,22 +15,11 @@ from io import BytesIO
 from fastapi.responses import StreamingResponse
 
 
-# Railway-compatible remote address extraction
-def get_remote_address_railway(request):
-    """Get client IP, handling Railway's X-Forwarded-For header"""
-    if "x-forwarded-for" in request.headers:
-        return request.headers["x-forwarded-for"].split(",")[0].strip()
-    if request.client:
-        return request.client.host
-    return "127.0.0.1"
-
-limiter = Limiter(key_func=get_remote_address_railway)
 app = FastAPI()
 @app.get("/health")
 def health():
     return {"status": "ok"}
 
-app.state.limiter = limiter
 ANALYTICS_FILE = Path("analytics.jsonl")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
@@ -59,7 +46,6 @@ def extract_keywords(text):
     return [w for w, c in Counter(words).most_common(10) if len(w) > 4]
 
 @app.get("/api/analysis")
-@limiter.limit("10/minute")
 async def analyze(request: Request, url: str):
     import logging
     logger = logging.getLogger("seo-analyzer")
@@ -85,8 +71,26 @@ async def analyze(request: Request, url: str):
     log_analytics("analyzed", {"url": url, "score": s})
     return {"score": s, "issues": i, "keywords": extract_keywords(soup.get_text())}
 
+
+@app.post("/api/content-analysis")
+async def content_analysis(request: Request, data: AuditRequest):
+    try:
+        text = data.url  # Frontend sends content as url field
+        keywords = extract_keywords(text)
+        return {"keywords": keywords, "wordCount": len(text.split())}
+    except Exception as e:
+        return {"error": str(e), "keywords": [], "wordCount": 0}
+
+@app.post("/api/keyword-research")
+async def keyword_research(request: Request, data: AuditRequest):
+    try:
+        text = data.url  # Frontend sends content as url field
+        keywords = extract_keywords(text)
+        return {"keywords": keywords}
+    except Exception as e:
+        return {"error": str(e), "keywords": []}
+
 @app.post("/api/export/pdf")
-@limiter.limit("5/minute")
 async def pdf(request: Request, data: AuditRequest):
     r = requests.get(data.url, headers={"User-Agent": "Bot"}, timeout=10)
     soup = BeautifulSoup(r.text, "html.parser")
@@ -113,7 +117,6 @@ async def stats():
             if e.get("et") == "analyzed": total += 1
     return {"total_analyses": total}
 @app.get("/api/brief")
-@limiter.limit("10/minute")
 async def brief(request: Request, topic: str = "", url: str = ""):
     """Generate a content brief with outline, keywords, and checklist"""
     
@@ -214,10 +217,3 @@ async def brief(request: Request, topic: str = "", url: str = ""):
         log_analytics("brief_error", {"error": str(e)})
         raise HTTPException(status_code=500, detail=f"Error generating brief: {str(e)}")
 
-
-if __name__ == "__main__":
-import os
-
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8001))
-    uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 8001)))
