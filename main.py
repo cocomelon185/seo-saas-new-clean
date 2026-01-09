@@ -227,16 +227,3 @@ async def brief(request: Request, topic: str = "", url: str = ""):
         raise HTTPException(status_code=500, detail=f"Error generating brief: {str(e)}")
 
 
-
-
-
-# Serve static frontend files
-from fastapi.staticfiles import StaticFiles
-public_dir = Path(__file__).parent / "public"
-if public_dir.exists():
-    app.mount("/", StaticFiles(directory=str(public_dir), html=True), name="static")
-
-if __name__ == "__main__":
-    import uvicorn
-    port = int(os.environ.get("PORT", 8001))
-    uvicorn.run(app, host="0.0.0.0", port=port)
