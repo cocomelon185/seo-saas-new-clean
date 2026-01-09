@@ -21,11 +21,9 @@ export default function App() {
     setResult(null);
 
     try {
-      const response = await fetch(API_BASE + '/api/page-report', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url })
-      });
+      const response = await fetch(
+        API_BASE + '/api/analysis?url=' + encodeURIComponent(url)
+      );
       if (!response.ok) throw new Error('Failed');
       const data = await response.json();
       setResult(data);
