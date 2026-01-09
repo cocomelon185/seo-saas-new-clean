@@ -90,7 +90,7 @@ async def content_analysis(request: Request, data: AuditRequest):
     except Exception as e:
         return {"error": str(e), "keywords": [], "wordCount": 0}
 
-@app.post("/api/keyword-research")
+@app.get("/api/keyword-research")
 async def keyword_research(request: Request, data: AuditRequest):
     try:
         text = data.url  # Frontend sends content as url field
