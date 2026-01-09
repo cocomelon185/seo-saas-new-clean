@@ -17,6 +17,20 @@ from fastapi.responses import StreamingResponse
 
 app = FastAPI()
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "https://www.rankypulse.com",
+        "https://rankypulse.com",
+        "https://rankypulse.vercel.app",
+        "http://localhost:5173",
+        "http://localhost:3000",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 @app.get("/health")
 def health():
     return {"status": "ok"}
