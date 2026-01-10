@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import './App.css';
+import AuditView from './AuditView';
 
 export default function App() {
   const [url, setUrl] = useState('');
@@ -22,7 +23,7 @@ export default function App() {
 
     try {
       const response = await fetch(
-        API_BASE + '/api/analysis?url=' + encodeURIComponent(url)
+        API_BASE + '/api/audit?url=' + encodeURIComponent(url)
       );
       if (!response.ok) throw new Error('Failed');
       const data = await response.json();
@@ -63,33 +64,11 @@ export default function App() {
         {result && (
           <div className="results">
             <div className="score-card">
-              <div className="score">{result.score}</div>
+              <div className="score">{result.overview.score[0]}</div>
               <div className="label">SEO Score</div>
             </div>
 
-            {result.issues && (
-              <div className="issues">
-                <h2>Issues</h2>
-                <ul>
-                  {result.issues.map((issue, i) => (
-                    <li key={i} className={'sev-' + issue.sev.toLowerCase()}>
-                      <strong>{issue.sev}</strong> {issue.msg}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {result.keywords && (
-              <div className="keywords">
-                <h2>Keywords</h2>
-                <div className="tags">
-                  {result.keywords.slice(0, 10).map((kw, i) => (
-                    <span key={i} className="tag">{kw}</span>
-                  ))}
-                </div>
-              </div>
-            )}
+            <AuditView auditData={result} />
           </div>
         )}
       </main>
