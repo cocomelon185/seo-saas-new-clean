@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import './App.css';
 import AuditView from './AuditView';
 
@@ -7,9 +7,54 @@ export default function App() {
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [liveScore, setLiveScore] = useState(null);
+  const [liveFetching, setLiveFetching] = useState(false);
+  const debounceTimer = useRef(null);
 
   const API_BASE = import.meta.env.VITE_API_URL || 'https://api.rankypulse.com';
 
+  // Real-time score fetching with debounce
+  useEffect(() => {
+    if (!url.trim()) {
+      setLiveScore(null);
+      setLiveFetching(false);
+      return;
+    }
+
+    // Clear previous timer
+    if (debounceTimer.current) {
+      clearTimeout(debounceTimer.current);
+    }
+
+    setLiveFetching(true);
+
+    // Set new timer
+    debounceTimer.current = setTimeout(async () => {
+      try {
+        const response = await fetch(
+          API_BASE + '/api/audit?url=' + encodeURIComponent(url)
+        );
+        if (response.ok) {
+          const data = await response.json();
+          setLiveScore(data.overview.score[0]);
+          setError('');
+        }
+      } catch (err) {
+        console.error('Real-time fetch error:', err);
+        setLiveScore(null);
+      } finally {
+        setLiveFetching(false);
+      }
+    }, 500); // Wait 500ms after user stops typing
+
+    return () => {
+      if (debounceTimer.current) {
+        clearTimeout(debounceTimer.current);
+      }
+    };
+  }, [url, API_BASE]);
+
+  // Full analysis on button click
   const analyze = async (e) => {
     e.preventDefault();
     if (!url.trim()) {
@@ -19,7 +64,6 @@ export default function App() {
 
     setLoading(true);
     setError('');
-    setResult(null);
 
     try {
       const response = await fetch(
@@ -53,6 +97,18 @@ export default function App() {
               onChange={(e) => setUrl(e.target.value)}
               className="input"
             />
+            {liveScore !== null && (
+              <div className={`live-badge ${liveFetching ? 'fetching' : ''}`}>
+                {liveFetching ? (
+                  <span className="spinner"></span>
+                ) : (
+                  <>
+                    <span className="score-value">{liveScore}</span>
+                    <span className="score-label">Score</span>
+                  </>
+                )}
+              </div>
+            )}
             <button type="submit" disabled={loading} className="btn">
               {loading ? 'Analyzing...' : 'Analyze'}
             </button>
