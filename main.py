@@ -243,6 +243,7 @@ async def brief(request: Request, topic: str = "", url: str = ""):
 
 
 
+
 @app.get("/api/audit")
 async def audit(url: str = ""):
     """Full audit: combines analysis + brief + recommendations"""
@@ -250,26 +251,31 @@ async def audit(url: str = ""):
         raise HTTPException(status_code=400, detail="URL parameter required")
     
     try:
-        # Get page analysis
         r = requests.get(url, headers={"User-Agent": "Bot"}, timeout=10)
         soup = BeautifulSoup(r.text, "html.parser")
         text = soup.get_text()
         
-        # Analysis data
         title = soup.title.string if soup.title else "No title"
         meta_desc = soup.find("meta", attrs={"name": "description"})
         meta_desc_text = meta_desc.get("content") if meta_desc else "No meta description"
         h1 = soup.find("h1")
         h1_text = h1.get_text() if h1 else "No H1"
         
-        # Run scoring
-        score = calculate_seo_score(text, title, meta_desc_text, h1_text)
-        issues = detect_issues(text, title, meta_desc_text, h1_text)
+        score = calculate_score(soup, title)
         keywords = extract_keywords(text)
         
-        # Generate brief
+        issues = []
+        if len(title) < 30:
+            issues.append({"sev": "Med", "msg": "Title short"})
+        if not meta_desc_text or meta_desc_text == "No meta description":
+            issues.append({"sev": "High", "msg": "No meta desc"})
+        if not h1 or h1_text == "No H1":
+            issues.append({"sev": "High", "msg": "No H1"})
+        if len(text.split()) < 300:
+            issues.append({"sev": "High", "msg": f"Thin ({len(text.split())} words)"})
+        
         outline = [
-            {"title": f"Introduction to {title}", "description": f"Define topic and explain importance"},
+            {"title": "Introduction", "description": "Define topic and explain importance"},
             {"title": "Why It Matters", "description": "Show business impact"},
             {"title": "How-To Guide", "description": "Step-by-step implementation"},
             {"title": "Best Practices", "description": "Tips and recommendations"},
@@ -291,7 +297,7 @@ async def audit(url: str = ""):
                 "outline": outline,
                 "wordCount": {"min": 1200, "max": 1800},
                 "checklist": [
-                    f"Use primary keywords in title and H1",
+                    "Use primary keywords in title and H1",
                     "Add compelling meta description (150-160 chars)",
                     "Structure content with clear H2/H3 headings",
                     "Include internal links to related pages",
