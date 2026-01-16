@@ -108,6 +108,9 @@ function SeverityBadge({ severity }) {
 
 export default function Audit() {
   const [tab, setTab] = React.useState("overview");
+
+  const [sevFilter, setSevFilter] = React.useState("All");
+  const [q, setQ] = React.useState("");
   const [targetUrl, setTargetUrl] = React.useState("https://example.com");
   const [loading, setLoading] = React.useState(false);
   const [lastUsedEndpoint, setLastUsedEndpoint] = React.useState("");
@@ -118,6 +121,29 @@ export default function Audit() {
       issues: [],
     })
   );
+
+
+  const visibleIssues = React.useMemo(() => {
+    const list = audit?.issues || [];
+    const qq = q.trim().toLowerCase();
+
+    return list.filter((it) => {
+      const sev = String(it?.severity || "").toLowerCase();
+      const tone = sevTone(sev);
+
+      const passSev =
+        sevFilter === "All" ||
+        (sevFilter === "High" && tone === "red") ||
+        (sevFilter === "Medium" && tone === "amber") ||
+        (sevFilter === "Low" && tone === "green");
+
+      if (!qq) return passSev;
+
+      const hay = `${it?.type || ""} ${it?.url || ""} ${it?.message || ""}`.toLowerCase();
+      return passSev && hay.includes(qq);
+    });
+  }, [audit, sevFilter, q]);
+
 
   async function runAudit() {
     setLoading(true);
@@ -220,6 +246,29 @@ export default function Audit() {
               <div className="overflow-hidden rounded-xl border border-slate-200">
                 <div className="flex items-center justify-between bg-slate-50 px-4 py-3">
                   <div className="text-sm font-semibold text-slate-900">Issues</div>
+                  <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <input
+                      value={q}
+                      onChange={(e) => setQ(e.target.value)}
+                      placeholder="Search issues (type, URL, message)..."
+                      className="w-full sm:max-w-md rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200"
+                    />
+                    <div className="flex flex-wrap gap-2">
+                      {["All","High","Medium","Low"].map((b) => (
+                        <button
+                          key={b}
+                          type="button"
+                          onClick={() => setSevFilter(b)}
+                          className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold transition ${
+                            sevFilter===b ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
+                          }`}
+                        >
+                          {b}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
                   <div className="text-xs text-slate-500">{issues.length} total</div>
                 </div>
                 <div className="overflow-auto">
@@ -241,7 +290,7 @@ export default function Audit() {
                           </td>
                         </tr>
                       ) : (
-                        issues.map((it) => (
+                        visibleIssues.map((it) => (
                           <tr key={it.id} className="border-b border-slate-100 hover:bg-slate-50">
                             <td className="px-4 py-3 text-slate-900">{it.type}</td>
                             <td className="px-4 py-3">
