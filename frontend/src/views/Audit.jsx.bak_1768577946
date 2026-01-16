@@ -1,0 +1,333 @@
+import { api } from "../lib/api";
+import React, { useEffect, useRef, useState } from "react";
+
+
+
+function buildInsights(data) {
+  const issues = [];
+  const recs = [];
+
+  const url = String(data?.url || "");
+  const title = String(data?.title || "");
+  const h1 = String(data?.h1 || "");
+  const htmlBytes = Number(data?.htmlBytes || 0);
+
+  const titleLen = title.trim().length;
+  const hasH1 = h1.trim().length > 0;
+
+  // URL / HTTPS checks
+  if (!url) {
+    issues.push({ severity: "high", msg: "URL missing in result payload." });
+  } else {
+    if (url.startsWith("http://")) {
+      issues.push({ severity: "med", msg: "Site is using HTTP (not HTTPS)." });
+      recs.push("Use HTTPS site-wide and redirect HTTP → HTTPS.");
+    }
+    if (!url.startsWith("http://") && !url.startsWith("https://")) {
+      recs.push("Use a full URL (https://example.com) to avoid redirects and mixed results.");
+    }
+  }
+
+
+  // Meta / robots / canonical checks
+  const metaDescription = (data?.metaDescription || "").trim();
+  const robotsMeta = (data?.robotsMeta || "").trim().toLowerCase();
+  const canonical = (data?.canonical || "").trim();
+  const noindex = Boolean(data?.noindex) || robotsMeta.includes("noindex") || robotsMeta.includes("none");
+
+  if (noindex) {
+    issues.push({ severity: "high", msg: "Page is marked noindex (robots meta)." });
+    recs.push("Remove noindex if you want this page to appear in search results.");
+  }
+
+  if (!metaDescription) {
+    issues.push({ severity: "med", msg: "Missing meta description." });
+    recs.push("Add a unique meta description (~120–160 chars) to improve snippets and CTR.");
+  }
+
+  if (!canonical) {
+    issues.push({ severity: "low", msg: "Missing canonical link." });
+    recs.push("Add a rel=canonical URL to prevent duplicate-content confusion.");
+  }
+
+
+  // Title checks
+  if (titleLen === 0) {
+    issues.push({ severity: "high", msg: "Missing <title> tag." });
+    recs.push("Add a unique page title (50–60 characters is a good target).");
+  } else {
+    if (titleLen < 25) {
+      issues.push({ severity: "low", msg: `Title looks short (${titleLen} chars).` });
+      recs.push("Consider expanding the title to be more descriptive (aim ~50–60 chars).");
+    }
+    if (titleLen > 65) {
+      issues.push({ severity: "med", msg: `Title may be too long (${titleLen} chars) and could truncate in search.` });
+      recs.push("Shorten the title to ~50–60 chars while keeping key terms.");
+    }
+  }
+
+  // H1 checks
+  if (!hasH1) {
+    issues.push({ severity: "high", msg: "Missing H1 heading." });
+    recs.push("Add exactly one clear H1 describing the page topic.");
+  } else if (h1.trim().length < 10) {
+    issues.push({ severity: "low", msg: "H1 looks very short." });
+    recs.push("Make the H1 more specific to the page intent.");
+  }
+
+  // HTML size check (very rough)
+  if (htmlBytes > 1200000) {
+    issues.push({ severity: "med", msg: `HTML is large (${htmlBytes.toLocaleString()} bytes).` });
+    recs.push("Reduce HTML bloat: remove unused components, defer non-critical content, and avoid rendering huge menus/server data inline.");
+  }
+
+  // Baseline recs
+  recs.push("Ensure meta description is present and unique per page.");
+  recs.push("Add internal links to key pages (helps crawl + relevance).");
+  recs.push("Run a Lighthouse / Core Web Vitals check after UI changes.");
+
+  // Score: start at 100, subtract based on issue severity
+  let seoScore = 100;
+  for (const it of issues) {
+    if (it.severity === "high") seoScore -= 25;
+    else if (it.severity === "med") seoScore -= 15;
+    else seoScore -= 5;
+  }
+  if (seoScore < 0) seoScore = 0;
+  if (seoScore > 100) seoScore = 100;
+
+  const uniqRecs = Array.from(new Set(recs));
+  return { issues, recs: uniqRecs, titleLen, hasH1, htmlBytes, issuesFound: issues.length, seoScore };
+}
+
+
+export default function Audit() {
+  const [url, setUrl] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [jobId, setJobId] = useState(null);
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState("");
+  const pollRef = useRef(null);
+
+  const startAudit = async (e) => {
+    e.preventDefault();
+    setError("");
+    setResult(null);
+    setJobId(null);
+
+    const clean = url.trim();
+    if (!clean) return setError("Please enter a URL (example.com)");
+
+    setLoading(true);
+    try {
+      const r = await fetch("/api/audit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: clean }),
+      });
+      const j = await r.json();
+      if (!r.ok || !j.ok) throw new Error(j?.error?.message || "Audit start failed");
+      setJobId(j.jobId);
+    } catch (err) {
+      setLoading(false);
+      setError(err.message || "Audit failed");
+    }
+  };
+
+  useEffect(() => {
+    if (!jobId) return;
+
+    const poll = async () => {
+      try {
+        const r = await fetch(`/api/audit/${jobId}`);
+        const j = await r.json();
+        if (!r.ok || !j.ok) throw new Error(j?.error?.message || "Audit poll failed");
+
+        if (j.status === "done") {
+          
+setResult(j.data);
+
+          // Save completed audit to DB (F2)
+          try {
+            await api("/api/audits", { method: "POST", body: { result: j.data } });
+          } catch (e) {
+            // silent fail for MVP (user may be logged out)
+            console.warn("Save audit failed:", e?.message || e);
+          }
+
+
+          // Save stats for dashboard cards
+          try {
+            const htmlBytes = Number(j.data?.htmlBytes || 0);
+            const seoScore =
+              htmlBytes === 0 ? 0 :
+              htmlBytes < 500000 ? 85 :
+              htmlBytes < 1000000 ? 65 : 45;
+
+            const info = buildInsights(j.data);
+
+            localStorage.setItem(
+              "rankypulse_stats",
+              JSON.stringify({
+                pagesCrawled: 1,
+                issuesFound: info.issuesFound,
+                seoScore: info.seoScore,
+                lastScan: new Date().toISOString(),
+              })
+            );
+          } catch (_) {}
+
+          setLoading(false);
+          clearInterval(pollRef.current);
+          pollRef.current = null;
+        } else if (j.status === "error") {
+          setError(j?.error?.message || "Audit error");
+          setLoading(false);
+          clearInterval(pollRef.current);
+          pollRef.current = null;
+        }
+      } catch (err) {
+        setError(err.message || "Audit poll failed");
+        setLoading(false);
+        clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
+    };
+
+    poll();
+    pollRef.current = setInterval(poll, 900);
+
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
+  }, [jobId]);
+
+  return (
+    <div className="px-4 md:px-10 mx-auto w-full -m-24">
+      <div className="relative flex flex-col min-w-0 break-words w-full mb-6 shadow-lg rounded bg-white">
+        <div className="rounded-t mb-0 px-6 py-6 border-0">
+          <h3 className="text-xl font-semibold text-slate-700">RankyPulse Audit</h3>
+          <p className="text-sm text-slate-500 mt-1">
+            Enter a domain, start a job, and we’ll poll until results are ready.\n            Try: example.com, https://news.ycombinator.com
+          </p>
+        </div>
+
+        <div className="flex-auto px-6 pb-6 pt-0">
+<form onSubmit={startAudit} className="mt-4">
+  <div className="flex items-center gap-3">
+    <input
+      type="text"
+      value={url}
+      onChange={(e) => setUrl(e.target.value)}
+      placeholder="example.com (or https://example.com)"
+      className="flex-1 min-w-0 border border-slate-200 rounded px-4 py-3 text-slate-700 outline-none focus:ring"
+    />
+    <button
+      id="audit-submit"
+      type="submit"
+      disabled={loading}
+      className="px-6 py-3 rounded bg-sky-500 text-white font-semibold shadow hover:bg-sky-600 disabled:opacity-60 whitespace-nowrap"
+      style={{ minWidth: 160 }}
+    >
+      {loading ? "Running..." : "Analyze"}
+    </button>
+  </div>
+</form>
+
+          {error && (
+            <div className="mt-4 rounded bg-rose-50 text-rose-700 px-4 py-3 border border-rose-100">
+              {error}
+            </div>
+          )}
+
+          {jobId && !result && !error && (
+            <div className="mt-4 rounded bg-slate-50 text-slate-700 px-4 py-3 border border-slate-200">
+              Job: <span className="font-mono">{jobId}</span> (polling… Checking homepage, title, H1, bytes…)
+            </div>
+          )}
+
+          {result && (() => {
+            const info = buildInsights(result);
+            const badge = (sev) =>
+              sev === "high" ? "bg-rose-100 text-rose-700" :
+              sev === "med" ? "bg-amber-100 text-amber-700" :
+              "bg-slate-100 text-slate-700";
+
+            return (
+              <div className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-4">
+
+                {/* Overview */}
+                <div className="lg:col-span-2 p-5 rounded border border-slate-200 bg-white">
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <div className="text-sm font-semibold text-slate-800">Overview</div>
+                      <div className="text-xs text-slate-500">Core on-page signals from the homepage</div>
+                    </div>
+                    <div className="text-xs text-slate-500">
+                      HTML: <span className="font-mono">{info.htmlBytes.toLocaleString()}</span> bytes
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="p-3 rounded border border-slate-200">
+                      <div className="text-[11px] uppercase text-slate-500">URL</div>
+                      <div className="text-slate-800 break-words">{result.url}</div>
+                    </div>
+                    <div className="p-3 rounded border border-slate-200">
+                      <div className="text-[11px] uppercase text-slate-500">Title ({info.titleLen} chars)</div>
+                      <div className="text-slate-800 break-words">{result.title || "—"}</div>
+                    </div>
+                    <div className="p-3 rounded border border-slate-200 md:col-span-2">
+                      <div className="text-[11px] uppercase text-slate-500">H1</div>
+                      <div className="text-slate-800 break-words">{result.h1 || "—"}</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Issues */}
+                <div className="p-5 rounded border border-slate-200 bg-white">
+                  <div className="mb-3">
+                    <div className="text-sm font-semibold text-slate-800">Issues Found</div>
+                    <div className="text-xs text-slate-500">MVP checks based on title/H1/HTML/HTTPS</div>
+                  </div>
+
+                  {info.issues.length === 0 ? (
+                    <div className="text-sm text-emerald-700 bg-emerald-50 border border-emerald-100 rounded px-3 py-2">
+                      No issues detected by the MVP ruleset.
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {info.issues.map((it, idx) => (
+                        <div key={idx} className="flex gap-2 items-start">
+                          <span className={"text-[11px] px-2 py-1 rounded font-semibold " + badge(it.severity)}>
+                            {it.severity.toUpperCase()}
+                          </span>
+                          <div className="text-sm text-slate-700">{it.msg}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Recommendations */}
+                <div className="lg:col-span-3 p-5 rounded border border-slate-200 bg-white">
+                  <div className="mb-3">
+                    <div className="text-sm font-semibold text-slate-800">Recommendations</div>
+                    <div className="text-xs text-slate-500">Next actions to improve crawl + relevance</div>
+                  </div>
+
+                  <ul className="list-disc pl-5 space-y-1 text-sm text-slate-700">
+                    {info.recs.map((r, i) => (
+                      <li key={i}>{r}</li>
+                    ))}
+                  </ul>
+                </div>
+
+              </div>
+            );
+          })()}
+        </div>
+      </div>
+    </div>
+  );
+}

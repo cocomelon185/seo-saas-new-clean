@@ -1,0 +1,159 @@
+import React, { useEffect, useRef, useState } from "react";
+
+export default function Audit() {
+  const [url, setUrl] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [jobId, setJobId] = useState(null);
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState("");
+  const pollRef = useRef(null);
+
+  const startAudit = async (e) => {
+    e.preventDefault();
+    setError("");
+    setResult(null);
+    setJobId(null);
+
+    const clean = url.trim();
+    if (!clean) return setError("Please enter a URL (example.com)");
+
+    setLoading(true);
+    try {
+      const r = await fetch("/api/audit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: clean }),
+      });
+      const j = await r.json();
+      if (!r.ok || !j.ok) throw new Error(j?.error?.message || "Audit start failed");
+      setJobId(j.jobId);
+    } catch (err) {
+      setLoading(false);
+      setError(err.message || "Audit failed");
+    }
+  };
+
+  useEffect(() => {
+    if (!jobId) return;
+
+    const poll = async () => {
+      try {
+        const r = await fetch(`/api/audit/${jobId}`);
+        const j = await r.json();
+        if (!r.ok || !j.ok) throw new Error(j?.error?.message || "Audit poll failed");
+
+        if (j.status === "done") {
+          setResult(j.data);
+
+          // Save stats for dashboard cards
+          try {
+            const htmlBytes = Number(j.data?.htmlBytes || 0);
+            const seoScore =
+              htmlBytes === 0 ? 0 :
+              htmlBytes < 500000 ? 85 :
+              htmlBytes < 1000000 ? 65 : 45;
+
+            localStorage.setItem(
+              "rankypulse_stats",
+              JSON.stringify({
+                pagesCrawled: 1,
+                issuesFound: 0,
+                seoScore,
+                lastScan: new Date().toISOString(),
+              })
+            );
+          } catch (_) {}
+
+          setLoading(false);
+          clearInterval(pollRef.current);
+          pollRef.current = null;
+        } else if (j.status === "error") {
+          setError(j?.error?.message || "Audit error");
+          setLoading(false);
+          clearInterval(pollRef.current);
+          pollRef.current = null;
+        }
+      } catch (err) {
+        setError(err.message || "Audit poll failed");
+        setLoading(false);
+        clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
+    };
+
+    poll();
+    pollRef.current = setInterval(poll, 900);
+
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
+  }, [jobId]);
+
+  return (
+    <div className="px-4 md:px-10 mx-auto w-full -m-24">
+      <div className="relative flex flex-col min-w-0 break-words w-full mb-6 shadow-lg rounded bg-white">
+        <div className="rounded-t mb-0 px-6 py-6 border-0">
+          <h3 className="text-xl font-semibold text-slate-700">RankyPulse Audit</h3>
+          <p className="text-sm text-slate-500 mt-1">
+            Enter a domain, start a job, and we’ll poll until results are ready.\n            Try: example.com, https://news.ycombinator.com
+          </p>
+        </div>
+
+        <div className="flex-auto px-6 pb-6 pt-0">
+          <form onSubmit={startAudit} className="mt-4">
+            <div className="flex flex-col md:flex-row gap-3">
+              <input
+                type="text"
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                placeholder="example.com (or https://example.com)"
+                className="flex-1 border border-slate-200 rounded px-4 py-3 text-slate-700 outline-none focus:ring"
+              />
+              <button
+                type="submit"
+                disabled={loading}
+                className="bg-sky-500 text-white font-semibold px-6 py-3 rounded shadow hover:bg-sky-600 disabled:opacity-60"
+              >
+                {loading ? "Running..." : "Analyze"}
+              </button>
+            </div>
+          </form>
+
+          {error && (
+            <div className="mt-4 rounded bg-rose-50 text-rose-700 px-4 py-3 border border-rose-100">
+              {error}
+            </div>
+          )}
+
+          {jobId && !result && !error && (
+            <div className="mt-4 rounded bg-slate-50 text-slate-700 px-4 py-3 border border-slate-200">
+              Job: <span className="font-mono">{jobId}</span> (polling… Checking homepage, title, H1, bytes…)
+            </div>
+          )}
+
+          {result && (
+            <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="p-4 rounded border border-slate-200">
+                <div className="text-xs uppercase text-slate-500">URL</div>
+                <div className="text-slate-800 break-words">{result.url}</div>
+              </div>
+              <div className="p-4 rounded border border-slate-200">
+                <div className="text-xs uppercase text-slate-500">Title</div>
+                <div className="text-slate-800 break-words">{result.title}</div>
+              </div>
+              <div className="p-4 rounded border border-slate-200">
+                <div className="text-xs uppercase text-slate-500">H1</div>
+                <div className="text-slate-800 break-words">{result.h1}</div>
+              </div>
+
+              <div className="md:col-span-3 p-4 rounded border border-slate-200">
+                <div className="text-xs uppercase text-slate-500">HTML Bytes</div>
+                <div className="text-slate-800">{result.htmlBytes}</div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
