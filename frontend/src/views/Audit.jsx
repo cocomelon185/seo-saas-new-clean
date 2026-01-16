@@ -79,6 +79,33 @@ function sevTone(sev) {
   return "slate";
 }
 
+
+function SeverityBadge({ severity }) {
+  const tone = sevTone(severity);
+  const dot =
+    tone === "red" ? "bg-red-500" :
+    tone === "amber" ? "bg-amber-500" :
+    tone === "green" ? "bg-emerald-500" :
+    "bg-slate-400";
+
+  const pill =
+    tone === "red" ? "bg-red-50 text-red-700 border-red-200" :
+    tone === "amber" ? "bg-amber-50 text-amber-800 border-amber-200" :
+    tone === "green" ? "bg-emerald-50 text-emerald-800 border-emerald-200" :
+    "bg-slate-50 text-slate-700 border-slate-200";
+
+  const label = String(severity || "unknown");
+
+  return (
+    <span className="inline-flex items-center gap-2">
+      <span className={`h-2.5 w-2.5 rounded-full ${dot}`} />
+      <span className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${pill}`}>
+        {label}
+      </span>
+    </span>
+  );
+}
+
 export default function Audit() {
   const [tab, setTab] = React.useState("overview");
   const [targetUrl, setTargetUrl] = React.useState("https://example.com");
@@ -218,7 +245,7 @@ export default function Audit() {
                           <tr key={it.id} className="border-b border-slate-100 hover:bg-slate-50">
                             <td className="px-4 py-3 text-slate-900">{it.type}</td>
                             <td className="px-4 py-3">
-                              <Badge tone={sevTone(it.severity)}>{String(it.severity)}</Badge>
+                              <SeverityBadge severity={it.severity} />
                             </td>
                             <td className="px-4 py-3 max-w-[320px] truncate text-slate-700">{it.url}</td>
                             <td className="px-4 py-3 max-w-[420px] truncate text-slate-700">{it.message}</td>
