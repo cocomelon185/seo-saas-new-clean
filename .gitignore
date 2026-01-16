@@ -33,3 +33,13 @@ server.js.old
 
 # Optional local-only config
 playwright.config.ts
+database.db
+database.db-wal
+database.db-shm
+*.bak_*
+*.bak
+src.backup_*/
+src.bak_*/
+**/src.backup_*/
+**/src.bak_*/
+notus-ui/

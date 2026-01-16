@@ -1,133 +1,51 @@
-import { useState, useEffect, useRef } from 'react';
-import './App.css';
-import AuditView from './AuditView';
+import RequireAuth from "./routes/RequireAuth";
+import { clearToken, getToken } from "./lib/api";
+import React from "react";
+import AuthView from "./AuthView.jsx";
+import { Switch, Route, Redirect } from "react-router-dom";
+
+import Admin from "./layouts/Admin.jsx";
+import Auth from "./layouts/Auth.jsx";
+import Index from "./views/Index.jsx";
 
 export default function App() {
-  const [url, setUrl] = useState('');
-  const [result, setResult] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [liveScore, setLiveScore] = useState(null);
-  const [liveFetching, setLiveFetching] = useState(false);
-  const debounceTimer = useRef(null);
+  const token = getToken();
 
-  const API_BASE = import.meta.env.VITE_API_URL || 'https://api.rankypulse.com';
-
-  // Real-time score fetching with debounce
-  useEffect(() => {
-    if (!url.trim()) {
-      setLiveScore(null);
-      setLiveFetching(false);
-      return;
-    }
-
-    // Clear previous timer
-    if (debounceTimer.current) {
-      clearTimeout(debounceTimer.current);
-    }
-
-    setLiveFetching(true);
-
-    // Set new timer
-    debounceTimer.current = setTimeout(async () => {
-      try {
-        const response = await fetch(
-          API_BASE + '/api/audit?url=' + encodeURIComponent(url)
-        );
-        if (response.ok) {
-          const data = await response.json();
-          setLiveScore(data.overview.score[0]);
-          setError('');
-        }
-      } catch (err) {
-        console.error('Real-time fetch error:', err);
-        setLiveScore(null);
-      } finally {
-        setLiveFetching(false);
-      }
-    }, 500); // Wait 500ms after user stops typing
-
-    return () => {
-      if (debounceTimer.current) {
-        clearTimeout(debounceTimer.current);
-      }
-    };
-  }, [url, API_BASE]);
-
-  // Full analysis on button click
-  const analyze = async (e) => {
-    e.preventDefault();
-    if (!url.trim()) {
-      setError('Please enter a URL');
-      return;
-    }
-
-    setLoading(true);
-    setError('');
-
-    try {
-      const response = await fetch(
-        API_BASE + '/api/audit?url=' + encodeURIComponent(url)
-      );
-      if (!response.ok) throw new Error('Failed');
-      const data = await response.json();
-      setResult(data);
-    } catch (err) {
-      console.error('API Error:', err);
-      setError('Analysis failed');
-    } finally {
-      setLoading(false);
-    }
-  };
+  // If not logged in, always send to /auth
+  if (!token) {
+    return (
+      <Switch>
+        <Route
+          path="/auth"
+          render={() => <AuthView onAuthed={() => (window.location.href = "/")} />}
+        />
+        <Redirect to="/auth" />
+      </Switch>
+    );
+  }
 
   return (
-    <div className="app">
-      <header className="header">
-        <h1>RankyPulse</h1>
-        <p>SEO Audit in One Click</p>
-      </header>
+    <>
+      <div style={{ position: "fixed", top: 10, right: 10, zIndex: 9999 }}>
+        <button
+          onClick={() => {
+            clearToken();
+            window.location.href = "/auth";
+          }}
+          style={{ padding: "6px 10px" }}
+        >
+          Logout
+        </button>
+      </div>
 
-      <main className="container">
-        <form onSubmit={analyze} className="form">
-          <div className="input-group">
-            <input
-              type="url"
-              placeholder="https://example.com"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              className="input"
-            />
-            {liveScore !== null && (
-              <div className={`live-badge ${liveFetching ? 'fetching' : ''}`}>
-                {liveFetching ? (
-                  <span className="spinner"></span>
-                ) : (
-                  <>
-                    <span className="score-value">{liveScore}</span>
-                    <span className="score-label">Score</span>
-                  </>
-                )}
-              </div>
-            )}
-            <button type="submit" disabled={loading} className="btn">
-              {loading ? 'Analyzing...' : 'Analyze'}
-            </button>
-          </div>
-        </form>
-
-        {error && <div className="error">{error}</div>}
-
-        {result && (
-          <div className="results">
-            <div className="score-card">
-              <div className="score">{result.overview.score[0]}</div>
-              <div className="label">SEO Score</div>
-            </div>
-
-            <AuditView auditData={result} />
-          </div>
-        )}
-      </main>
-    </div>
+      <Switch>
+        <Route path="/" exact component={Index} />
+        <Route path="/admin" render={(props) => (<RequireAuth><Admin {...props} /></RequireAuth>)} />
+        {/* Keep /auth route for convenience; redirect to dashboard if already logged in */}
+        <Route path="/auth" render={() => <Redirect to="/" />} />
+        <Redirect to="/" />
+      </Switch>
+    </>
   );
 }
+
