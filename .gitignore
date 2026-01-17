@@ -99,3 +99,32 @@ test-results/
 *.backup
 *.save
 *.old
+
+# OS / editor
+.DS_Store
+
+# Node
+node_modules/
+
+# Python
+__pycache__/
+*.pyc
+
+# DB / local state
+database.db
+database.db-shm
+database.db-wal
+*.sqlite
+*.sqlite3
+
+# Logs / analytics
+analytics.jsonl
+playwright-report/
+test-results/
+
+# Backups / scratch
+*.bak
+*.backup
+*.save
+*.old
+src.bak_*/
