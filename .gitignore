@@ -33,3 +33,69 @@ server.js.old
 
 # Optional local-only config
 playwright.config.ts
+database.db
+database.db-wal
+database.db-shm
+*.bak_*
+*.bak
+src.backup_*/
+src.bak_*/
+**/src.backup_*/
+**/src.bak_*/
+notus-ui/
+# OS / editor
+.DS_Store
+
+# Node
+node_modules/
+
+# Python
+__pycache__/
+*.pyc
+
+# Databases / local state
+database.db
+database.db-shm
+database.db-wal
+*.sqlite
+*.sqlite3
+
+# Logs / analytics
+analytics.jsonl
+playwright-report/
+test-results/
+
+# Backups / scratch
+*.bak
+*.backup
+*.save
+*.old
+*_backup.*
+
+# OS / editor
+.DS_Store
+
+# Node
+node_modules/
+
+# Python
+__pycache__/
+*.pyc
+
+# DB / local state
+database.db
+database.db-shm
+database.db-wal
+*.sqlite
+*.sqlite3
+
+# logs / reports
+analytics.jsonl
+playwright-report/
+test-results/
+
+# backups / scratch
+*.bak
+*.backup
+*.save
+*.old

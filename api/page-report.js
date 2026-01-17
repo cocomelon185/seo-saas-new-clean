@@ -62,6 +62,90 @@ function buildQuickWins(stats) {
   return wins;
 }
 
+function buildIssues({ stats, hasTitle, hasH1, pageType }) {
+  const issues = [];
+
+  if (!hasTitle) {
+    issues.push({
+      id: "missing_title",
+      title: "Missing <title> tag",
+      description: "Your page is missing a title tag, which is a major relevance signal.",
+      impact: "high",
+      type: "quick_win",
+      category: "onpage",
+      why_it_matters: "Title tags strongly influence rankings and click-through rate.",
+      how_to_fix: "Add a clear, keyword-aligned title (50–60 chars) describing the page’s main topic.",
+      confidence: 0.9
+    });
+  }
+
+  if (!hasH1) {
+    issues.push({
+      id: "missing_h1",
+      title: "Missing H1 heading",
+      description: "Your page does not contain a clear H1 heading.",
+      impact: "high",
+      type: "quick_win",
+      category: "content",
+      why_it_matters: "H1 helps both users and search engines understand the primary topic quickly.",
+      how_to_fix: "Add one descriptive H1 at the top of the page that matches the main intent.",
+      confidence: 0.9
+    });
+  }
+
+  if ((stats.wordCount || 0) < 800) {
+    issues.push({
+      id: "thin_content",
+      title: "Content is thin for competitive queries",
+      description: `This page has ~ words. For many SaaS queries, 800–1200+ words performs better.`,
+      impact: "high",
+      type: "structural",
+      category: "content",
+      why_it_matters: "Thin pages often fail to cover the subtopics and questions Google expects.",
+      how_to_fix: "Add H2/H3 sections for key subtopics, examples, FAQs, and comparisons relevant to the intent.",
+      confidence: 0.8
+    });
+  }
+
+  if ((stats.avgSentenceLength || 0) > 25) {
+    issues.push({
+      id: "hard_to_read",
+      title: "Sentences are too long (readability)",
+      description: `Average sentence length is ~ words.`,
+      impact: "medium",
+      type: "quick_win",
+      category: "content",
+      why_it_matters: "Better readability improves engagement and reduces bounce, which supports SEO performance.",
+      how_to_fix: "Split long sentences into shorter ones and use bullet points for dense explanations.",
+      confidence: 0.75
+    });
+  }
+
+  if (pageType === "pricing") {
+    issues.push({
+      id: "pricing_page_trust",
+      title: "Pricing pages need trust + comparison clarity",
+      description: "Pricing pages convert better when they reduce fear and answer objections.",
+      impact: "medium",
+      type: "structural",
+      category: "saas",
+      why_it_matters: "Users compare tools here; missing trust elements reduces conversion and relevance.",
+      how_to_fix: "Add an FAQ (billing, cancellation, refunds), clear plan differences, and a lightweight comparison section.",
+      confidence: 0.6
+    });
+  }
+
+  const impactRank = { high: 3, medium: 2, low: 1 };
+  const typeRank = { quick_win: 2, structural: 1 };
+  issues.sort((a, b) => {
+    const ir = (impactRank[b.impact] || 0) - (impactRank[a.impact] || 0);
+    if (ir !== 0) return ir;
+    return (typeRank[b.type] || 0) - (typeRank[a.type] || 0);
+  });
+
+  return issues;
+}
+
 // --- SaaS helpers (same as localhost) ---
 
 function detectSaasPageType(url, title = '', h1 = '') {
@@ -152,6 +236,8 @@ module.exports = async (req, res) => {
     const { url, content } = req.body || {};
 
     let fetchedHtml = '';
+    let titleText = '';
+    let h1Text = '';
     let pageTitleOrH1 = '';
 
     if (url) {
@@ -159,10 +245,9 @@ module.exports = async (req, res) => {
       fetchedHtml = await response.text();
       const titleMatch = fetchedHtml.match(/<title[^>]*>([^<]+)<\/title>/i);
       const h1Match = fetchedHtml.match(/<h1[^>]*>([^<]+)<\/h1>/i);
-      pageTitleOrH1 =
-        (titleMatch && titleMatch[1]) ||
-        (h1Match && h1Match[1]) ||
-        '';
+      titleText = (titleMatch && titleMatch[1]) || '';
+      h1Text = (h1Match && h1Match[1]) || '';
+      pageTitleOrH1 = titleText || h1Text || '';
     }
 
     const workingContent =
@@ -195,14 +280,24 @@ module.exports = async (req, res) => {
       `${topic.toLowerCase()} examples`
     ];
 
-    const saasPageType = detectSaasPageType(url || '', pageTitleOrH1, '');
+    const saasPageType = detectSaasPageType(url || '', pageTitleOrH1, h1Text || '');
     const saasPageAdvice = buildSaasPageAdvice(saasPageType.pageType);
+
+    const issues = buildIssues({
+      stats,
+      hasTitle: !!(titleText && titleText.trim()),
+      hasH1: !!(h1Text && h1Text.trim()),
+      pageType: saasPageType.pageType
+    });
+    const priorities = issues.slice(0, 3);
 
     res.status(200).json({
       score,
       quick_wins: quickWins,
       content_brief: contentBrief.join('\n'),
       keyword_ideas: keywordIdeas,
+      issues,
+      priorities,
       saas_page_type: saasPageType,
       saas_page_advice: saasPageAdvice,
       warning: null
@@ -214,6 +309,8 @@ module.exports = async (req, res) => {
       quick_wins: [],
       content_brief: '',
       keyword_ideas: [],
+      issues: [],
+      priorities: [],
       saas_page_type: null,
       saas_page_advice: null,
       warning: 'Failed to analyze page. Try again in a moment.'

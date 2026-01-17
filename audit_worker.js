@@ -1,0 +1,79 @@
+import { parentPort } from "worker_threads";
+import { normalizeUrl, fetchWithTimeout, jsonErrorShape } from "./api_hardening.js";
+import { runAudit } from "./audit_engine.js";
+import { load } from "cheerio";
+
+function post(ok, payload) {
+  parentPort.postMessage({ ok, ...payload });
+}
+
+parentPort.on("message", async ({ jobId, url }) => {
+  try {
+    const v = normalizeUrl(url);
+    if (!v.ok) return post(false, { jobId, error: jsonErrorShape(v.code || "BAD_URL", v.message || "Invalid URL") });
+
+    const targetUrl = v.normalized;
+
+    const r = await fetchWithTimeout(targetUrl, { timeoutMs: 12000, retries: 1 });
+
+    if (r.status === 403) return post(false, { jobId, error: jsonErrorShape("FORBIDDEN", "Site blocked the request (403).") });
+    if (r.status === 404) return post(false, { jobId, error: jsonErrorShape("NOT_FOUND", "Page not found (404).") });
+    if (r.status === 429) return post(false, { jobId, error: jsonErrorShape("TOO_MANY_REQUESTS", "Site rate-limited the request (429).") });
+    if (r.status >= 500) return post(false, { jobId, error: jsonErrorShape("UPSTREAM_ERROR", `Upstream error (${r.status}).`) });
+
+    const ct = r.headers.get("content-type") || "";
+    if (!ct.includes("text/html")) return post(false, { jobId, error: jsonErrorShape("UNSUPPORTED_CONTENT", "URL did not return HTML.") });
+
+    const html = await r.text();
+
+    // --- RankyPulse: parse SEO meta ---
+    const $ = load(html);
+    const metaDescription = ($('meta[name="description"]').attr("content") || "").trim();
+    const robotsMeta = ($('meta[name="robots"]').attr("content") || "").trim().toLowerCase();
+    const canonical = ($('link[rel="canonical"]').attr("href") || "").trim();
+    const noindex = robotsMeta.includes("noindex") || robotsMeta.includes("none");
+
+    const lower = html.toLowerCase();
+    if (lower.includes("access denied") || lower.includes("forbidden") || lower.includes("captcha")) {
+      return post(false, { jobId, error: jsonErrorShape("LIKELY_BLOCKED", "This site blocks automated audits (captcha/deny).") });
+    }
+
+    let data;
+    try {
+      data = runAudit(r.url || targetUrl, html);
+    } catch (e) {
+      return post(false, { jobId, error: jsonErrorShape("AUDIT_ENGINE_FAILED", "Audit engine failed on this page.", String(e?.message || e)) });
+    }
+
+    data = { ...data, metaDescription, robotsMeta, canonical, noindex };
+
+    // pages fallback (1-page crawl baseline)
+    if (!Array.isArray(data.pages)) {
+      const u = r.url || targetUrl;
+      data.pages = [
+        {
+          url: u,
+          status: 200,
+          title: data.title || "",
+          description: metaDescription || "",
+          depth: 0
+        }
+      ];
+    }
+
+    if (!data.summary) {
+      data.summary = {
+        pagesCrawled: data.pages.length,
+        issuesFound: Array.isArray(data.issues) ? data.issues.length : 0,
+        score: typeof data.score === "number" ? data.score : 0,
+        lastScan: new Date().toISOString()
+      };
+    }
+
+
+    return post(true, { jobId, data });
+  } catch (e) {
+    if (e?.name === "AbortError") return post(false, { jobId, error: jsonErrorShape("TIMEOUT", "Audit timed out fetching the page.") });
+    return post(false, { jobId, error: jsonErrorShape("WORKER_FAILED", "Audit worker failed.", String(e?.message || e)) });
+  }
+});
