@@ -17,7 +17,7 @@ export async function api(path, { method = "GET", body } = {}) {
   const headers = { "Content-Type": "application/json" };
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
-  const res = await fetch(path, {
+  const res = await fetch((/^https?:\\/\\//.test(path)?path:API_BASE+path), {
     method,
     headers,
     body: body ? JSON.stringify(body) : undefined,
