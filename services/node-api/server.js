@@ -25,7 +25,7 @@ import { Worker } from "worker_threads";
 import { normalizeUrl, TTLCache, RateLimiter, jsonError } from "./api_hardening.js";
 
 const app = express();
-app.use(cors({ origin: ["https://www.rankypulse.com"], credentials: true }));
+app.use(cors({ origin: ["https://www.rankypulse.com","https://rankypulse.com","http://localhost:5173"], credentials: true }));
 
 
 
