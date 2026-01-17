@@ -407,4 +407,4 @@ app.get("*", (req, res) => res.sendFile(path.join(FRONTEND_DIST, "index.html")))
 const port = process.env.PORT || 3000;
 __seedDemoAudit(auditCache, __mockAudit);
 
-app.listen(port, () => console.log(`API running on port ${port}`));
+app.listen(port, "0.0.0.0", "0.0.0.0", () => console.log(`API running on port ${port}`));
