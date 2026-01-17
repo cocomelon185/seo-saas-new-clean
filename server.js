@@ -1,4 +1,18 @@
-import express from "express";
+import express from "express"
+
+const __DEMO_AUDIT_URL = "https://httpstat.us";
+
+function __seedDemoAudit(auditCache, __mockAudit) {
+  try {
+    const demoData = __mockAudit(__DEMO_AUDIT_URL);
+    auditCache.set(__DEMO_AUDIT_URL, demoData);
+    console.log("Seeded demo audit:", __DEMO_AUDIT_URL);
+  } catch (e) {
+    console.log("Demo seed failed:", String(e?.message || e));
+  }
+}
+
+;
 import Database from "better-sqlite3";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
@@ -10,6 +24,8 @@ import { Worker } from "worker_threads";
 import { normalizeUrl, TTLCache, RateLimiter, jsonError } from "./api_hardening.js";
 
 const app = express();
+
+
 
 function __mockAudit(url) {
   const now = new Date().toISOString();
@@ -56,17 +72,6 @@ function __mockAudit(url) {
 
 
 
-app.use((req, res, next) => {
-  if (req.path === "/api/audit" && req.method === "GET") {
-    const url = req.query && req.query.url ? String(req.query.url) : "https://example.com";
-    return res.json(__mockAudit(url));
-  }
-  if (req.path === "/api/audit/run" && req.method === "POST") {
-    const url = req.body && req.body.url ? String(req.body.url) : "https://example.com";
-    return res.json(__mockAudit(url));
-  }
-  return next();
-});
 
 
 app.use(express.json());
@@ -93,6 +98,19 @@ function requireAuth(req, res, next) {
     return next();
   } catch (e) {
     return jsonError(res, 401, "UNAUTHORIZED", "Invalid/expired token.");
+  }
+}
+
+function getPlanFromRequest(req) {
+  const h = req.headers.authorization || "";
+  const m = h.match(/^Bearer\s+(.+)$/i);
+  if (!m) return "free";
+
+  try {
+    const tok = jwt.verify(m[1], JWT_SECRET);
+    return String(tok?.plan || "free").toLowerCase();
+  } catch {
+    return "free";
   }
 }
 
@@ -136,6 +154,70 @@ setInterval(() => {
 
 // ===== API =====
 app.get("/api/health", (req, res) => res.json({ ok: true }));
+
+app.post("/api/audit/run", (req, res) => {
+  const urlRaw = req.body?.url;
+  const v = normalizeUrl(urlRaw);
+  if (!v.ok) return jsonError(res, 400, v.code, v.message);
+
+  const targetUrl = v.normalized;
+
+  const plan = getPlanFromRequest(req);
+
+  if (plan === "free") {
+    const jobId = makeId();
+
+    const demoShaped = {
+      ...demo,
+      summary: { ...demo.summary, lastScan: new Date().toISOString() },
+      pages: (demo.pages || []).map((pg) => ({
+        ...pg,
+      })),
+      issues: (demo.issues || []).map((it) => ({
+        ...it,
+      }))
+    };
+
+    jobs.set(jobId, { status: "done", data: demoShaped, createdAt: Date.now() });
+    return res.json({ ok: true, jobId, cached: true, demo: true, plan });
+  }
+
+
+  const worker = new Worker(new URL("./audit_worker.js", import.meta.url), { type: "module" });
+
+  let done = false;
+
+  const killTimer = setTimeout(() => {
+    if (done) return;
+    done = true;
+    try { worker.terminate(); } catch {}
+    return jsonError(res, 504, "TIMEOUT", "Audit timed out.");
+  }, 15000);
+
+  worker.on("message", (msg) => {
+    if (done) return;
+  });
+
+  worker.on("error", (err) => {
+    if (done) return;
+    done = true;
+    clearTimeout(killTimer);
+    try { worker.terminate(); } catch {}
+    return jsonError(res, 500, "WORKER_CRASH", "Worker crashed.", { detail: String(err?.message || err) });
+  });
+
+  worker.on("message", (msg) => {
+    if (done) return;
+    done = true;
+    clearTimeout(killTimer);
+    try { worker.terminate(); } catch {}
+
+    if (msg?.ok) return res.json(msg.data);
+    return jsonError(res, 500, msg?.error?.code || "FAILED", msg?.error?.message || "Audit failed.");
+  });
+
+  worker.postMessage({ jobId: "run", url: targetUrl });
+});
 
 app.post("/api/reset-demo", (req, res) => {
   // Keep for future DB-based demo resets; currently frontend-only reset is enough.
@@ -323,4 +405,6 @@ app.use(express.static(FRONTEND_DIST));
 app.get("*", (req, res) => res.sendFile(path.join(FRONTEND_DIST, "index.html")));
 
 const port = process.env.PORT || 3000;
+__seedDemoAudit(auditCache, __mockAudit);
+
 app.listen(port, () => console.log(`Frontend running on port ${port}`));

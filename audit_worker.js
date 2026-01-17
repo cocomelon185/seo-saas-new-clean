@@ -47,6 +47,30 @@ parentPort.on("message", async ({ jobId, url }) => {
 
     data = { ...data, metaDescription, robotsMeta, canonical, noindex };
 
+    // pages fallback (1-page crawl baseline)
+    if (!Array.isArray(data.pages)) {
+      const u = r.url || targetUrl;
+      data.pages = [
+        {
+          url: u,
+          status: 200,
+          title: data.title || "",
+          description: metaDescription || "",
+          depth: 0
+        }
+      ];
+    }
+
+    if (!data.summary) {
+      data.summary = {
+        pagesCrawled: data.pages.length,
+        issuesFound: Array.isArray(data.issues) ? data.issues.length : 0,
+        score: typeof data.score === "number" ? data.score : 0,
+        lastScan: new Date().toISOString()
+      };
+    }
+
+
     return post(true, { jobId, data });
   } catch (e) {
     if (e?.name === "AbortError") return post(false, { jobId, error: jsonErrorShape("TIMEOUT", "Audit timed out fetching the page.") });

@@ -71,6 +71,30 @@ function Badge({ tone = "slate", children }) {
   );
 }
 
+
+function statusTone(code) {
+  const n = Number(code || 0);
+  if (n >= 200 && n < 300) return "green";
+  if (n >= 300 && n < 400) return "amber";
+  if (n >= 400) return "red";
+  return "slate";
+}
+
+function shortText(x, maxLen) {
+  const t = String(x || "");
+  if (t.length <= maxLen) return t;
+  return t.slice(0, maxLen - 1) + "…";
+}
+
+function hostPath(u) {
+  try {
+    const x = new URL(String(u || ""));
+    return x.host + x.pathname;
+  } catch {
+    return String(u || "");
+  }
+}
+
 function sevTone(sev) {
   const s = String(sev || "").toLowerCase();
   if (s.includes("high") || s.includes("critical") || s.includes("error")) return "red";
@@ -123,7 +147,9 @@ export default function Audit() {
   );
 
 
-  const visibleIssues = React.useMemo(() => {
+  
+  const isDemo = Boolean(audit?.demo);
+const visibleIssues = React.useMemo(() => {
     const list = audit?.issues || [];
     const qq = q.trim().toLowerCase();
 
@@ -198,6 +224,31 @@ export default function Audit() {
                 <Button onClick={runAudit} disabled={loading || !targetUrl.trim()}>
                   {loading ? "Running..." : "Run audit"}
                 </Button>
+            
+<span className="ml-3 inline-flex items-center">
+  {audit ? (
+    <>
+      <span
+        title={isDemo ? "Demo data preview. Upgrade to run a live crawl." : "Live crawl of the website"}
+        className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
+          isDemo ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-800"
+        }`}
+      >
+        {isDemo ? "Demo Data" : "Live Audit"}
+      </span>
+      {isDemo ? (
+        <a
+          href="/upgrade"
+          className="ml-3 text-xs font-semibold text-slate-700 hover:text-slate-900 underline"
+        >
+          Upgrade to run live audits
+        </a>
+      ) : null}
+    </>
+  ) : null}
+</span>
+
+
               </div>
             </div>
             {error ? (
@@ -330,13 +381,31 @@ export default function Audit() {
                         <tr><td className="px-4 py-6 text-slate-500" colSpan={5}>No crawled pages yet. Run an audit.</td></tr>
                       ) : (
                         (audit.pages || []).map((pg, idx) => (
-                          <tr key={pg.url || idx} className="border-b border-slate-100 hover:bg-slate-50">
-                            <td className="px-4 py-3 text-slate-900">{pg.status}</td>
-                            <td className="px-4 py-3 max-w-[420px] truncate text-slate-700">{pg.url}</td>
-                            <td className="px-4 py-3 max-w-[220px] truncate text-slate-700">{pg.title || "—"}</td>
-                            <td className="px-4 py-3 max-w-[420px] truncate text-slate-700">{pg.description || "—"}</td>
-                            <td className="px-4 py-3 text-slate-700">{pg.depth ?? "—"}</td>
-                          </tr>
+                          <tr key={pg?.url || idx} className="border-b border-slate-100 hover:bg-slate-50">
+                                    <td className="px-4 py-3 align-top">
+                                      <Badge tone={statusTone(pg?.status)}>{pg?.status || "—"}</Badge>
+                                    </td>
+
+                                    <td className="px-4 py-3 max-w-[520px] align-top">
+                                      <a
+                                        className="block font-medium text-slate-900 hover:underline break-all"
+                                        href={pg?.url || "#"}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        title={pg?.url || ""}
+                                      >
+                                        {shortText(hostPath(pg?.url), 72)}
+                                      </a>
+                                      <div className="mt-1 text-xs text-slate-500">{shortText(pg?.url, 120)}</div>
+                                    </td>
+
+                                    <td className="px-4 py-3 max-w-[240px] truncate align-top text-slate-700">{pg?.title || "—"}</td>
+                                    <td className="px-4 py-3 max-w-[420px] truncate align-top text-slate-700">{pg?.description || "—"}</td>
+
+                                    <td className="px-4 py-3 align-top">
+                                      <Badge tone="slate">depth {Number.isFinite(Number(pg?.depth)) ? pg.depth : 0}</Badge>
+                                    </td>
+                                  </tr>
                         ))
                       )}
                     </tbody>
