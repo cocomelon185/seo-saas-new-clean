@@ -128,3 +128,13 @@ test-results/
 *.save
 *.old
 src.bak_*/
+
+# deps
+node_modules
+apps/web/node_modules
+services/node-api/node_modules
+
+# deps
+node_modules
+apps/web/node_modules
+services/node-api/node_modules
