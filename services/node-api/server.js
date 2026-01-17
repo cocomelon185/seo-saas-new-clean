@@ -1,4 +1,5 @@
 import express from "express"
+import cors from "cors";
 
 const __DEMO_AUDIT_URL = "https://httpstat.us";
 
@@ -24,6 +25,7 @@ import { Worker } from "worker_threads";
 import { normalizeUrl, TTLCache, RateLimiter, jsonError } from "./api_hardening.js";
 
 const app = express();
+app.use(cors({ origin: ["https://www.rankypulse.com"], credentials: true }));
 
 
 
