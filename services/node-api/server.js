@@ -117,11 +117,11 @@ function getPlanFromRequest(req) {
 }
 
 function getUserByEmail(email) {
-  return db.prepare('SELECT id, email, hashed_password, "plan", created_at FROM user WHERE email = ?').get(email);
+  return db.prepare('SELECT id, email, hashed_password, "plan", created_at FROM users WHERE email = ?').get(email);
 }
 
 function getUserById(id) {
-  return db.prepare('SELECT id, email, hashed_password, "plan", created_at FROM user WHERE id = ?').get(id);
+  return db.prepare('SELECT id, email, hashed_password, "plan", created_at FROM users WHERE id = ?').get(id);
 }
 
 
