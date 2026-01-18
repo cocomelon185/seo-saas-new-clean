@@ -308,7 +308,7 @@ app.post("/api/auth/register", (req, res) => {
   const created_at = new Date().toISOString();
 
   // user.id is INTEGER in your schema; let SQLite assign it
-  const info = db.prepare('INSERT INTO user (email, hashed_password, "plan", created_at) VALUES (?, ?, ?, ?)').run(
+  const info = db.prepare('INSERT INTO users (email, hashed_password, "plan", created_at) VALUES (?, ?, ?, ?)').run(
     email, hashed_password, plan, created_at
   );
   const user = getUserById(info.lastInsertRowid);
