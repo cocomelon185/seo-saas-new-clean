@@ -9,6 +9,7 @@ import Admin from "./layouts/Admin.jsx";
 
 import Projects from "./views/Projects.jsx";
 import Index from "./views/Index.jsx";
+import Ranking from "./views/Ranking.jsx";
 import Audit from "./views/Audit.jsx";
 
 function TopNav() {
@@ -79,7 +80,7 @@ export default function App() {
 
       <Switch>
         <Route path="/" exact component={Projects} />
-        <Route path="/rank" exact component={Index} />
+        <Route path="/rank" exact component={Ranking} />
         <Route path="/audit" exact component={Audit} />
         <Route path="/admin" render={(props) => (<RequireAuth><Admin {...props} /></RequireAuth>)} />
         <Route path="/auth" render={() => <Redirect to="/" />} />
