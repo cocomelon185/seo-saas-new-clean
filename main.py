@@ -17,6 +17,16 @@ from fastapi.responses import StreamingResponse
 
 app = FastAPI()
 
+@app.get("/api/rank")
+def rank(domain: str, keyword: str):
+    return {
+        "domain": domain,
+        "keyword": keyword,
+        "position": 1,
+        "source": "rankypulse"
+    }
+
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
