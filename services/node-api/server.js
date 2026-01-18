@@ -83,7 +83,32 @@ const __dirname = path.dirname(__filename);
 
 
 const db = new Database(path.join(__dirname, "database.db"));
+
 db.pragma("journal_mode = WAL");
+
+db.exec(`
+CREATE TABLE IF NOT EXISTS users (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  email TEXT NOT NULL UNIQUE,
+  hashed_password TEXT NOT NULL,
+  plan TEXT NOT NULL DEFAULT "free",
+  created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS audits (
+  id TEXT PRIMARY KEY,
+  user_id INTEGER NOT NULL,
+  url TEXT NOT NULL,
+  normalized_url TEXT NOT NULL,
+  seo_score INTEGER NOT NULL DEFAULT 0,
+  pages_crawled INTEGER NOT NULL DEFAULT 1,
+  issues_found INTEGER NOT NULL DEFAULT 0,
+  result_json TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_audits_user_created ON audits(user_id, created_at);
+`);
 
 const JWT_SECRET = process.env.JWT_SECRET || "dev_secret_change_me";
 
