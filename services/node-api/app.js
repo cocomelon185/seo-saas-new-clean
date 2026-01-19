@@ -1,7 +1,7 @@
-const express = require("express");
+import express from "express";
 
 const app = express();
 
 app.get("/api/health", (req, res) => res.json({ ok: true }));
 
-module.exports = app;
+export default app;
