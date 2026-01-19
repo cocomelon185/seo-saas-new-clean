@@ -179,6 +179,8 @@ setInterval(() => {
   }
 }, 60 * 1000).unref();
 
+const demo = __mockAudit(__DEMO_AUDIT_URL);
+
 // ===== API =====
 app.get("/api/health", (req, res) => res.json({ ok: true }));
 
