@@ -45,6 +45,23 @@ const corsMiddleware = cors({
 });
 const app = express();
 
+// RANKYPULSE_RAILWAY_ACAO_V1
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (origin && CORS_ALLOWLIST.has(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Vary", "Origin");
+    res.setHeader("Access-Control-Allow-Credentials", "true");
+  }
+  if (req.method === "OPTIONS") {
+    res.setHeader("Access-Control-Allow-Methods", "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", req.headers["access-control-request-headers"] || "content-type, authorization");
+    return res.status(204).end();
+  }
+  next();
+});
+
+
 app.use(corsMiddleware);
 app.options("*", corsMiddleware);
 
