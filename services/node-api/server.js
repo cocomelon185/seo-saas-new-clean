@@ -78,6 +78,13 @@ function __mockAudit(url) {
 
 app.use(express.json());
 
+const briefRouter = require("./../../api/brief");
+const projectsRouter = require("./../../api/projects");
+
+app.use("/api/brief", briefRouter);
+app.use("/api/projects", projectsRouter);
+
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
