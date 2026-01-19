@@ -23,7 +23,32 @@ import { Worker } from "worker_threads";
 
 import { normalizeUrl, TTLCache, RateLimiter, jsonError } from "./api_hardening.js";
 
+import cors from "cors";
+
+// RANKYPULSE_CORS_PATCH_V1
+const CORS_ALLOWLIST = new Set([
+  "https://rank.rankypulse.com",
+  "https://rankypulse.com",
+  "http://localhost:3000",
+  "http://localhost:3001"
+]);
+
+const corsMiddleware = cors({
+  origin: (origin, cb) => {
+    if (!origin) return cb(null, true);
+    if (CORS_ALLOWLIST.has(origin)) return cb(null, true);
+    return cb(new Error("CORS blocked: " + origin));
+  },
+  credentials: true,
+  methods: ["GET","HEAD","PUT","PATCH","POST","DELETE","OPTIONS"],
+  allowedHeaders: ["content-type","authorization"]
+});
 const app = express();
+
+app.use(corsMiddleware);
+app.options("*", corsMiddleware);
+
+
 
 
 

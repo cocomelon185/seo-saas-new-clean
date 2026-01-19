@@ -11,6 +11,7 @@
     "bcryptjs": "^3.0.3",
     "better-sqlite3": "^12.6.0",
     "cheerio": "^1.1.2",
+    "cors": "^2.8.5",
     "express": "^4.22.1",
     "jsonwebtoken": "^9.0.3",
     "notus-react": "^1.1.0"
