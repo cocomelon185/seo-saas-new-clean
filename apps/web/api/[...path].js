@@ -1,7 +1,7 @@
 const https = require("https");
 
 module.exports = (req, res) => {
-  const parts = (req.query && req.query.path) ? req.query.path : [];
+  const parts = req.query?.path ?? [];
   const path = "/" + (Array.isArray(parts) ? parts.join("/") : String(parts || ""));
 
   const target = new URL("https://api.rankypulse.com" + path);
@@ -28,7 +28,7 @@ module.exports = (req, res) => {
       (r) => {
         res.statusCode = r.statusCode || 502;
         for (const [k, v] of Object.entries(r.headers || {})) {
-          if (typeof v !== "undefined") res.setHeader(k, v);
+          if (v !== undefined) res.setHeader(k, v);
         }
         r.on("data", (d) => res.write(d));
         r.on("end", () => res.end());
@@ -38,7 +38,7 @@ module.exports = (req, res) => {
     upstream.on("error", (e) => {
       res.statusCode = 502;
       res.setHeader("content-type", "application/json");
-      res.end(JSON.stringify({ error: "upstream_error", message: String(e && e.message ? e.message : e) }));
+      res.end(JSON.stringify({ error: "upstream_error", message: String(e?.message || e) }));
     });
 
     if (body.length) upstream.write(body);
