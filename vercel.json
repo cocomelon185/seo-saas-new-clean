@@ -1,13 +1,14 @@
 {
-  "version": 2,
-  "builds": [
+  "buildCommand": "cd apps/web && npm install && npm run build",
+  "outputDirectory": "apps/web/dist",
+  "rewrites": [
     {
-      "src": "apps/web/package.json",
-      "use": "@vercel/static-build",
-      "config": { "distDir": "dist" }
+      "source": "/api/:path*",
+      "destination": "https://api.rankypulse.com/:path*"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
-  ],
-  "routes": [
-    { "src": "/(.*)", "dest": "/index.html" }
   ]
 }
