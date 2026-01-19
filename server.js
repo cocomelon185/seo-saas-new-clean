@@ -120,6 +120,22 @@ app.use(express.json());
 
 const briefRouter = require("./api/brief");
 const projectsRouter = require("./api/projects");
+
+app.use("/api/brief", briefRouter);
+app.use("/api/projects", projectsRouter);
+
+
+const briefRouter = require("./api/brief");
+const projectsRouter = require("./api/projects");
+const auditRouter = require("./api/audit");
+
+app.use("/api/brief", briefRouter);
+app.use("/api/projects", projectsRouter);
+app.use("/api/audit-router", auditRouter);
+
+
+const briefRouter = require("./api/brief");
+const projectsRouter = require("./api/projects");
 const auditRouter = require("./api/audit");
 
 app.use("/api/brief", briefRouter);
