@@ -1,5 +1,6 @@
 
 from fastapi import FastAPI, HTTPException, Request
+
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import requests, json, re, uvicorn, os
@@ -17,6 +18,18 @@ from fastapi.responses import StreamingResponse
 
 app = FastAPI()
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "https://rank.rankypulse.com",
+        "https://www.rankypulse.com"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
 @app.get("/api/rank")
 def rank(domain: str, keyword: str):
     return {
@@ -26,20 +39,6 @@ def rank(domain: str, keyword: str):
         "source": "rankypulse"
     }
 
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        "https://www.rankypulse.com",
-        "https://rankypulse.com",
-        "https://rankypulse.vercel.app",
-        "http://localhost:5173",
-        "http://localhost:3000",
-    ],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 @app.get("/health")
 def health():
@@ -54,8 +53,6 @@ def test():
     return {"status": "ok", "message": "API is working"}
 
 ANALYTICS_FILE = Path("analytics.jsonl")
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
-
 class AuditRequest(BaseModel):
     url: str
 
