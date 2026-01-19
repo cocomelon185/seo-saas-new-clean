@@ -1,12 +1,5 @@
 {
-  "rewrites": [
-    {
-      "source": "/api/:path*",
-      "destination": "https://api.rankypulse.com/:path*"
-    },
-    {
-      "source": "/(.*)",
-      "destination": "/index.html"
-    }
+  "routes": [
+    { "src": "^/api/(.*)$", "dest": "https://api.rankypulse.com/$1" }
   ]
 }
