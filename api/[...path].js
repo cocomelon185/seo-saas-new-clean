@@ -1,9 +1,8 @@
-const https = require("https");
+import https from "https";
 
-module.exports = (req, res) => {
+export default function handler(req, res) {
   const parts = req.query?.path ?? [];
   const path = "/" + (Array.isArray(parts) ? parts.join("/") : String(parts || ""));
-
   const target = new URL("https://api.rankypulse.com" + path);
   const method = req.method || "GET";
 
@@ -44,4 +43,4 @@ module.exports = (req, res) => {
     if (body.length) upstream.write(body);
     upstream.end();
   });
-};
+}

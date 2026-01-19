@@ -1,5 +1,3 @@
-module.exports = (req, res) => {
-  res.statusCode = 200;
-  res.setHeader("content-type", "application/json");
-  res.end(JSON.stringify({ ok: true, now: new Date().toISOString() }));
-};
+export default function handler(req, res) {
+  res.status(200).json({ ok: true, now: new Date().toISOString() });
+}
