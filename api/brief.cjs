@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router();
 
-const { cleanTopic } = require('../utils/cleanTopic');
-const { classifySaasPage } = require('../saasPageTypeDetector');
+const { cleanTopic } = require('../utils/cleanTopic.cjs');
+const { classifySaasPage } = require('../saasPageTypeDetector.cjs');
 
 /**
  * Simple keyword idea builder shared with page-report logic style.

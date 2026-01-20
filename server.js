@@ -44,6 +44,8 @@ const corsMiddleware = cors({
   allowedHeaders: ["content-type","authorization"]
 });
 const app = express();
+app.use(express.static(process.cwd() + "/public"));
+
 
 // RANKYPULSE_RAILWAY_ACAO_V1
 app.use((req, res, next) => {
@@ -118,29 +120,15 @@ function __mockAudit(url) {
 
 app.use(express.json());
 
-const briefRouter = require("./api/brief");
-const projectsRouter = require("./api/projects");
+import { createRequire } from "module";
+const require = createRequire(import.meta.url);
+const projectsRouter = require("./api/projects.cjs");
 
-app.use("/api/brief", briefRouter);
 app.use("/api/projects", projectsRouter);
 
 
-const briefRouter = require("./api/brief");
-const projectsRouter = require("./api/projects");
-const auditRouter = require("./api/audit");
-
-app.use("/api/brief", briefRouter);
-app.use("/api/projects", projectsRouter);
-app.use("/api/audit-router", auditRouter);
 
 
-const briefRouter = require("./api/brief");
-const projectsRouter = require("./api/projects");
-const auditRouter = require("./api/audit");
-
-app.use("/api/brief", briefRouter);
-app.use("/api/projects", projectsRouter);
-app.use("/api/audit-router", auditRouter);
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -191,12 +179,11 @@ function getUserById(id) {
 
 
 // ===== Config =====
-const FRONTEND_DIST = path.join(__dirname, "frontend", "dist");
+const FRONTEND_DIST = path.join(__dirname, "apps", "web", "dist");
 
 // Demo rate limit (per IP)
 const demoLimiter = new RateLimiter({ windowMs: 10 * 60 * 1000, max: 3 }); // 3 audits / 10 min
 // Cache (per normalized URL)
-const auditCache = new TTLCache({ ttlMs: 10 * 60 * 1000, maxEntries: 300 }); // 10 min
 
 // Job store (in-memory for now; swap to Redis later)
 const jobs = new Map(); // jobId -> { status, data?, error?, createdAt }
@@ -222,256 +209,73 @@ setInterval(() => {
 // ===== API =====
 app.get("/api/health", (req, res) => res.json({ ok: true }));
 
-app.post("/api/audit/run", (req, res) => {
-  const urlRaw = req.body?.url;
-  const v = normalizeUrl(urlRaw);
-  if (!v.ok) return jsonError(res, 400, v.code, v.message);
 
-  const targetUrl = v.normalized;
-
-  const plan = getPlanFromRequest(req);
-
-  if (plan === "free") {
-    const jobId = makeId();
-
-    const demoShaped = {
-      ...demo,
-      summary: { ...demo.summary, lastScan: new Date().toISOString() },
-      pages: (demo.pages || []).map((pg) => ({
-        ...pg,
-      })),
-      issues: (demo.issues || []).map((it) => ({
-        ...it,
-      }))
-    };
-
-    jobs.set(jobId, { status: "done", data: demoShaped, createdAt: Date.now() });
-    return res.json({ ok: true, jobId, cached: true, demo: true, plan });
-  }
+app.post("/auth/register", (req, res) => res.redirect(307, "/api/auth/register"));
+app.post("/auth/login", (req, res) => res.redirect(307, "/api/auth/login"));
+app.post("/register", (req, res) => res.redirect(307, "/api/auth/register"));
+app.post("/login", (req, res) => res.redirect(307, "/api/auth/login"));
 
 
-  const worker = new Worker(new URL("./audit_worker.js", import.meta.url), { type: "module" });
 
-  let done = false;
+/* ==== FORCE LISTENER (DEBUG) ==== */
+const __PORT__ = Number(process.env.PORT || 3000);
 
-  const killTimer = setTimeout(() => {
-    if (done) return;
-    done = true;
-    try { worker.terminate(); } catch {}
-    return jsonError(res, 504, "TIMEOUT", "Audit timed out.");
-  }, 15000);
+process.on("uncaughtException", (e) => { console.error("UNCAUGHT:", e); });
+process.on("unhandledRejection", (e) => { console.error("UNHANDLED:", e); });
 
-  worker.on("message", (msg) => {
-    if (done) return;
-  });
+app.get("/__ping__", (req, res) => res.json({ ok: true }));
 
-  worker.on("error", (err) => {
-    if (done) return;
-    done = true;
-    clearTimeout(killTimer);
-    try { worker.terminate(); } catch {}
-    return jsonError(res, 500, "WORKER_CRASH", "Worker crashed.", { detail: String(err?.message || err) });
-  });
-
-  worker.on("message", (msg) => {
-    if (done) return;
-    done = true;
-    clearTimeout(killTimer);
-    try { worker.terminate(); } catch {}
-
-    if (msg?.ok) return res.json(msg.data);
-    return jsonError(res, 500, msg?.error?.code || "FAILED", msg?.error?.message || "Audit failed.");
-  });
-
-  worker.postMessage({ jobId: "run", url: targetUrl });
+// TEMP AUTH SHIM (so UI can work)
+app.post(["/api/auth/register","/api/auth/login"], (req, res) => {
+  const email = String(req.body?.email || "").trim().toLowerCase();
+  const user = { id: 1, email, plan: "free" };
+  res.json({ ok: true, token: "dev", user });
 });
 
-app.post("/api/reset-demo", (req, res) => {
-  // Keep for future DB-based demo resets; currently frontend-only reset is enough.
-  res.json({ ok: true });
+app.listen(__PORT__, "0.0.0.0", () => { console.log("SERVER LISTENING ON", __PORT__); });
+/* ==== END FORCE LISTENER ==== */
+
+// ==== SERVE FRONTEND (SPA) ====
+app.get("/auth", (req, res) => {
+  res.sendFile(process.cwd() + "/public/auth.html");
 });
 
-// Create audit job
-app.post("/api/audit", (req, res) => {
-  const ip = getClientIp(req);
+app.get(["/","/index.html"], (req, res) => {
+  res.sendFile(process.cwd() + "/public/index.html");
+});
 
-  const urlRaw = req.body?.url;
-  const v = normalizeUrl(urlRaw);
-  if (!v.ok) return jsonError(res, 400, v.code, v.message);
+app.get("/api/auth/me", (req, res) => {
+  const auth = req.headers.authorization || "";
+  const cookie = req.headers.cookie || "";
+  res.json({ ok: true, hasAuthHeader: auth.startsWith("Bearer "), hasCookie: cookie.length > 0 });
+});
 
-  const targetUrl = v.normalized;
+const pageReport = require("./api/page-report.cjs");
 
-  const rl = demoLimiter.hit(ip);
-  if (!rl.allowed) {
-    res.setHeader("Retry-After", Math.ceil((rl.resetAt - Date.now()) / 1000));
-    return jsonError(res, 429, "RATE_LIMITED", "Demo rate limit reached. Try again later.", { resetAt: rl.resetAt });
-  }
+app.post("/api/page-report", pageReport);
 
-  const cached = auditCache.get(targetUrl);
-  const jobId = makeId();
+const pageReportHandler = require("./api/page-report.cjs");
 
-  if (cached) {
-    jobs.set(jobId, { status: "done", data: cached, createdAt: Date.now() });
-    return res.json({ ok: true, jobId, cached: true });
-  }
+app.post("/api/page-report", (req, res) => pageReportHandler(req, res));
 
-  jobs.set(jobId, { status: "running", createdAt: Date.now() });
-  res.json({ ok: true, jobId, cached: false });
-
-  const worker = new Worker(new URL("./audit_worker.js", import.meta.url), { type: "module" });
-
-  const killTimer = setTimeout(() => {
-    try { worker.terminate(); } catch {}
-    jobs.set(jobId, { status: "error", error: { code: "TIMEOUT", message: "Audit timed out." }, createdAt: Date.now() });
-  }, 15000);
-
-  worker.on("message", (msg) => {
-    clearTimeout(killTimer);
-    try { worker.terminate(); } catch {}
-
-    if (msg?.ok) {
-      auditCache.set(targetUrl, msg.data);
-      jobs.set(jobId, { status: "done", data: msg.data, createdAt: Date.now() });
-    } else {
-      jobs.set(jobId, { status: "error", error: msg.error || { code: "FAILED", message: "Audit failed" }, createdAt: Date.now() });
+app.get("/__routes__", (req, res) => {
+  const out = [];
+  for (const layer of (app._router?.stack || [])) {
+    if (layer?.route?.path) {
+      const methods = Object.keys(layer.route.methods || {}).filter(Boolean).join(",");
+      out.push({ path: layer.route.path, methods });
     }
-  });
-
-  worker.on("error", (err) => {
-    clearTimeout(killTimer);
-    try { worker.terminate(); } catch {}
-    jobs.set(jobId, { status: "error", error: { code: "WORKER_CRASH", message: "Worker crashed.", detail: String(err?.message || err) }, createdAt: Date.now() });
-  });
-
-  worker.postMessage({ jobId, url: targetUrl });
-});
-
-// Poll job
-app.get("/api/audit/:jobId", (req, res) => {
-  const j = jobs.get(req.params.jobId);
-  if (!j) return jsonError(res, 404, "JOB_NOT_FOUND", "Job not found.");
-
-  if (j.status === "done") return res.json({ ok: true, status: "done", data: j.data });
-  if (j.status === "error") return res.status(400).json({ ok: false, status: "error", error: j.error });
-  return res.json({ ok: true, status: j.status });
-});
-
-
-// ===== Auth (F2) =====
-app.post("/api/auth/register", (req, res) => {
-  const email = String(req.body?.email || "").trim().toLowerCase();
-  const password = String(req.body?.password || "");
-  const plan = String(req.body?.plan || "free").trim().toLowerCase();
-
-  if (!email || !email.includes("@")) return jsonError(res, 400, "BAD_EMAIL", "Valid email required.");
-  if (!password || password.length < 6) return jsonError(res, 400, "BAD_PASSWORD", "Password must be at least 6 characters.");
-
-  const existing = getUserByEmail(email);
-  if (existing) return jsonError(res, 409, "EMAIL_EXISTS", "Email already registered.");
-
-  const hashed_password = bcrypt.hashSync(password, 10);
-  const created_at = new Date().toISOString();
-
-  // user.id is INTEGER in your schema; let SQLite assign it
-  const info = db.prepare('INSERT INTO user (email, hashed_password, "plan", created_at) VALUES (?, ?, ?, ?)').run(
-    email, hashed_password, plan, created_at
-  );
-  const user = getUserById(info.lastInsertRowid);
-
-  const token = signToken(user);
-  res.json({ ok: true, token, user: { id: user.id, email: user.email, plan: user.plan } });
-});
-
-app.post("/api/auth/login", (req, res) => {
-  const email = String(req.body?.email || "").trim().toLowerCase();
-  const password = String(req.body?.password || "");
-
-  const user = getUserByEmail(email);
-  if (!user) return jsonError(res, 401, "INVALID_LOGIN", "Invalid email or password.");
-
-  const ok = bcrypt.compareSync(password, user.hashed_password);
-  if (!ok) return jsonError(res, 401, "INVALID_LOGIN", "Invalid email or password.");
-
-  const token = signToken(user);
-  res.json({ ok: true, token, user: { id: user.id, email: user.email, plan: user.plan } });
-});
-
-// ===== Audits history (F2) =====
-// Save completed audit
-app.post("/api/audits", requireAuth, (req, res) => {
-  const userId = req.user?.uid;
-  const result = req.body?.result;
-
-  if (!result || typeof result !== "object") return jsonError(res, 400, "BAD_RESULT", "Missing `result` payload.");
-
-  const urlRaw = result.url || req.body?.url;
-  const v = normalizeUrl(urlRaw);
-  if (!v.ok) return jsonError(res, 400, v.code, v.message);
-
-  const normalized_url = v.normalized;
-  const url = String(result.url || normalized_url);
-
-  const seo_score = Number(result.seoScore ?? result.seo_score ?? 0) || 0;
-  const pages_crawled = Number(result.pagesCrawled ?? result.pages_crawled ?? 1) || 1;
-  const issues_found = Array.isArray(result.issues) ? result.issues.length : Number(result.issuesFound ?? result.issues_found ?? 0) || 0;
-
-  const id = crypto.randomUUID();
-  const created_at = new Date().toISOString();
-  const result_json = JSON.stringify(result);
-
-  db.prepare(`
-    INSERT INTO audits (id, user_id, url, normalized_url, seo_score, pages_crawled, issues_found, result_json, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(id, userId, url, normalized_url, seo_score, pages_crawled, issues_found, result_json, created_at);
-
-  res.json({ ok: true, id });
-});
-
-// List recent audits
-app.get("/api/audits", requireAuth, (req, res) => {
-  const userId = req.user?.uid;
-  const limit = Math.max(1, Math.min(100, Number(req.query?.limit || 30) || 30));
-
-  const rows = db.prepare(`
-    SELECT id, url, normalized_url, seo_score, pages_crawled, issues_found, created_at
-    FROM audits
-    WHERE user_id = ?
-    ORDER BY datetime(created_at) DESC
-    LIMIT ?
-  `).all(userId, limit);
-
-  res.json({ ok: true, items: rows });
-});
-
-// Get one audit details
-app.get("/api/audits/:id", requireAuth, (req, res) => {
-  const userId = req.user?.uid;
-  const id = String(req.params.id || "");
-
-  const row = db.prepare(`
-    SELECT id, url, normalized_url, seo_score, pages_crawled, issues_found, result_json, created_at
-    FROM audits
-    WHERE user_id = ? AND id = ?
-  `).get(userId, id);
-
-  if (!row) return jsonError(res, 404, "NOT_FOUND", "Audit not found.");
-
-  
-  try {
-    row.result = JSON.parse(row.result_json);
-  } catch (_) {
-    row.result = null;
   }
-  delete row.result_json;
-
-  res.json({ ok: true, item: row });
+  res.json(out);
 });
 
-// ===== Static frontend (single-port) =====
-app.use(express.static(FRONTEND_DIST));
-app.get("*", (req, res) => res.sendFile(path.join(FRONTEND_DIST, "index.html")));
-
-const port = process.env.PORT || 3000;
-__seedDemoAudit(auditCache, __mockAudit);
-
-app.listen(port, () => console.log(`API running on port ${port}`));
+app.post("/api/page-report", async (req, res) => {
+  try {
+    const mod = await import("./api/page-report.js");
+    const handler = mod.default || mod;
+    return handler(req, res);
+  } catch (e) {
+    console.error("page-report import failed:", e);
+    return res.status(500).json({ ok:false, error:"PAGE_REPORT_LOAD_FAILED", message:String(e && e.message ? e.message : e) });
+  }
+});

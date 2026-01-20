@@ -11,9 +11,12 @@
     "bcryptjs": "^3.0.3",
     "better-sqlite3": "^12.6.0",
     "cheerio": "^1.1.2",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
     "express": "^4.22.1",
     "jsonwebtoken": "^9.0.3",
+    "node-fetch": "^2.7.0",
     "notus-react": "^1.1.0"
   }
 }

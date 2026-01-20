@@ -8,9 +8,9 @@ const {
   updateProject,
   addCrawlRun,
   listCrawlsForProject
-} = require('../projectsStore');
-const { classifySaasPage } = require('../saasPageTypeDetector');
-const { cleanTopic } = require('../utils/cleanTopic');
+} = require('../projectsStore.cjs');
+const { classifySaasPage } = require('../saasPageTypeDetector.cjs');
+const { cleanTopic } = require('../utils/cleanTopic.cjs');
 
 // Very small "homepage crawl": just classify and score the root URL.
 function scoreFromClassification(url) {

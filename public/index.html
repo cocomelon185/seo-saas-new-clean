@@ -1,1080 +1,587 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>On‑Page SEO Score & Quick Wins</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <!-- Inter font -->
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
- 
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>RankyPulse — SEO Scoring, Quick Wins, and AI Visibility</title>
+  <meta name="description" content="Score any page in seconds. Get quick wins, keyword ideas, and AI visibility signals. Built for founders and marketers who want speed." />
+  <meta property="og:title" content="RankyPulse — SEO Scoring, Quick Wins, and AI Visibility" />
+  <meta property="og:description" content="Score any page in seconds. Get quick wins, keyword ideas, and AI visibility signals." />
+  <meta property="og:type" content="website" />
   <style>
-    :root {
-      --bg: #050816;
-      --bg-soft: #0b1020;
-      --card: #111827;
-      --card-soft: #020617;
-      --border-subtle: #1f2937;
-      --text: #f9fafb;
-      --text-muted: #9ca3af;
-      --accent: #6366f1;
-      --accent-soft: rgba(99, 102, 241, 0.16);
-      --danger: #ef4444;
-      --good: #22c55e;
-      --shadow-card: 0 22px 45px rgba(15, 23, 42, 0.65);
-      --radius-lg: 16px;
-      --radius-md: 12px;
-      --radius-pill: 999px;
-      --transition-fast: 150ms ease-out;
+    :root{
+      --bg:#0b0f19;
+      --panel:#0f1629;
+      --panel2:#0c1324;
+      --text:#e8eefc;
+      --muted:#a9b4d0;
+      --line:rgba(255,255,255,.10);
+      --brand:#7c5cff;
+      --brand2:#2dd4bf;
+      --shadow:0 24px 80px rgba(0,0,0,.55);
+      --radius:18px;
+      --radius2:26px;
+      --max:1120px;
     }
- 
-    * {
-      box-sizing: border-box;
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      background:
+        radial-gradient(1200px 600px at 12% 10%, rgba(124,92,255,.25), transparent 55%),
+        radial-gradient(1000px 500px at 88% 18%, rgba(45,212,191,.16), transparent 55%),
+        radial-gradient(900px 500px at 60% 95%, rgba(124,92,255,.12), transparent 55%),
+        var(--bg);
+      color:var(--text);
     }
- 
-    body {
-      margin: 0;
-      min-height: 100vh;
-      font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-        sans-serif;
-      background: radial-gradient(circle at top, #111827 0, #020617 55%, #000 100%);
+    a{color:inherit;text-decoration:none}
+    .wrap{max-width:var(--max); margin:0 auto; padding:0 20px}
+    .nav{
+      position:sticky; top:0; z-index:20;
+      backdrop-filter: blur(10px);
+      background: rgba(11,15,25,.55);
+      border-bottom:1px solid var(--line);
+    }
+    .nav-inner{display:flex; align-items:center; justify-content:space-between; padding:14px 0; gap:14px}
+    .brand{display:flex; align-items:center; gap:10px; font-weight:700; letter-spacing:.2px}
+    .logo{
+      width:36px;height:36px;border-radius:12px;
+      background: linear-gradient(135deg, var(--brand), var(--brand2));
+      box-shadow: 0 10px 30px rgba(124,92,255,.25);
+    }
+    .navlinks{display:flex; align-items:center; gap:18px; color:var(--muted); font-weight:600; font-size:14px}
+    .navlinks a:hover{color:var(--text)}
+    .nav-cta{display:flex; gap:10px; align-items:center}
+    .btn{
+      display:inline-flex; align-items:center; justify-content:center; gap:10px;
+      padding:10px 14px;
+      border-radius:14px;
+      border:1px solid var(--line);
+      background: rgba(255,255,255,.02);
+      color:var(--text);
+      font-weight:700;
+      font-size:14px;
+      cursor:pointer;
+      transition: transform .08s ease, background .2s ease, border .2s ease;
+    }
+    .btn:hover{transform: translateY(-1px); background: rgba(255,255,255,.04); border-color: rgba(255,255,255,.16)}
+    .btn.primary{
+      border:0;
+      background: linear-gradient(135deg, var(--brand), var(--brand2));
+      color:#08101f;
+      box-shadow: 0 18px 50px rgba(124,92,255,.22);
+    }
+    .btn.primary:hover{transform: translateY(-1px) scale(1.01)}
+    .btn.ghost{background: transparent}
+    .mobile-toggle{display:none}
+
+    .hero{padding:56px 0 24px}
+    .hero-grid{
+      display:grid;
+      grid-template-columns: 1.15fr .85fr;
+      gap:22px;
+      align-items:stretch;
+    }
+    .kicker{
+      display:inline-flex; gap:10px; align-items:center;
+      padding:8px 12px;
+      border:1px solid var(--line);
+      border-radius:999px;
+      color:var(--muted);
+      background: rgba(255,255,255,.02);
+      font-weight:700;
+      font-size:12px;
+    }
+    .dot{
+      width:8px;height:8px;border-radius:999px;
+      background: linear-gradient(135deg, var(--brand), var(--brand2));
+      box-shadow: 0 0 0 6px rgba(124,92,255,.10);
+    }
+    h1{
+      margin:14px 0 10px;
+      font-size:48px;
+      line-height:1.05;
+      letter-spacing:-1.2px;
+    }
+    .sub{
+      margin:0;
+      color:var(--muted);
+      font-size:16px;
+      line-height:1.6;
+      max-width:56ch;
+    }
+    .hero-actions{display:flex; gap:12px; margin-top:18px; flex-wrap:wrap}
+    .mini{display:flex; gap:14px; margin-top:18px; color:var(--muted); font-size:13px; flex-wrap:wrap}
+    .mini span{display:inline-flex; gap:8px; align-items:center}
+    .check{
+      width:18px;height:18px;border-radius:8px;
+      background: rgba(45,212,191,.12);
+      border:1px solid rgba(45,212,191,.25);
+      display:inline-flex; align-items:center; justify-content:center;
+      color: var(--brand2);
+      font-weight:900;
+      font-size:12px;
+    }
+
+    .card{
+      border:1px solid var(--line);
+      background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+      border-radius: var(--radius2);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+    .card-pad{padding:18px}
+    .panel-title{font-weight:900; letter-spacing:.2px; font-size:14px}
+    .panel-sub{color:var(--muted); font-size:13px; margin-top:4px; line-height:1.5}
+
+    .scorebox{
+      margin-top:14px;
+      border-radius: var(--radius);
+      border:1px solid var(--line);
+      background: rgba(9,13,24,.7);
+      padding:14px;
+    }
+    .row{display:flex; gap:10px; align-items:center}
+    .input{
+      flex:1;
+      background: rgba(255,255,255,.03);
+      border:1px solid rgba(255,255,255,.10);
       color: var(--text);
+      padding:12px 12px;
+      border-radius: 14px;
+      outline:none;
+      font-weight:700;
+      font-size:14px;
     }
- 
-    a {
-      color: var(--accent);
-      text-decoration: none;
+    .input::placeholder{color: rgba(169,180,208,.75); font-weight:600}
+    .scorebtn{white-space:nowrap}
+    .hint{
+      margin-top:10px;
+      color: var(--muted);
+      font-size:12px;
+      line-height:1.5;
     }
-    a:hover {
-      text-decoration: underline;
+    .stats{
+      display:grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap:10px;
+      margin-top:14px;
     }
- 
-    .page {
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 32px 16px 40px;
+    .stat{
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.02);
+      border-radius: 16px;
+      padding:12px;
     }
- 
-    /* Hero */
-    .hero {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      margin-bottom: 32px;
+    .stat b{display:block; font-size:16px}
+    .stat small{display:block; margin-top:4px; color:var(--muted); font-weight:700}
+
+    .section{padding:40px 0}
+    .section h2{
+      margin:0 0 10px;
+      font-size:28px;
+      letter-spacing:-.6px;
     }
- 
-    .hero-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 4px 10px;
-      border-radius: var(--radius-pill);
-      background: rgba(15, 23, 42, 0.85);
-      border: 1px solid rgba(148, 163, 184, 0.35);
-      font-size: 12px;
-      color: var(--text-muted);
-      width: fit-content;
+    .section p{margin:0; color:var(--muted); line-height:1.7}
+    .grid3{
+      display:grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap:14px;
+      margin-top:18px;
     }
- 
-    .hero-badge-dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: var(--accent);
-      box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.2);
+    .feat{
+      border:1px solid var(--line);
+      background: rgba(255,255,255,.02);
+      border-radius: 20px;
+      padding:16px;
     }
- 
-    .hero-title {
-      font-size: clamp(28px, 4vw, 36px);
-      font-weight: 700;
-      letter-spacing: -0.03em;
-    }
- 
-    .hero-subtitle {
-      max-width: 560px;
-      color: var(--text-muted);
-      font-size: 14px;
-      line-height: 1.5;
-    }
- 
-    .hero-actions {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      margin-top: 8px;
-      flex-wrap: wrap;
-    }
- 
-    .btn-primary {
-      border: none;
-      outline: none;
-      cursor: pointer;
-      background: linear-gradient(135deg, #4f46e5, #6366f1);
-      color: #f9fafb;
-      font-weight: 600;
-      font-size: 14px;
-      padding: 10px 18px;
-      border-radius: var(--radius-pill);
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      box-shadow: 0 10px 28px rgba(79, 70, 229, 0.5);
-      transition: transform var(--transition-fast), box-shadow var(--transition-fast),
-        background var(--transition-fast), opacity var(--transition-fast);
-    }
- 
-    .btn-primary:hover:not(:disabled) {
-      transform: translateY(-1px);
-      box-shadow: 0 16px 40px rgba(79, 70, 229, 0.65);
-    }
- 
-    .btn-primary:disabled {
-      opacity: 0.55;
-      cursor: default;
-      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.7);
-    }
- 
-    .btn-secondary-link {
-      font-size: 13px;
-      color: var(--text-muted);
-      background: transparent;
-      border: none;
-      padding: 0;
-      cursor: pointer;
-    }
- 
-    /* Layout */
-    .layout {
-      display: grid;
-      grid-template-columns: minmax(0, 0.38fr) minmax(0, 0.62fr);
-      gap: 20px;
-    }
- 
-    /* Left panel (inputs) */
-    .panel {
-      background: radial-gradient(circle at top left, #111827 0, #020617 55%);
-      border-radius: var(--radius-lg);
-      border: 1px solid rgba(148, 163, 184, 0.18);
-      box-shadow: var(--shadow-card);
-      padding: 18px 18px 20px;
-    }
- 
-    .panel-title {
-      font-size: 14px;
-      font-weight: 600;
-      margin-bottom: 4px;
-    }
- 
-    .panel-subtitle {
-      font-size: 12px;
-      color: var(--text-muted);
-      margin-bottom: 14px;
-    }
- 
-    .field-label {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 12px;
-      color: var(--text-muted);
-      margin-bottom: 4px;
-    }
- 
-    .input,
-    .textarea {
-      width: 100%;
-      border-radius: 10px;
-      border: 1px solid var(--border-subtle);
-      background: var(--card-soft);
+    .feat .icon{
+      width:40px;height:40px;border-radius:16px;
+      background: linear-gradient(135deg, rgba(124,92,255,.25), rgba(45,212,191,.18));
+      border:1px solid rgba(255,255,255,.10);
+      display:flex; align-items:center; justify-content:center;
+      margin-bottom:12px;
       color: var(--text);
-      font-size: 13px;
-      padding: 8px 10px;
-      outline: none;
-      transition: border-color var(--transition-fast), box-shadow var(--transition-fast),
-        background var(--transition-fast);
+      font-weight:900;
     }
- 
-    .input:focus,
-    .textarea:focus {
-      border-color: var(--accent);
-      box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.35);
+    .feat h3{margin:0 0 6px; font-size:16px}
+    .feat p{margin:0; font-size:13px}
+
+    .steps{
+      display:grid;
+      grid-template-columns: repeat(3,1fr);
+      gap:14px;
+      margin-top:18px;
     }
- 
-    .textarea {
-      min-height: 140px;
-      resize: vertical;
-      padding: 8px 10px;
-      line-height: 1.4;
+    .step{
+      border:1px solid var(--line);
+      background: rgba(255,255,255,.02);
+      border-radius:20px;
+      padding:16px;
     }
- 
-    .toggle-group {
-      display: inline-flex;
-      border-radius: var(--radius-pill);
-      background: var(--card-soft);
-      border: 1px solid var(--border-subtle);
-      padding: 2px;
-      margin-top: 10px;
-      margin-bottom: 4px;
-      gap: 2px;
+    .badge{
+      display:inline-flex; align-items:center; justify-content:center;
+      width:28px;height:28px;border-radius:12px;
+      background: rgba(124,92,255,.18);
+      border:1px solid rgba(124,92,255,.28);
+      font-weight:900;
+      margin-bottom:10px;
     }
- 
-    .toggle-option {
-      padding: 4px 10px;
-      font-size: 11px;
-      color: var(--text-muted);
-      border-radius: var(--radius-pill);
-      cursor: pointer;
-      border: none;
-      background: transparent;
-      transition: background var(--transition-fast), color var(--transition-fast);
+    .step h3{margin:0 0 6px; font-size:16px}
+    .step p{margin:0; font-size:13px; color:var(--muted); line-height:1.6}
+
+    .pricing{
+      display:grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap:14px;
+      margin-top:18px;
     }
- 
-    .toggle-option:hover {
-      background: rgba(99, 102, 241, 0.08);
+    .plan{
+      border:1px solid var(--line);
+      background: rgba(255,255,255,.02);
+      border-radius:22px;
+      padding:18px;
+      position:relative;
+      overflow:hidden;
     }
- 
-    .toggle-option.active {
-      background: var(--accent-soft);
-      color: var(--accent);
+    .plan.pop{
+      border-color: rgba(124,92,255,.35);
+      background: linear-gradient(180deg, rgba(124,92,255,.12), rgba(255,255,255,.02));
     }
- 
-    .mode-helper {
-      font-size: 11px;
-      color: var(--text-muted);
-      margin-bottom: 8px;
+    .tag{
+      position:absolute; top:14px; right:14px;
+      font-size:12px; font-weight:900;
+      padding:6px 10px;
+      border-radius:999px;
+      border:1px solid rgba(124,92,255,.35);
+      background: rgba(124,92,255,.12);
+      color:var(--text);
     }
- 
-    .inputs-footer {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      margin-top: 10px;
+    .plan h3{margin:0 0 6px; font-size:16px}
+    .price{font-size:30px; font-weight:1000; margin:10px 0 8px; letter-spacing:-.8px}
+    .price span{font-size:13px; color:var(--muted); font-weight:800}
+    .list{margin:12px 0 0; padding:0; list-style:none; display:grid; gap:8px}
+    .list li{color:var(--muted); font-size:13px; display:flex; gap:10px; align-items:flex-start}
+    .list i{width:18px; height:18px; border-radius:8px; background: rgba(45,212,191,.10); border:1px solid rgba(45,212,191,.20); display:inline-flex; align-items:center; justify-content:center; color: var(--brand2); font-style:normal; font-weight:900; font-size:12px; margin-top:1px}
+    .plan .btn{width:100%; margin-top:14px}
+
+    .faq{
+      margin-top:18px;
+      display:grid;
+      gap:10px;
     }
- 
-    .helper-text {
-      font-size: 11px;
-      color: var(--text-muted);
+    details{
+      border:1px solid var(--line);
+      border-radius:18px;
+      background: rgba(255,255,255,.02);
+      padding:12px 14px;
     }
- 
-    .run-row {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-top: 4px;
+    summary{cursor:pointer; font-weight:900}
+    details p{margin:10px 0 0; color:var(--muted); font-size:13px; line-height:1.7}
+
+    .footer{
+      border-top:1px solid var(--line);
+      padding:22px 0 30px;
+      color:var(--muted);
+      font-size:13px;
     }
- 
-    .loader {
-      display: none;
-      font-size: 11px;
-      color: var(--text-muted);
-      align-items: center;
-      gap: 6px;
-    }
- 
-    .loader-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      border: 2px solid rgba(156, 163, 175, 0.45);
-      border-top-color: var(--accent);
-      animation: spin 0.6s linear infinite;
-    }
- 
-    @keyframes spin {
-      to {
-        transform: rotate(360deg);
+    .foot-row{display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap}
+    .foot-links{display:flex; gap:14px; flex-wrap:wrap}
+    .foot-links a:hover{color:var(--text)}
+
+    @media (max-width: 980px){
+      .hero-grid{grid-template-columns: 1fr; }
+      h1{font-size:40px}
+      .grid3,.steps,.pricing{grid-template-columns:1fr}
+      .stats{grid-template-columns: 1fr 1fr}
+      .mobile-toggle{display:inline-flex}
+      .navlinks{display:none}
+      .navlinks.open{
+        display:flex;
+        position:absolute;
+        left:20px; right:20px;
+        top:62px;
+        flex-direction:column;
+        background: rgba(11,15,25,.92);
+        border:1px solid var(--line);
+        border-radius:18px;
+        padding:12px;
+        gap:10px;
       }
-    }
- 
-    /* Right panel (results) */
-    .results-column {
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
-    }
- 
-    .card {
-      background: var(--card);
-      border-radius: var(--radius-lg);
-      border: 1px solid rgba(148, 163, 184, 0.16);
-      box-shadow: var(--shadow-card);
-      padding: 16px 16px 18px;
-      position: relative;
-      overflow: hidden;
-      transition: box-shadow var(--transition-fast), transform var(--transition-fast);
-    }
- 
-    .card:hover {
-      box-shadow: 0 20px 50px rgba(15, 23, 42, 0.9);
-      transform: translateY(-1px);
-    }
- 
-    .card-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 10px;
-    }
- 
-    .card-title {
-      font-size: 13px;
-      font-weight: 600;
-    }
- 
-    .pill {
-      font-size: 11px;
-      padding: 4px 10px;
-      border-radius: var(--radius-pill);
-      border: 1px solid rgba(148, 163, 184, 0.4);
-      color: var(--text-muted);
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-    }
- 
-    .pill-dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 999px;
-      background: var(--danger);
-    }
- 
-    .score-row {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-    }
- 
-    .score-ring {
-      width: 80px;
-      height: 80px;
-      border-radius: 50%;
-      background: radial-gradient(circle at top, #020617 0, #020617 45%, #111827 100%);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      position: relative;
-    }
- 
-    .score-ring::before {
-      content: "";
-      position: absolute;
-      inset: 0;
-      border-radius: 50%;
-      border: 6px solid rgba(31, 41, 55, 1);
-    }
- 
-    .score-number {
-      position: relative;
-      font-size: 24px;
-      font-weight: 700;
-    }
- 
-    .score-meta {
-      flex: 1;
-      font-size: 12px;
-      color: var(--text-muted);
-      line-height: 1.5;
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      max-width: 340px;
-    }
- 
-    .score-band-label {
-      font-size: 12px;
-      font-weight: 500;
-      display: flex;
-      align-items: center;
-      gap: 4px;
-    }
- 
-    .info-icon {
-      width: 16px;
-      height: 16px;
-      border-radius: 50%;
-      border: 1px solid rgba(148, 163, 184, 0.7);
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 10px;
-      color: var(--text-muted);
-    }
- 
-    .quick-list {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      margin-top: 4px;
-      max-width: 650px;
-    }
- 
-    .quick-item {
-      display: flex;
-      gap: 8px;
-      align-items: flex-start;
-      padding: 8px 9px;
-      border-radius: var(--radius-md);
-      background: rgba(15, 23, 42, 0.9);
-      border: 1px solid rgba(30, 64, 175, 0.45);
-      font-size: 12px;
-      color: var(--text-muted);
-    }
- 
-    .quick-icon {
-      width: 18px;
-      height: 18px;
-      border-radius: 6px;
-      background: var(--accent-soft);
-      color: var(--accent);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 11px;
-      flex-shrink: 0;
-    }
- 
-    .quick-text {
-      flex: 1;
-      line-height: 1.5;
-    }
- 
-    .bottom-grid {
-      display: grid;
-      grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
-      gap: 12px;
-    }
- 
-    .brief-text {
-      font-size: 12px;
-      color: var(--text-muted);
-      line-height: 1.5;
-      white-space: pre-line;
-    }
- 
-    .chip-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-    }
- 
-    .chip {
-      font-size: 11px;
-      padding: 5px 9px;
-      border-radius: var(--radius-pill);
-      border: 1px solid rgba(148, 163, 184, 0.4);
-      color: var(--text-muted);
-      background: rgba(15, 23, 42, 0.95);
-    }
- 
-    .footer {
-      margin-top: 18px;
-      font-size: 11px;
-      color: var(--text-muted);
-      display: flex;
-      justify-content: space-between;
-      gap: 8px;
-      flex-wrap: wrap;
-      border-top: 1px solid rgba(31, 41, 55, 0.9);
-      padding-top: 10px;
-    }
- 
-    .modal-backdrop {
-      position: fixed;
-      inset: 0;
-      background: rgba(15, 23, 42, 0.7);
-      display: none;
-      align-items: center;
-      justify-content: center;
-      z-index: 40;
-    }
- 
-    .modal {
-      max-width: 420px;
-      width: 90%;
-      background: #020617;
-      border-radius: var(--radius-lg);
-      border: 1px solid rgba(148, 163, 184, 0.4);
-      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.9);
-      padding: 16px 18px 16px;
-      font-size: 12px;
-      color: var(--text-muted);
-    }
- 
-    .modal-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 8px;
-    }
- 
-    .modal-title {
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--text);
-    }
- 
-    .modal-close {
-      border: none;
-      background: transparent;
-      color: var(--text-muted);
-      cursor: pointer;
-      font-size: 16px;
-      line-height: 1;
-    }
- 
-    .modal ul {
-      padding-left: 18px;
-      margin: 6px 0 0;
-    }
- 
-    /* Create content that ranks section */
-    .brief-section {
-      margin-top: 32px;
-      padding: 16px 16px 18px;
-      border-radius: var(--radius-lg);
-      background: radial-gradient(circle at top left, #020617 0, #020617 55%);
-      border: 1px solid rgba(148, 163, 184, 0.25);
-      box-shadow: var(--shadow-card);
-    }
- 
-    .brief-section h2 {
-      font-size: 16px;
-      font-weight: 600;
-      margin: 0 0 8px;
-    }
- 
-    .brief-section-subtitle {
-      font-size: 12px;
-      color: var(--text-muted);
-      margin-bottom: 14px;
-    }
- 
-    .brief-input-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-bottom: 10px;
-    }
- 
-    .brief-section select {
-      border-radius: 10px;
-      border: 1px solid var(--border-subtle);
-      background: var(--card-soft);
-      color: var(--text);
-      font-size: 12px;
-      padding: 8px 10px;
-      min-width: 100px;
-    }
- 
-    .brief-section input {
-      flex: 1 1 220px;
-      border-radius: 10px;
-      border: 1px solid var(--border-subtle);
-      background: var(--card-soft);
-      color: var(--text);
-      font-size: 13px;
-      padding: 8px 10px;
-      min-width: 0;
-    }
- 
-    .brief-error {
-      font-size: 12px;
-      color: var(--danger);
-      margin-bottom: 6px;
-      display: none;
-    }
- 
-    .brief-columns {
-      display: grid;
-      grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
-      gap: 12px;
-      margin-top: 10px;
-    }
- 
-    .brief-card-subtitle {
-      font-size: 11px;
-      color: var(--text-muted);
-      margin-bottom: 8px;
-    }
- 
-    .brief-list {
-      list-style: none;
-      padding-left: 0;
-      margin: 0;
-      font-size: 12px;
-      color: var(--text-muted);
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
- 
-    .brief-list li {
-      border-radius: 8px;
-      background: rgba(15, 23, 42, 0.9);
-      border: 1px solid rgba(30, 64, 175, 0.35);
-      padding: 6px 8px;
-    }
- 
-    .brief-meta {
-      font-size: 11px;
-      color: var(--text-muted);
-      margin-top: 4px;
-    }
- 
-    .brief-section h3 {
-      font-size: 13px;
-      font-weight: 600;
-      margin: 10px 0 6px;
-    }
- 
-    .brief-section small {
-      font-size: 11px;
-      color: var(--text-muted);
-    }
- 
-    .brief-tag {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      font-size: 11px;
-      border-radius: 999px;
-      border: 1px solid rgba(148, 163, 184, 0.4);
-      padding: 3px 8px;
-      background: rgba(15, 23, 42, 0.95);
-      color: var(--text-muted);
-    }
- 
-    .brief-outline-list li {
-      border-radius: 8px;
-      background: rgba(15, 23, 42, 0.9);
-      border: 1px solid rgba(55, 65, 81, 0.7);
-      padding: 6px 8px;
-      font-size: 12px;
-    }
- 
-    .brief-outline-list li span {
-      display: block;
-    }
- 
-    .brief-outline-goal {
-      font-size: 11px;
-      color: var(--text-muted);
-      margin-top: 2px;
-    }
- 
-    .brief-checklist-list li {
-      border-radius: 8px;
-      background: rgba(15, 23, 42, 0.9);
-      border: 1px solid rgba(30, 64, 175, 0.35);
-      padding: 6px 8px;
-      font-size: 12px;
-    }
- 
-    .brief-internal-list li {
-      border-radius: 8px;
-      background: rgba(15, 23, 42, 0.9);
-      border: 1px solid rgba(17, 24, 39, 0.7);
-      padding: 6px 8px;
-      font-size: 12px;
-    }
- 
-    /* Audit section */
-    .audit-section {
-      margin-top: 32px;
-      padding: 16px 16px 18px;
-      border-radius: var(--radius-lg);
-      background: radial-gradient(circle at top left, #020617 0, #020617 55%);
-      border: 1px solid rgba(148, 163, 184, 0.25);
-      box-shadow: var(--shadow-card);
-    }
- 
-    .audit-section h2 {
-      font-size: 16px;
-      font-weight: 600;
-      margin: 0 0 8px;
-    }
- 
-    .audit-section-subtitle {
-      font-size: 12px;
-      color: var(--text-muted);
-      margin-bottom: 12px;
-    }
- 
-    .audit-input-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-bottom: 8px;
-    }
- 
-    .audit-input-row input {
-      flex: 1 1 260px;
-      border-radius: 10px;
-      border: 1px solid var(--border-subtle);
-      background: var(--card-soft);
-      color: var(--text);
-      font-size: 13px;
-      padding: 8px 10px;
-      min-width: 0;
-    }
- 
-    .audit-result {
-      margin-top: 8px;
-      font-size: 12px;
-      color: var(--text-muted);
-    }
- 
-    .audit-result ul {
-      padding-left: 18px;
-      margin: 6px 0 0;
-    }
- 
-    /* Severity badges */
-    .severity-badge {
-      display: inline-block;
-      padding: 2px 6px;
-      margin-right: 6px;
-      border-radius: 999px;
-      font-size: 10px;
-      text-transform: uppercase;
-      letter-spacing: 0.03em;
-    }
- 
-    .severity-high {
-      background: rgba(239, 68, 68, 0.15);
-      color: #fca5a5;
-      border: 1px solid rgba(239, 68, 68, 0.5);
-    }
- 
-    .severity-medium {
-      background: rgba(234, 179, 8, 0.15);
-      color: #facc15;
-      border: 1px solid rgba(234, 179, 8, 0.5);
-    }
- 
-    .severity-low {
-      background: rgba(34, 197, 94, 0.15);
-      color: #6ee7b7;
-      border: 1px solid rgba(34, 197, 94, 0.5);
-    }
- 
-    @media (max-width: 960px) {
-      .layout {
-        grid-template-columns: minmax(0, 1fr);
-      }
-      .brief-columns {
-        grid-template-columns: minmax(0, 1fr);
-      }
-    }
- 
-    @media (max-width: 640px) {
-      .page {
-        padding: 20px 14px 28px;
-      }
- 
-      .panel,
-      .card,
-      .brief-section,
-      .audit-section {
-        padding: 14px 14px 16px;
-      }
- 
-      .hero-actions {
-        flex-direction: column;
-        align-items: flex-start;
-      }
- 
-      .bottom-grid {
-        grid-template-columns: minmax(0, 1fr);
-      }
+      .nav{position:relative}
     }
   </style>
 </head>
 <body>
-  <main class="page">
-    <!-- Hero -->
-    <section class="hero">
-      <div class="hero-badge">
-        <span class="hero-badge-dot"></span>
-        <span>On‑page SEO assistant</span>
-      </div>
-      <h1 class="hero-title">Instant on‑page SEO score + quick wins for every page.</h1>
-      <p class="hero-subtitle">
-        Paste a URL or draft and get a prioritized checklist to fix your SEO in minutes. No complex dashboards, just clear actions that move the needle.
-      </p>
-      <div class="hero-actions">
-        <button class="btn-primary" id="scrollToAnalyzer">
-          Analyze a page
-          <span>↗</span>
-        </button>
-        </button>        <button class="btn-secondary-link" type="button" id="exampleReportBtn">
-          See example report
-        </button>
-      </div>
-    </section>
- 
-    <section id="analyzer" class="layout">
-      <!-- Left: inputs -->
-      <div class="panel">
-        <div class="panel-title">Analyze a page</div>
-        <div class="panel-subtitle">
-          Paste a URL or content (or both). We will fetch the page, score it, and surface the fastest SEO wins.
+  <header class="nav">
+    <div class="wrap">
+      <div class="nav-inner">
+        <a class="brand" href="/">
+          <span class="logo" aria-hidden="true"></span>
+          <span>RankyPulse</span>
+        </a>
+
+        <nav class="navlinks" id="navlinks">
+          <a href="#features">Features</a>
+          <a href="#how">How it works</a>
+          <a href="#pricing">Pricing</a>
+          <a href="#faq">FAQ</a>
+        </nav>
+
+        <div class="nav-cta">
+          <button class="btn mobile-toggle" id="menuBtn" type="button">Menu</button>
+          <a class="btn ghost" href="/auth">Sign in</a>
+          <a class="btn primary" href="/auth">Start free</a>
         </div>
- 
-        <div style="margin-bottom: 10px;">
-          <div class="field-label">
-            <span>Page URL</span>
-            <span>(optional)</span>
-          </div>
-          <input id="inputUrl" type="url" class="input" placeholder="https://example.com/page" />
-        </div>
- 
-        <div style="margin-bottom: 4px;">
-          <div class="field-label">
-            <span>Page content</span>
-            <span>(optional)</span>
-          </div>
-          <textarea
-            id="inputContent"
-            class="textarea"
-            placeholder="Paste your article, landing page copy, or draft here..."
-          ></textarea>
-        </div>
- 
-        <div class="toggle-group" id="modeToggle">
-          <button type="button" class="toggle-option active" data-mode="both">Analyze URL + content</button>
-          <button type="button" class="toggle-option" data-mode="url">Analyze URL only</button>
-          <button type="button" class="toggle-option" data-mode="content">Analyze content only</button>
-        </div>
-        <div class="mode-helper">
-          Choose what we should analyze for this run. If you provide both, content overrides what we fetch when there's overlap.
-        </div>
- 
-        <div class="inputs-footer">
-          <div class="helper-text">
-            For solo SaaS founders and bloggers: paste a URL and get your top SEO fixes and keyword ideas in under 60 seconds.
-          </div>
-          <div class="run-row">
-            <button class="btn-primary" id="runButton">
-              Run analysis
-            </button>
-            <div class="loader" id="loader">
-              <div class="loader-dot"></div>
-              <span>Analyzing content…</span>
-            </div>
-          </div>
-        </div>
-      </div>
- 
-      <!-- Right: results -->
-      <div class="results-column">
-        <!-- Score card -->
-        <div class="card">
-          <div class="card-header">
-            <div class="card-title">Overall SEO score</div>
-            <div style="display:flex; align-items:center; gap:8px;">
-              <div class="pill" id="scoreBandPill">
-                <span class="pill-dot" id="scoreBandDot"></span>
-                <span id="scoreBandText">Needs work</span>
-              </div>
-              <button
-                id="scoreHelpBtn"
-                type="button"
-                class="btn-secondary-link"
-                style="font-size:11px; padding:2px 6px; border-radius:999px; border:1px solid rgba(148,163,184,0.45); background:rgba(15,23,42,0.9);"
-              >
-                How the score works
-              </button>
-            </div>
-          </div>
-          <div class="score-row">
-            <div class="score-ring">
-              <div class="score-number" id="scoreValue">0</div>
-            </div>
-            <div class="score-meta">
-              <div class="score-band-label">
-                <span id="scoreBandLabel">Needs work</span>
-                <span
-                  class="info-icon"
-                  title="Score combines content depth, structure, and key tags (title, H1, meta) on a scale from 0–100."
-                >i</span>
-              </div>
-              <div id="scoreHint">
-                Fix the top quick wins below to raise this page's score and make it more competitive in search.
-              </div>
-            </div>
-          </div>
-        </div>
- 
-        <!-- Quick wins -->
-        <div class="card">
-          <div class="card-header">
-            <div class="card-title">Quick wins (next 10 minutes)</div>
-          </div>
-          <div class="quick-list" id="quickWinsList">
-            <!-- Filled by JS -->
-          </div>
-        </div>
- 
-        <!-- Brief & keywords -->
-        <div class="bottom-grid">
-          <div class="card">
-            <div class="card-header">
-              <div class="card-title">How to make this page stronger</div>
-            </div>
-            <div class="brief-text" id="contentBrief">
-              Run an analysis to see a custom content brief for this page.
-            </div>
-          </div>
-          <div class="card">
-            <div class="card-header">
-              <div class="card-title">Keyword ideas</div>
-            </div>
-            <div class="chip-row" id="keywordIdeas">
-              <!-- Filled by JS -->
-            </div>
-          </div>
-        </div>
- 
-        <!-- SaaS advice -->
-        <section id="saas-advice" style="margin-top: 24px; display: none;">
-          <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">
-            SaaS page advice
-            <span id="page-type-badge" style="font-size: 12px; padding: 2px 8px; border-radius: 999px; background: rgba(129, 140, 248, 0.15); margin-left: 8px;">
-              SaaS comparison page
-            </span>
-          </h3>
- 
-          <p id="saas-key-message" style="font-size: 14px; margin-bottom: 10px;"></p>
- 
-          <div style="display: flex; flex-wrap: wrap; gap: 16px;">
-            <div style="flex: 1 1 220px; min-width: 0;">
-              <h4 style="font-size: 13px; font-weight: 600; margin-bottom: 6px;">Focus areas</h4>
-              <ul id="saas-bullets" style="font-size: 13px; padding-left: 18px; margin: 0;"></ul>
-            </div>
-            <div style="flex: 1 1 220px; min-width: 0;">
-              <h4 style="font-size: 13px; font-weight: 600; margin-bottom: 6px;">CTA ideas</h4>
-              <ul id="saas-ctas" style="font-size: 13px; padding-left: 18px; margin: 0;"></ul>
-            </div>
-          </div>
-        </section>
-      </div>
-    </section>
- 
-    <!-- Improve Existing Pages (audit UI) -->
-    <section class="audit-section" id="improve-pages-section">
-      <h2>Improve existing pages</h2>
-      <p class="audit-section-subtitle">
-        Paste any live URL to get a quick SEO audit, score, and list of issues in one click.
-      </p>
-      <div class="audit-input-row">
-        <input
-          id="audit-url"
-          type="url"
-          placeholder="https://your-site.com/pricing"
-        />
-        <button class="btn-primary" type="button" id="audit-run-btn">
-          Run audit
-        </button>
-      </div>
-      <div class="audit-result" id="audit-result">
-        Paste a URL and click "Run audit" to see issues for that page.
-      </div>
-    </section>
- 
-    <!-- Create content that ranks -->
-    <section class="brief-section" id="create-content-section">
-      <h2>Create content that ranks</h2>
-      <p class="brief-section-subtitle">
-        Turn any keyword or URL into a content brief with topic, outline, keywords, and a simple checklist.
-      </p>
- 
-      <div class="brief-input-row">
-        <select id="brief-input-type">
-          <option value="keyword">Keyword</option>
-          <option value="url">URL</option>
-        </select>
-        <input
-          id="brief-input-value"
-          type="text"
-          placeholder="Enter a keyword or URL (e.g. saas seo tool)"
-        />
-        <button class="btn-primary" id="brief-generate-btn" type="button">
-          Generate brief
-        </button>
-      </div>
- 
-      <div class="brief-error" id="brief-error"></div>
- 
-      <div id="brief-results" style="display:none; margin-top:6px;">
-        <div class="brief-meta" id="brief-topic-intent">
-          <!-- Filled by JS: Topic, intent, word count -->
-        </div>
- 
-        <div class="brief-columns">
-          <div>
-            <h3>Outline & checklist</h3>
-            <p class="brief-card-subtitle">
-              Use this structure and checklist as your writing blueprint.
-            </p>
-            <ul class="brief-outline-list brief-list" id="brief-outline"></ul>
- 
-            <h3 style="margin-top:10px;">Checklist</h3>
-            <ul class="brief-checklist-list brief-list" id="brief-checklist"></ul>
-          </div>
- 
-          <div>
-            <h3>Keywords & internal links</h3>
-            <p class="brief-card-subtitle">
-              Primary keywords are your main targets. Secondary keywords help you cover supporting topics.
-            </p>
- 
-            <small>Primary keywords</small>
-            <ul class="brief-list" id="brief-primary-keywords"></ul>
- 
-            <small style="display:block; margin-top:6px;">Secondary keywords</small>
-            <ul class="brief-list" id="brief-secondary-keywords"></ul>
- 
-            <h3 style="margin-top:10px;">Internal links</h3>
-            <ul class="brief-internal-list brief-list" id="brief-internal-links"></ul>
-          </div>
-        </div>
-      </div>
-    </section>
- 
-    <footer class="footer">
-      <span>Powered by [Your Brand]</span>
-      <button id="footerScoreHelpBtn" type="button" class="btn-secondary-link" style="font-size:11px;">
-        How the score works →
-      </button>
-    </footer>
-  </main>
- 
-  <!-- Score help modal -->
-  <div class="modal-backdrop" id="scoreModalBackdrop">
-    <div class="modal">
-      <div class="modal-header">
-        <div class="modal-title">How the score works</div>
-        <button class="modal-close" id="modalCloseBtn" aria-label="Close score help">×</button>
-      </div>
-      <div>
-        <p style="margin:4px 0 6px;">
-          Your score combines content depth, on‑page structure, and key tags on a 0–100 scale:
-        </p>
-        <ul>
-          <li><strong>Length &amp; depth</strong>: Short pages (&lt;500–800 words) get "thin/short" messages. Around 1000+ words is treated as "content length OK, now optimize".</li>
-          <li><strong>Core tags</strong>: Title, H1, and meta description are critical. Missing any of them caps your score until you fix them.</li>
-          <li><strong>Structure</strong>: Clear H2/H3 headings, internal links, images with alt text, and schema markup all contribute small positive boosts.</li>
-        </ul>
       </div>
     </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="wrap">
+        <div class="hero-grid">
+          <div>
+            <div class="kicker"><span class="dot"></span> SEO Scoring • Quick Wins • AI Visibility</div>
+            <h1>Get an SEO score and the next 10 fixes in seconds.</h1>
+            <p class="sub">
+              RankyPulse turns a URL into a clear plan: what to fix, what to write, and what will move the needle.
+              Built for founders and marketers who want fast, actionable results.
+            </p>
+
+            <div class="hero-actions">
+              <a class="btn primary" href="/auth">Start free</a>
+              <a class="btn" href="#features">See features</a>
+            </div>
+
+            <div class="mini">
+              <span><span class="check">✓</span>No setup</span>
+              <span><span class="check">✓</span>Actionable quick wins</span>
+              <span><span class="check">✓</span>AI search visibility signals</span>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-pad">
+              <div class="panel-title">Try the scorer</div>
+              <div class="panel-sub">Paste a URL to preview the workflow. Sign in to save reports.</div>
+
+              <div class="scorebox">
+                <div class="row">
+                  <input id="urlInput" class="input" placeholder="https://example.com/page" />
+                  <button class="btn primary scorebtn" id="scoreBtn" type="button">Score</button>
+                </div>
+                <div class="hint">Runs a real scan via <b>/api/page-report</b> on your server.</div>
+
+<div id="scoreOut" style="display:none; margin-top:12px; border:1px solid var(--line); border-radius:18px; background: rgba(255,255,255,.02); padding:12px;">
+  <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+    <div style="font-weight:1000;">SEO Score</div>
+    <div style="font-weight:1000; font-size:18px;"><span id="scoreValue">—</span>/100</div>
   </div>
- 
-  <!-- Wire frontend logic -->
-  <script src="/script.js"></script>
-  <script src="/main.js"></script>
+  <div style="margin-top:10px; color:var(--muted); font-size:13px; font-weight:900;">Quick wins</div>
+  <ul id="winsList" style="margin:8px 0 0; padding-left:18px; color:var(--muted); font-size:13px; line-height:1.6;"></ul>
+  <div id="kwWrap" style="margin-top:10px;">
+    <div style="color:var(--muted); font-size:13px; font-weight:900;">Keyword ideas</div>
+    <ul id="kwList" style="margin:8px 0 0; padding-left:18px; color:var(--muted); font-size:13px; line-height:1.6;"></ul>
+  </div>
+  <div id="briefWrap" style="margin-top:10px;">
+    <div style="color:var(--muted); font-size:13px; font-weight:900;">Content brief</div>
+    <pre id="briefText" style="white-space:pre-wrap; margin:8px 0 0; padding:10px; border-radius:14px; border:1px solid rgba(255,255,255,.08); background: rgba(0,0,0,.20); color:var(--muted); font-size:12px; line-height:1.6;"></pre>
+  </div>
+</div>
+
+                <div class="stats">
+                  <div class="stat"><b>SEO Score</b><small>instant snapshot</small></div>
+                  <div class="stat"><b>Quick Wins</b><small>priority fixes</small></div>
+                  <div class="stat"><b>Keywords</b><small>ideas & intent</small></div>
+                </div>
+              </div>
+
+              <div style="margin-top:14px; display:flex; gap:10px; flex-wrap:wrap;">
+                <span class="kicker" style="padding:7px 10px;"><span class="dot"></span> Technical</span>
+                <span class="kicker" style="padding:7px 10px;"><span class="dot"></span> Content</span>
+                <span class="kicker" style="padding:7px 10px;"><span class="dot"></span> AI Overview</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="features">
+      <div class="wrap">
+        <h2>Everything you need to improve a page</h2>
+        <p>One clean report that blends SEO fundamentals with modern AI-search visibility.</p>
+
+        <div class="grid3">
+          <div class="feat">
+            <div class="icon">S</div>
+            <h3>SEO Score</h3>
+            <p>Get a quick, explainable score with the top issues ranked by impact.</p>
+          </div>
+          <div class="feat">
+            <div class="icon">Q</div>
+            <h3>Quick Wins</h3>
+            <p>Clear fixes: titles, headings, internal links, speed, and missing metadata.</p>
+          </div>
+          <div class="feat">
+            <div class="icon">K</div>
+            <h3>Keyword Ideas</h3>
+            <p>Intent-based topics and phrases to expand coverage and capture demand.</p>
+          </div>
+          <div class="feat">
+            <div class="icon">B</div>
+            <h3>Content Brief</h3>
+            <p>Outline what to write next with sections, FAQs, and recommended angles.</p>
+          </div>
+          <div class="feat">
+            <div class="icon">A</div>
+            <h3>AI Visibility</h3>
+            <p>Track signals that influence AI overviews and conversational answers.</p>
+          </div>
+          <div class="feat">
+            <div class="icon">T</div>
+            <h3>Site Tracking</h3>
+            <p>Monitor pages and keywords to see what changed and what to do next.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="how">
+      <div class="wrap">
+        <h2>How it works</h2>
+        <p>From URL → plan → execution, without the chaos.</p>
+
+        <div class="steps">
+          <div class="step">
+            <div class="badge">1</div>
+            <h3>Paste a URL</h3>
+            <p>Run a scan on your landing page, blog post, or product page.</p>
+          </div>
+          <div class="step">
+            <div class="badge">2</div>
+            <h3>Get quick wins</h3>
+            <p>Fix the highest-impact issues first, with simple instructions.</p>
+          </div>
+          <div class="step">
+            <div class="badge">3</div>
+            <h3>Ship content</h3>
+            <p>Use keyword ideas + brief suggestions to publish the next best page.</p>
+          </div>
+        </div>
+
+        <div style="margin-top:18px; display:flex; gap:12px; flex-wrap:wrap;">
+          <a class="btn primary" href="/auth">Start free</a>
+          <a class="btn" href="#pricing">View pricing</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="pricing">
+      <div class="wrap">
+        <h2>Simple pricing</h2>
+        <p>Start free and upgrade when you’re ready.</p>
+
+        <div class="pricing">
+          <div class="plan">
+            <h3>Free</h3>
+            <div class="price">$0 <span>/ month</span></div>
+            <ul class="list">
+              <li><i>✓</i>Basic page score preview</li>
+              <li><i>✓</i>Limited quick wins</li>
+              <li><i>✓</i>Community support</li>
+            </ul>
+            <a class="btn" href="/auth">Get started</a>
+          </div>
+
+          <div class="plan pop">
+            <div class="tag">Most Popular</div>
+            <h3>Pro</h3>
+            <div class="price">$19 <span>/ month</span></div>
+            <ul class="list">
+              <li><i>✓</i>Full page reports</li>
+              <li><i>✓</i>Content brief + keyword ideas</li>
+              <li><i>✓</i>Save & export reports</li>
+              <li><i>✓</i>Priority quick wins</li>
+            </ul>
+            <a class="btn primary" href="/auth">Start Pro</a>
+          </div>
+
+          <div class="plan">
+            <h3>Business</h3>
+            <div class="price">$49 <span>/ month</span></div>
+            <ul class="list">
+              <li><i>✓</i>Tracking for multiple sites</li>
+              <li><i>✓</i>AI visibility monitoring</li>
+              <li><i>✓</i>Team access</li>
+              <li><i>✓</i>Priority support</li>
+            </ul>
+            <a class="btn" href="/auth">Talk to us</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="faq">
+      <div class="wrap">
+        <h2>FAQ</h2>
+        <p>Quick answers to common questions.</p>
+
+        <div class="faq">
+          <details>
+            <summary>Does this replace Surfer/Ahrefs?</summary>
+            <p>No. RankyPulse is designed to be faster and more action-focused for day-to-day page improvements and AI visibility signals.</p>
+          </details>
+          <details>
+            <summary>Will this work for SaaS landing pages?</summary>
+            <p>Yes. The workflow is built for SaaS: pages, blog posts, templates, and feature pages.</p>
+          </details>
+          <details>
+            <summary>Can I start free?</summary>
+            <p>Yes. Start free, then upgrade when you want saved reports, deeper briefs, and tracking.</p>
+          </details>
+        </div>
+
+        <div style="margin-top:18px; padding:18px; border:1px solid var(--line); border-radius:22px; background: rgba(255,255,255,.02); display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap;">
+          <div>
+            <div style="font-weight:1000; font-size:16px;">Ready to improve a page today?</div>
+            <div style="color:var(--muted); font-size:13px; margin-top:4px;">Create an account and generate your first report.</div>
+          </div>
+          <a class="btn primary" href="/auth">Start free</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="wrap">
+      <div class="foot-row">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <span class="logo" aria-hidden="true" style="width:28px;height:28px;border-radius:10px;"></span>
+          <b style="color:var(--text);">RankyPulse</b>
+          <span>© <span id="year"></span></span>
+        </div>
+        <div class="foot-links">
+          <a href="/auth">Sign in</a>
+          <a href="#pricing">Pricing</a>
+          <a href="#features">Features</a>
+          <a href="#faq">FAQ</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    document.getElementById("year").textContent = new Date().getFullYear();
+    const menuBtn = document.getElementById("menuBtn");
+    const navlinks = document.getElementById("navlinks");
+    if (menuBtn && navlinks) {
+      menuBtn.addEventListener("click", () => navlinks.classList.toggle("open"));
+      navlinks.querySelectorAll("a").forEach(a => a.addEventListener("click", () => navlinks.classList.remove("open")));
+    }
+  </script>
+  <script src="/landing-score.js"></script>
 </body>
 </html>
-EOF
