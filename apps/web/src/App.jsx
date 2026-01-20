@@ -1,19 +1,16 @@
-import React from "react";
-import { Switch, Route, Redirect } from "react-router-dom";
-
-import Projects from "views/Index.jsx";
-import Ranking from "views/Ranking.jsx";
-import Audit from "views/Audit.jsx";
-import Admin from "layouts/Admin.jsx";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import AuditPage from "./pages/AuditPage.jsx";
+import RankPage from "./pages/RankPage.jsx";
 
 export default function App() {
   return (
-    <Switch>
-      <Route path="/" exact component={Projects} />
-      <Route path="/rank" exact component={Ranking} />
-      <Route path="/audit" exact component={Audit} />
-      <Route path="/admin" component={Admin} />
-      <Redirect to="/" />
-    </Switch>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Navigate to="/audit" replace />} />
+        <Route path="/audit" element={<AuditPage />} />
+        <Route path="/rank" element={<RankPage />} />
+        <Route path="*" element={<Navigate to="/audit" replace />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
