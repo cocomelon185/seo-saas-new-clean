@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 
 // components
 
-import Navbar from "components/Navbars/AuthNavbar.jsx";
+import Navbar from "components/Navbars/IndexNavbar.jsx";
 import Footer from "components/Footers/Footer.jsx";
 
 export default function Landing() {
