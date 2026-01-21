@@ -1,8 +1,15 @@
 {
-  "installCommand": "cd apps/web && npm ci",
-  "buildCommand": "cd apps/web && npm run build",
-  "outputDirectory": "apps/web/dist",
   "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
+    { "source": "/pricing", "destination": "/pricing.html" },
+    { "source": "/audit", "destination": "/audit.html" },
+    { "source": "/rank", "destination": "/rank.html" },
+    { "source": "/improve", "destination": "/improve.html" },
+
+    { "source": "/pricing/", "destination": "/pricing.html" },
+    { "source": "/audit/", "destination": "/audit.html" },
+    { "source": "/rank/", "destination": "/rank.html" },
+    { "source": "/improve/", "destination": "/improve.html" },
+
+    { "source": "/(.*)", "destination": "/" }
   ]
 }
