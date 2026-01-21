@@ -1,9 +1,7 @@
 import React from "react";
-import SsgRouter from './SsgRouter';
-
-import { StaticRouter } from "react-router-dom/server";
+import { BrowserRouter, MemoryRouter } from "react-router-dom";
 
 export default function SsgRouter({ children }) {
-  if (typeof window === "undefined") return <StaticRouter location="/">{children}</StaticRouter>;
-  return <SsgRouter>{children}</SsgRouter>;
+  if (typeof window === "undefined") return <MemoryRouter initialEntries={["/"]}>{children}</MemoryRouter>;
+  return <BrowserRouter>{children}</BrowserRouter>;
 }
