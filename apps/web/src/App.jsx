@@ -1,4 +1,5 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate } from 'react-router-dom';
+import SsgRouter from './SsgRouter';
 import LandingPage from "./pages/LandingPage.jsx";
 import AuditPage from "./pages/AuditPage.jsx";
 import RankPage from "./pages/RankPage.jsx";
@@ -7,7 +8,7 @@ import PricingPage from "./pages/PricingPage.jsx";
 
 export default function App() {
   return (
-    <BrowserRouter>
+    <SsgRouter>
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/audit" element={<AuditPage />} />
@@ -16,6 +17,6 @@ export default function App() {
         <Route path="/pricing" element={<PricingPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-    </BrowserRouter>
+    </SsgRouter>
   );
 }
