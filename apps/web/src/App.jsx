@@ -1,4 +1,5 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
+import Landing from './pages/Landing';
 import SsgRouter from './SsgRouter';
 import LandingPage from "./pages/LandingPage.jsx";
 import AuditPage from "./pages/AuditPage.jsx";
@@ -10,7 +11,7 @@ export default function App() {
   return (
     <SsgRouter>
       <Routes>
-        <Route path="/" element={<LandingPage />} />
+        <Route path="/" element={<Landing />} />
         <Route path="/audit" element={<AuditPage />} />
         <Route path="/rank" element={<RankPage />} />
         <Route path="/improve" element={<ImprovePage />} />
