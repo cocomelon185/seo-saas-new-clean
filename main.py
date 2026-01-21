@@ -18,6 +18,11 @@ from fastapi.responses import StreamingResponse
 
 app = FastAPI()
 
+
+
+@app.get("/__ping__")
+def __ping__():
+    return {"ok": True}
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[

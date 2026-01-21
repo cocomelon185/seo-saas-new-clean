@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import AppShell from "../components/AppShell.jsx";
 
-export default function AuditPage() {
+export default function ImprovePage() {
   const [url, setUrl] = useState("");
   const [status, setStatus] = useState("idle"); // idle | loading | success | error
   const [error, setError] = useState("");
@@ -50,8 +50,8 @@ export default function AuditPage() {
 
   return (
     <AppShell
-      title="SEO Page Audit"
-      subtitle="Paste a URL and get a score, quick wins, and a prioritized list of issues. Fast, clear, and usable."
+      title="Improve Existing Page"
+      subtitle="Turn one URL into an actionable plan: content brief, keyword ideas, and practical next steps."
     >
       <div className="flex flex-col gap-4">
         <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
@@ -60,10 +60,9 @@ export default function AuditPage() {
             <input
               value={url}
               onChange={(e) => setUrl(e.target.value)}
-              placeholder="https://example.com/pricing"
+              placeholder="https://example.com/blog/post"
               className="w-full rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3 text-white placeholder:text-white/40 outline-none transition focus:border-white/20"
             />
-            <div className="mt-2 text-xs text-white/50">Tip: test with https://example.com</div>
           </div>
 
           <button
@@ -73,22 +72,22 @@ export default function AuditPage() {
               "rounded-2xl px-5 py-3 text-sm font-semibold transition",
               status === "loading"
                 ? "cursor-not-allowed bg-white/10 text-white/60"
-                : "bg-gradient-to-r from-indigo-500 to-fuchsia-500 text-white hover:opacity-95"
+                : "bg-gradient-to-r from-fuchsia-500 to-indigo-500 text-white hover:opacity-95"
             ].join(" ")}
           >
-            {status === "loading" ? "Running…" : "Run SEO Audit"}
+            {status === "loading" ? "Generating…" : "Generate Plan"}
           </button>
         </div>
 
         {status === "idle" && (
           <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 text-white/70">
-            Enter a URL above to run an audit.
+            Enter a URL above to generate an improvement plan.
           </div>
         )}
 
         {status === "loading" && (
           <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 text-white/80">
-            Analyzing… this may take up to 20 seconds.
+            Analyzing and generating suggestions… this may take up to 20 seconds.
           </div>
         )}
 
@@ -99,34 +98,38 @@ export default function AuditPage() {
         )}
 
         {status === "success" && (
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4">
             <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-              <div className="text-sm font-semibold text-white/80">SEO Score</div>
-              <div className="mt-2 text-4xl font-semibold">
-                {typeof result?.score === "number" ? result.score : 0}
-              </div>
-            </div>
-
-            <div className="md:col-span-2 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-              <div className="text-sm font-semibold text-white/80">Quick Wins</div>
-              <div className="mt-3">
-                {Array.isArray(result?.quick_wins) && result.quick_wins.length > 0 ? (
-                  <ul className="list-disc space-y-2 pl-5 text-white/85">
-                    {result.quick_wins.slice(0, 10).map((x, i) => (
-                      <li key={i}>{x}</li>
-                    ))}
-                  </ul>
-                ) : (
-                  <div className="text-white/60">No major quick wins returned.</div>
-                )}
-              </div>
-            </div>
-
-            <div className="md:col-span-3 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
               <div className="text-sm font-semibold text-white/80">Content Brief</div>
               <div className="mt-3 whitespace-pre-wrap text-white/85">
                 {result?.content_brief || "No brief returned."}
               </div>
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+              <div className="text-sm font-semibold text-white/80">Keyword Ideas</div>
+              {Array.isArray(result?.keyword_ideas) && result.keyword_ideas.length > 0 ? (
+                <ul className="mt-3 list-disc space-y-2 pl-5 text-white/85">
+                  {result.keyword_ideas.slice(0, 24).map((k, i) => (
+                    <li key={i}>{k}</li>
+                  ))}
+                </ul>
+              ) : (
+                <div className="mt-3 text-white/60">No keyword ideas returned.</div>
+              )}
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+              <div className="text-sm font-semibold text-white/80">Quick Wins</div>
+              {Array.isArray(result?.quick_wins) && result.quick_wins.length > 0 ? (
+                <ul className="mt-3 list-disc space-y-2 pl-5 text-white/85">
+                  {result.quick_wins.slice(0, 12).map((x, i) => (
+                    <li key={i}>{x}</li>
+                  ))}
+                </ul>
+              ) : (
+                <div className="mt-3 text-white/60">No quick wins returned.</div>
+              )}
             </div>
           </div>
         )}

@@ -1,95 +1,123 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import AppShell from "../components/AppShell.jsx";
 
 export default function RankPage() {
   const [keyword, setKeyword] = useState("");
   const [domain, setDomain] = useState("");
-  const [status, setStatus] = useState("idle"); // idle | loading | success | error
+  const [status, setStatus] = useState("idle");
   const [error, setError] = useState("");
   const [result, setResult] = useState(null);
 
+  const canRun = useMemo(() => keyword.trim().length > 0 && domain.trim().length > 0, [keyword, domain]);
+
   async function checkRank() {
     setError("");
-    if (!keyword.trim() || !domain.trim()) {
+    setResult(null);
+
+    if (!canRun) {
       setStatus("error");
-      setError("Enter a keyword and a domain to check rank.");
+      setError("Enter both a keyword and a domain.");
       return;
     }
+
     setStatus("loading");
     try {
-      setResult({ keyword: keyword.trim(), domain: domain.trim(), rank: "—" });
+      const res = await fetch("/api/rank-check", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ keyword: keyword.trim(), domain: domain.trim() })
+      });
+
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        throw new Error(text || `HTTP ${res.status}`);
+      }
+
+      const data = await res.json();
+      setResult(data);
       setStatus("success");
-    } catch {
+    } catch (e) {
       setStatus("error");
-      setError("We couldn’t check rank right now. Please try again.");
+      setError(String(e?.message || "Request failed."));
     }
   }
 
   return (
-    <div style={{ maxWidth: 900, margin: "40px auto", padding: 16 }}>
-      <h1 style={{ fontSize: 32, marginBottom: 8 }}>Rank Checker</h1>
-      <div style={{ marginBottom: 16, opacity: 0.85 }}>
-        Check where your domain ranks for a keyword.
-      </div>
-
-      <div style={{ display: "grid", gap: 12, marginBottom: 14 }}>
-        <input
-          value={keyword}
-          onChange={(e) => setKeyword(e.target.value)}
-          placeholder="Keyword (e.g., seo audit tool)"
-          style={{ padding: "12px 14px", fontSize: 16, borderRadius: 10, border: "1px solid #ccc" }}
-        />
-        <input
-          value={domain}
-          onChange={(e) => setDomain(e.target.value)}
-          placeholder="Domain (e.g., rankypulse.com)"
-          style={{ padding: "12px 14px", fontSize: 16, borderRadius: 10, border: "1px solid #ccc" }}
-        />
-        <button
-          onClick={checkRank}
-          disabled={status === "loading"}
-          style={{
-            padding: "12px 16px",
-            fontSize: 16,
-            borderRadius: 10,
-            border: "1px solid #111",
-            background: "#111",
-            color: "#fff",
-            cursor: status === "loading" ? "not-allowed" : "pointer",
-            width: 180
-          }}
-        >
-          Check Rank
-        </button>
-      </div>
-
-      {status === "idle" && (
-        <div style={{ padding: 14, borderRadius: 12, border: "1px dashed #bbb", opacity: 0.85 }}>
-          Enter a keyword and domain above to check rank.
-        </div>
-      )}
-
-      {status === "loading" && (
-        <div style={{ padding: 14, borderRadius: 12, border: "1px solid #ddd" }}>
-          Checking rank…
-        </div>
-      )}
-
-      {status === "error" && (
-        <div style={{ padding: 14, borderRadius: 12, border: "1px solid #f2c7c7", background: "#fff5f5" }}>
-          {error}
-        </div>
-      )}
-
-      {status === "success" && (
-        <div style={{ marginTop: 16, padding: 14, borderRadius: 12, border: "1px solid #ddd" }}>
-          <div style={{ fontWeight: 700, marginBottom: 10 }}>Result</div>
-          <div style={{ display: "grid", gap: 6, opacity: 0.95 }}>
-            <div><b>Keyword:</b> {result.keyword}</div>
-            <div><b>Domain:</b> {result.domain}</div>
-            <div><b>Rank:</b> {result.rank}</div>
+    <AppShell
+      title="Rank Checker"
+      subtitle="Check where your domain ranks for a keyword. Keep it fast and simple — history comes later."
+    >
+      <div className="flex flex-col gap-4">
+        <div className="grid gap-3 md:grid-cols-3 md:items-end">
+          <div>
+            <label className="mb-2 block text-sm font-medium text-white/80">Keyword</label>
+            <input
+              value={keyword}
+              onChange={(e) => setKeyword(e.target.value)}
+              placeholder="seo audit tool"
+              className="w-full rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3 text-white placeholder:text-white/40 outline-none transition focus:border-white/20"
+            />
           </div>
+
+          <div>
+            <label className="mb-2 block text-sm font-medium text-white/80">Domain</label>
+            <input
+              value={domain}
+              onChange={(e) => setDomain(e.target.value)}
+              placeholder="rankypulse.com"
+              className="w-full rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3 text-white placeholder:text-white/40 outline-none transition focus:border-white/20"
+            />
+          </div>
+
+          <button
+            onClick={checkRank}
+            disabled={status === "loading"}
+            className={[
+              "rounded-2xl px-5 py-3 text-sm font-semibold transition",
+              status === "loading"
+                ? "cursor-not-allowed bg-white/10 text-white/60"
+                : "bg-gradient-to-r from-cyan-400 to-indigo-500 text-[#070A12] hover:opacity-95"
+            ].join(" ")}
+          >
+            {status === "loading" ? "Checking…" : "Check Rank"}
+          </button>
         </div>
-      )}
-    </div>
+
+        {status === "idle" && (
+          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 text-white/70">
+            Enter a keyword and domain above to check rank.
+          </div>
+        )}
+
+        {status === "loading" && (
+          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 text-white/80">
+            Checking rank…
+          </div>
+        )}
+
+        {status === "error" && (
+          <div className="rounded-2xl border border-rose-400/30 bg-rose-500/10 p-5 text-rose-100">
+            {error}
+          </div>
+        )}
+
+        {status === "success" && (
+          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+            <div className="text-sm font-semibold text-white/80">Result</div>
+            <div className="mt-3 grid gap-2 text-white/90">
+              <div><span className="text-white/60">Keyword:</span> {result?.keyword || keyword}</div>
+              <div><span className="text-white/60">Domain:</span> {result?.domain || domain}</div>
+              <div className="text-2xl font-semibold">
+                <span className="text-white/60 text-base font-medium">Rank:</span> {result?.rank ?? "—"}
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="text-xs text-white/45">
+          This page calls <span className="text-white/65">POST /api/rank-check</span>. If your backend route name differs, tell me and we’ll change it.
+        </div>
+      </div>
+    </AppShell>
   );
 }

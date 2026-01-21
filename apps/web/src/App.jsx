@@ -1,15 +1,18 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import LandingPage from "./pages/LandingPage.jsx";
 import AuditPage from "./pages/AuditPage.jsx";
 import RankPage from "./pages/RankPage.jsx";
+import ImprovePage from "./pages/ImprovePage.jsx";
 
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Navigate to="/audit" replace />} />
+        <Route path="/" element={<LandingPage />} />
         <Route path="/audit" element={<AuditPage />} />
         <Route path="/rank" element={<RankPage />} />
-        <Route path="*" element={<Navigate to="/audit" replace />} />
+        <Route path="/improve" element={<ImprovePage />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   );
