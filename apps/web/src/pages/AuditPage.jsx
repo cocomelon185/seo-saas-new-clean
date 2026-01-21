@@ -1,7 +1,12 @@
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import PricingModal from "../components/PricingModal.jsx";
 import AppShell from "../components/AppShell.jsx";
 
 export default function AuditPage() {
+  const navigate = useNavigate();
+  const [pricingOpen, setPricingOpen] = useState(false);
+
   const [url, setUrl] = useState("");
   const [status, setStatus] = useState("idle"); // idle | loading | success | error
   const [error, setError] = useState("");
@@ -105,6 +110,12 @@ export default function AuditPage() {
               <div className="mt-2 text-4xl font-semibold">
                 {typeof result?.score === "number" ? result.score : 0}
               </div>
+              <button
+                onClick={() => setPricingOpen(true)}
+                className="mt-4 w-full rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/[0.10]"
+              >
+                Unlock Full Fix Plan
+              </button>
             </div>
 
             <div className="md:col-span-2 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
@@ -131,6 +142,14 @@ export default function AuditPage() {
           </div>
         )}
       </div>
+          <PricingModal
+        open={pricingOpen}
+        onClose={() => setPricingOpen(false)}
+        onSelectPlan={() => {
+          setPricingOpen(false);
+          navigate("/pricing");
+        }}
+      />
     </AppShell>
   );
 }
