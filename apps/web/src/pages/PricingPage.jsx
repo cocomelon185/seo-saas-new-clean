@@ -1,8 +1,11 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import PricingModal from "../components/PricingModal.jsx";
 
 export default function PricingPage() {
-  const [open, setOpen] = useState(true);
+  const isServer = typeof window === "undefined";
+  const [open, setOpen] = useState(false);
+
+  const canShowModal = useMemo(() => !isServer, [isServer]);
 
   return (
     <div style={{ maxWidth: 1020, margin: "0 auto", padding: "48px 20px" }}>
@@ -28,13 +31,15 @@ export default function PricingPage() {
         </button>
       </div>
 
-      <PricingModal
-        open={open}
-        onClose={() => setOpen(false)}
-        onSelectPlan={() => {
-          setOpen(false);
-        }}
-      />
+      {canShowModal ? (
+        <PricingModal
+          open={open}
+          onClose={() => setOpen(false)}
+          onSelectPlan={() => {
+            setOpen(false);
+          }}
+        />
+      ) : null}
     </div>
   );
 }

@@ -6,7 +6,7 @@ import RankPage from "./pages/RankPage.jsx";
 import ImprovePage from "./pages/ImprovePage.jsx";
 import PricingPage from "./pages/PricingPage.jsx";
 
-export const routes = [
+const routes = [
   { path: "/", element: <Landing /> },
   { path: "/audit", element: <AuditPage /> },
   { path: "/rank", element: <RankPage /> },
