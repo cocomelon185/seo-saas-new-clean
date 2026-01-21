@@ -10,6 +10,6 @@
     { "source": "/rank/", "destination": "/rank.html" },
     { "source": "/improve/", "destination": "/improve.html" },
 
-    { "source": "/(.*)", "destination": "/" }
+    { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
