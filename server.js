@@ -239,7 +239,7 @@ app.post(["/api/auth/register","/api/auth/login"], (req, res) => {
   res.json({ ok: true, token: "dev", user });
 });
 
-app.listen(__PORT__, "0.0.0.0", () => { console.log("SERVER LISTENING ON", __PORT__); });
+app.listen(process.env.PORT || 3000, "0.0.0.0", () => { console.log("SERVER LISTENING ON", process.env.PORT || 3000); });
 /* ==== END FORCE LISTENER ==== */
 
 // ==== SERVE FRONTEND (SPA) ====
