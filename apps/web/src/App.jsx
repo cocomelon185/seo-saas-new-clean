@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import LandingPage from "./pages/LandingPage.jsx";
+import LandingPage from "./pages/Landing.jsx";
 import AuditPage from "./pages/AuditPage.jsx";
 import RankPage from "./pages/RankPage.jsx";
 import ImprovePage from "./pages/ImprovePage.jsx";
