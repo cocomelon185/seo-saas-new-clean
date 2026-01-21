@@ -1,5 +1,6 @@
 {
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "https://web-production-838a3.up.railway.app/api/$1" }
+    { "source": "/api/__ping__", "destination": "https://hopeful-enchantment-production-c2b1.up.railway.app/__ping__" },
+    { "source": "/api/(.*)", "destination": "https://hopeful-enchantment-production-c2b1.up.railway.app/api/$1" }
   ]
 }
