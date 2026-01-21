@@ -1,6 +1,15 @@
 {
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "https://api.rankypulse.com/api/$1" },
+    { "source": "/pricing", "destination": "/pricing.html" },
+    { "source": "/audit", "destination": "/audit.html" },
+    { "source": "/rank", "destination": "/rank.html" },
+    { "source": "/improve", "destination": "/improve.html" },
+
+    { "source": "/pricing/", "destination": "/pricing.html" },
+    { "source": "/audit/", "destination": "/audit.html" },
+    { "source": "/rank/", "destination": "/rank.html" },
+    { "source": "/improve/", "destination": "/improve.html" },
+
     { "source": "/(.*)", "destination": "/" }
   ]
 }
