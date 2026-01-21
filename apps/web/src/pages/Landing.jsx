@@ -1,85 +1,96 @@
+import React from "react";
+import { Link } from "react-router-dom";
+
 export default function Landing() {
   return (
-    <div style={{ maxWidth: 960, margin: "0 auto", padding: "48px 20px" }}>
-      <header style={{ paddingBottom: 32 }}>
-        <h1 style={{ fontSize: 44, lineHeight: 1.1, margin: 0 }}>
-          Clear SEO decisions. Without the noise.
-        </h1>
-        <p style={{ fontSize: 18, lineHeight: 1.6, marginTop: 16, maxWidth: 720 }}>
-          Focused page audits with prioritized fixes, examples, and content guidance you can act on immediately.
-        </p>
-        <div style={{ marginTop: 20 }}>
-          <a
-            href="/rank"
-            style={{
-              display: "inline-block",
-              padding: "12px 16px",
-              borderRadius: 10,
-              textDecoration: "none",
-              border: "1px solid rgba(0,0,0,0.15)"
-            }}
-          >
-            Run an Audit
-          </a>
-          <div style={{ marginTop: 10, fontSize: 13, opacity: 0.8 }}>
-            Paid, professional SEO tooling.
+    <main className="min-h-screen bg-white text-slate-900">
+      <div className="mx-auto max-w-5xl px-5 py-14">
+        <header className="pb-10">
+          <p className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-700">
+            RankyPulse
+          </p>
+
+          <h1 className="mt-5 text-4xl font-semibold tracking-tight sm:text-5xl">
+            Clear SEO decisions. <span className="text-slate-500">Without the noise.</span>
+          </h1>
+
+          <p className="mt-4 max-w-2xl text-lg leading-7 text-slate-600">
+            Focused page audits with prioritized fixes, examples, and content guidance you can act on immediately.
+          </p>
+
+          <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:items-center">
+            <Link
+              to="/rank"
+              className="inline-flex items-center justify-center rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white hover:bg-slate-800"
+            >
+              Run an Audit
+            </Link>
+
+            <Link
+              to="/pricing"
+              className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-900 hover:bg-slate-50"
+            >
+              View Pricing
+            </Link>
+
+            <span className="text-xs text-slate-500 sm:ml-2">
+              Paid, professional SEO tooling.
+            </span>
           </div>
-        </div>
-      </header>
+        </header>
 
-      <section style={{ padding: "28px 0", borderTop: "1px solid rgba(0,0,0,0.08)" }}>
-        <h2 style={{ fontSize: 22, margin: "0 0 10px" }}>SEO audits designed for action</h2>
-        <p style={{ margin: 0, lineHeight: 1.7, maxWidth: 820 }}>
-          RankyPulse analyzes individual pages and produces a clear fix plan — so you know what to change first and why it matters.
-        </p>
-      </section>
+        <section className="grid gap-6 border-t border-slate-100 py-10 md:grid-cols-2">
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <h2 className="text-lg font-semibold">SEO audits designed for action</h2>
+            <p className="mt-2 leading-7 text-slate-600">
+              RankyPulse analyzes individual pages and produces a clear fix plan — so you know what to change first and why it matters.
+            </p>
+          </div>
 
-      <section style={{ padding: "28px 0", borderTop: "1px solid rgba(0,0,0,0.08)" }}>
-        <h2 style={{ fontSize: 22, margin: "0 0 10px" }}>How it works</h2>
-        <ol style={{ margin: 0, paddingLeft: 18, lineHeight: 1.9 }}>
-          <li>Enter a page URL</li>
-          <li>Run a focused audit</li>
-          <li>Review prioritized fixes</li>
-          <li>Improve with confidence</li>
-        </ol>
-      </section>
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <h2 className="text-lg font-semibold">How it works</h2>
+            <ol className="mt-2 list-decimal space-y-1 pl-5 leading-7 text-slate-600">
+              <li>Enter a page URL</li>
+              <li>Run a focused audit</li>
+              <li>Review prioritized fixes</li>
+              <li>Improve with confidence</li>
+            </ol>
+          </div>
 
-      <section style={{ padding: "28px 0", borderTop: "1px solid rgba(0,0,0,0.08)" }}>
-        <h2 style={{ fontSize: 22, margin: "0 0 10px" }}>What you get</h2>
-        <ul style={{ margin: 0, paddingLeft: 18, lineHeight: 1.9 }}>
-          <li>One-sentence page diagnosis</li>
-          <li>Priority fix plan (Fix now / next / later)</li>
-          <li>Clear explanations and examples</li>
-          <li>Content briefs on paid plans</li>
-          <li>Audit history and re-runs</li>
-        </ul>
-      </section>
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <h2 className="text-lg font-semibold">What you get</h2>
+            <ul className="mt-2 list-disc space-y-1 pl-5 leading-7 text-slate-600">
+              <li>One-sentence page diagnosis</li>
+              <li>Priority fix plan (Fix now / next / later)</li>
+              <li>Clear explanations and examples</li>
+              <li>Content briefs on paid plans</li>
+              <li>Audit history and re-runs</li>
+            </ul>
+          </div>
 
-      <section style={{ padding: "28px 0", borderTop: "1px solid rgba(0,0,0,0.08)" }}>
-        <h2 style={{ fontSize: 22, margin: "0 0 10px" }}>Who it’s for</h2>
-        <p style={{ margin: 0, lineHeight: 1.7, maxWidth: 820 }}>
-          Built for freelancers, agencies, SaaS teams, and founders who want clarity instead of dashboards.
-        </p>
-      </section>
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <h2 className="text-lg font-semibold">Who it’s for</h2>
+            <p className="mt-2 leading-7 text-slate-600">
+              Built for freelancers, agencies, SaaS teams, and founders who want clarity instead of dashboards.
+            </p>
+          </div>
+        </section>
 
-      <footer style={{ paddingTop: 28, marginTop: 10, borderTop: "1px solid rgba(0,0,0,0.08)" }}>
-        <h2 style={{ fontSize: 22, margin: "0 0 10px" }}>Start with a real page</h2>
-        <p style={{ margin: "0 0 14px", lineHeight: 1.7, maxWidth: 820 }}>
-          Run an audit and see what’s holding your page back — clearly.
-        </p>
-        <a
-          href="/rank"
-          style={{
-            display: "inline-block",
-            padding: "12px 16px",
-            borderRadius: 10,
-            textDecoration: "none",
-            border: "1px solid rgba(0,0,0,0.15)"
-          }}
-        >
-          Run an Audit
-        </a>
-      </footer>
-    </div>
+        <footer className="mt-2 rounded-2xl border border-slate-200 bg-slate-50 p-7">
+          <h2 className="text-lg font-semibold">Start with a real page</h2>
+          <p className="mt-2 max-w-2xl leading-7 text-slate-600">
+            Run an audit and see what’s holding your page back — clearly.
+          </p>
+          <div className="mt-5">
+            <Link
+              to="/rank"
+              className="inline-flex items-center justify-center rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white hover:bg-slate-800"
+            >
+              Run an Audit
+            </Link>
+          </div>
+        </footer>
+      </div>
+    </main>
   );
 }
