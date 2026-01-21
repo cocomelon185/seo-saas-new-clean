@@ -1,15 +1,3 @@
 {
-  "rewrites": [
-    { "source": "/pricing", "destination": "/pricing.html" },
-    { "source": "/audit", "destination": "/audit.html" },
-    { "source": "/rank", "destination": "/rank.html" },
-    { "source": "/improve", "destination": "/improve.html" },
-
-    { "source": "/pricing/", "destination": "/pricing.html" },
-    { "source": "/audit/", "destination": "/audit.html" },
-    { "source": "/rank/", "destination": "/rank.html" },
-    { "source": "/improve/", "destination": "/improve.html" },
-
-    { "source": "/(.*)", "destination": "/" }
-  ]
+  "cleanUrls": true
 }
