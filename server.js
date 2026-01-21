@@ -1,5 +1,9 @@
 import express from "express"
 
+import helmet from "helmet";
+import compression from "compression";
+import rateLimit from "express-rate-limit";
+
 const __DEMO_AUDIT_URL = "https://httpstat.us";
 
 function __seedDemoAudit(auditCache, __mockAudit) {
@@ -28,7 +32,9 @@ import cors from "cors";
 // RANKYPULSE_CORS_PATCH_V1
 const CORS_ALLOWLIST = new Set([
   "https://rank.rankypulse.com",
+  "https://audit.rankypulse.com",
   "https://rankypulse.com",
+  "http://localhost:5173",
   "http://localhost:3000",
   "http://localhost:3001"
 ]);
@@ -37,11 +43,12 @@ const corsMiddleware = cors({
   origin: (origin, cb) => {
     if (!origin) return cb(null, true);
     if (CORS_ALLOWLIST.has(origin)) return cb(null, true);
-    return cb(new Error("CORS blocked: " + origin));
+    if (/^https:\/\/[a-z0-9-]+\.vercel\.app$/i.test(origin)) return cb(null, true);
+    return cb(null, false);
   },
   credentials: true,
   methods: ["GET","HEAD","PUT","PATCH","POST","DELETE","OPTIONS"],
-  allowedHeaders: ["content-type","authorization"]
+  allowedHeaders: ["content-type","authorization","x-requested-with"]
 });
 const app = express();
 app.use(express.static(process.cwd() + "/public"));
@@ -254,10 +261,6 @@ const pageReport = require("./api/page-report.cjs");
 
 app.post("/api/page-report", pageReport);
 
-const pageReportHandler = require("./api/page-report.cjs");
-
-app.post("/api/page-report", (req, res) => pageReportHandler(req, res));
-
 app.get("/__routes__", (req, res) => {
   const out = [];
   for (const layer of (app._router?.stack || [])) {
@@ -267,15 +270,4 @@ app.get("/__routes__", (req, res) => {
     }
   }
   res.json(out);
-});
-
-app.post("/api/page-report", async (req, res) => {
-  try {
-    const mod = await import("./api/page-report.js");
-    const handler = mod.default || mod;
-    return handler(req, res);
-  } catch (e) {
-    console.error("page-report import failed:", e);
-    return res.status(500).json({ ok:false, error:"PAGE_REPORT_LOAD_FAILED", message:String(e && e.message ? e.message : e) });
-  }
 });
