@@ -1,23 +1,18 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
-import Landing from './pages/Landing';
-import SsgRouter from './SsgRouter';
-import LandingPage from "./pages/LandingPage.jsx";
+import React from "react";
+import { Navigate } from "react-router-dom";
+import Landing from "./pages/Landing.jsx";
 import AuditPage from "./pages/AuditPage.jsx";
 import RankPage from "./pages/RankPage.jsx";
 import ImprovePage from "./pages/ImprovePage.jsx";
 import PricingPage from "./pages/PricingPage.jsx";
 
-export default function App() {
-  return (
-    <SsgRouter>
-      <Routes>
-        <Route path="/" element={<Landing />} />
-        <Route path="/audit" element={<AuditPage />} />
-        <Route path="/rank" element={<RankPage />} />
-        <Route path="/improve" element={<ImprovePage />} />
-        <Route path="/pricing" element={<PricingPage />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </SsgRouter>
-  );
-}
+export const routes = [
+  { path: "/", element: <Landing /> },
+  { path: "/audit", element: <AuditPage /> },
+  { path: "/rank", element: <RankPage /> },
+  { path: "/improve", element: <ImprovePage /> },
+  { path: "/pricing", element: <PricingPage /> },
+  { path: "*", element: <Navigate to="/" replace /> },
+];
+
+export default routes;
