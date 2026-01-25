@@ -4,6 +4,7 @@
   "version": "1.0.0",
   "scripts": {
     "dev": "node server.js",
+    "fixtures:http-hygiene": "node scripts/run_http_status_redirect_hygiene_fixtures.mjs",
     "start": "node server.js"
   },
   "dependencies": {
