@@ -1,5 +1,19 @@
 import { URL } from "node:url";
 
+function normUrl(u) {
+  try {
+    const x = new URL(u);
+    x.hash = "";
+    const host = normHost(x.hostname);
+    const port = x.port ? `:${x.port}` : "";
+    const path = x.pathname || "/";
+    const search = x.search || "";
+    return `${x.protocol}//${host}${port}${path}${search}`;
+  } catch {
+    return String(u || "");
+  }
+}
+
 function normHost(h) {
   if (!h) return "";
   return String(h).toLowerCase().replace(/^\s+|\s+$/g, "").replace(/^www\./, "");
@@ -40,8 +54,18 @@ async function fetchOnce(url, method, timeoutMs, userAgent) {
 
 async function fetchChain(startUrl, { maxHops = 5, method = "HEAD", timeoutMs = 15000, userAgent = "RankyPulseBot/1.0" } = {}) {
   const chain = [];
+  const seen = new Map();
+  const repeats = [];
+
   let current = startUrl;
   for (let hop = 0; hop <= maxHops; hop++) {
+    const key = normUrl(current);
+    if (seen.has(key)) {
+      repeats.push({ url: current, norm: key, first_hop: seen.get(key), repeat_hop: hop });
+    } else {
+      seen.set(key, hop);
+    }
+
     const controller = new AbortController();
     const t = setTimeout(() => controller.abort(), timeoutMs);
     let res;
@@ -53,11 +77,11 @@ async function fetchChain(startUrl, { maxHops = 5, method = "HEAD", timeoutMs = 
           res = await fetchOnce(current, "GET", timeoutMs, userAgent);
         } catch (e2) {
           chain.push({ url: current, status: 0, location: null, error: String(e2 && e2.name ? e2.name : e2) });
-          return { chain, finalUrl: current, finalStatus: 0 };
+          return { chain, finalUrl: current, finalStatus: 0, repeats, maxHops };
         }
       } else {
         chain.push({ url: current, status: 0, location: null, error: String(e && e.name ? e.name : e) });
-        return { chain, finalUrl: current, finalStatus: 0 };
+        return { chain, finalUrl: current, finalStatus: 0, repeats, maxHops };
       }
     }
     try {
@@ -68,11 +92,11 @@ async function fetchChain(startUrl, { maxHops = 5, method = "HEAD", timeoutMs = 
           res = await fetchOnce(current, "GET", timeoutMs, userAgent);
         } catch (e2) {
           chain.push({ url: current, status: 0, location: null, error: String(e2 && e2.name ? e2.name : e2) });
-          return { chain, finalUrl: current, finalStatus: 0 };
+          return { chain, finalUrl: current, finalStatus: 0, repeats, maxHops };
         }
       } else {
         chain.push({ url: current, status: 0, location: null, error: String(e && e.name ? e.name : e) });
-        return { chain, finalUrl: current, finalStatus: 0 };
+        return { chain, finalUrl: current, finalStatus: 0, repeats, maxHops };
       }
     }
     try {
@@ -93,7 +117,7 @@ async function fetchChain(startUrl, { maxHops = 5, method = "HEAD", timeoutMs = 
         location: null,
         error: String(e && e.name ? e.name : e),
       });
-      return { chain, finalUrl: current, finalStatus: 0 };
+      return { chain, finalUrl: current, finalStatus: 0, repeats, maxHops };
     }
     clearTimeout(t);
 
@@ -108,18 +132,18 @@ async function fetchChain(startUrl, { maxHops = 5, method = "HEAD", timeoutMs = 
 
     const isRedirect = status >= 300 && status <= 399 && location;
     if (!isRedirect) {
-      return { chain, finalUrl: current, finalStatus: status };
+      return { chain, finalUrl: current, finalStatus: status, repeats, maxHops };
     }
 
     let next;
     try {
       next = new URL(location, current).toString();
     } catch {
-      return { chain, finalUrl: current, finalStatus: status };
+      return { chain, finalUrl: current, finalStatus: status, repeats, maxHops };
     }
     current = next;
   }
-  return { chain, finalUrl: chain[chain.length - 1]?.url || startUrl, finalStatus: chain[chain.length - 1]?.status || 0 };
+  return { chain, finalUrl: chain[chain.length - 1]?.url || startUrl, finalStatus: chain[chain.length - 1]?.status || 0, repeats, maxHops };
 }
 
 function mkIssue(issue_id, title, why, evidence, priority = "fix_now") {
@@ -152,6 +176,29 @@ async function detectHttpStatusRedirectHygiene(ctx) {
   });
 
   const chain = primary.chain || [];
+  const repeats = primary.repeats || [];
+  const maxHops = primary.maxHops || 5;
+  const likelyTooManyRedirects = chain.length >= (maxHops + 1) && chain[chain.length - 1]?.status >= 300 && chain[chain.length - 1]?.status <= 399;
+
+  if ((Array.isArray(repeats) && repeats.length) || likelyTooManyRedirects) {
+    issues.push(
+      mkIssue(
+        "http_redirect_loop",
+        "Redirect loop detected",
+        "The URL appears to redirect in a loop or exceeds the redirect limit. This can block crawlers and break user navigation.",
+        {
+          start_url: start,
+          final_url: finalUrl,
+          final_status: finalStatus,
+          max_hops: maxHops,
+          repeats,
+          chain,
+        },
+        "fix_now"
+      )
+    );
+  }
+
   const hops = Math.max(0, chain.length - 1);
   const finalUrl = primary.finalUrl || start;
   const finalStatus = primary.finalStatus || 0;
