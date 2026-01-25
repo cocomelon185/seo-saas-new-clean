@@ -146,6 +146,44 @@ async function fetchChain(startUrl, { maxHops = 5, method = "HEAD", timeoutMs = 
   return { chain, finalUrl: chain[chain.length - 1]?.url || startUrl, finalStatus: chain[chain.length - 1]?.status || 0, repeats, maxHops };
 }
 
+function extractTitle(html) {
+  const m = /<title[^>]*>([\s\S]*?)<\/title>/i.exec(html || "");
+  if (!m) return "";
+  return String(m[1]).replace(/\s+/g, " ").trim().slice(0, 200);
+}
+
+function findPhrases(text, phrases) {
+  const t = String(text || "").toLowerCase();
+  const hits = [];
+  for (const ph of phrases) {
+    if (t.includes(ph)) hits.push(ph);
+  }
+  return hits;
+}
+
+async function fetchHtml(url, timeoutMs, userAgent) {
+  const controller = new AbortController();
+  const t = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, {
+      method: "GET",
+      redirect: "follow",
+      signal: controller.signal,
+      headers: {
+        "user-agent": userAgent,
+        "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      },
+    });
+    const txt = await res.text();
+    clearTimeout(t);
+    const clip = txt.length > 300000 ? txt.slice(0, 300000) : txt;
+    return { ok: true, status: res.status || 0, finalUrl: res.url || url, html: clip, bytes: txt.length };
+  } catch (e) {
+    clearTimeout(t);
+    return { ok: false, status: 0, finalUrl: url, html: "", bytes: 0, error: String(e && e.name ? e.name : e) };
+  }
+}
+
 function mkIssue(issue_id, title, why, evidence, priority = "fix_now") {
   return {
     issue_id,
@@ -297,6 +335,50 @@ async function detectHttpStatusRedirectHygiene(ctx) {
           "fix_now"
         )
       );
+    }
+  }
+
+
+  if (finalStatus === 200) {
+    const htmlRes = await fetchHtml(finalUrl, ctx?.timeouts?.httpMs || 15000, ctx?.userAgent || "RankyPulseBot/1.0");
+    if (htmlRes && htmlRes.ok && htmlRes.status === 200) {
+      const html = htmlRes.html || "";
+      const title = extractTitle(html);
+      const phrases = [
+        "page not found",
+        "not found",
+        "does not exist",
+        "doesn't exist",
+        "error 404",
+        "404 error",
+        "the page you requested",
+        "cannot be found",
+        "we can't find",
+        "we cannot find",
+      ];
+      const titleHits = findPhrases(title, ["404", "not found", "page not found"]);
+      const bodyHits = findPhrases(html, phrases);
+      const likelySoft404 = (titleHits.length && bodyHits.length) || (titleHits.length && htmlRes.bytes < 8000) || (bodyHits.length >= 2 && htmlRes.bytes < 12000);
+      if (likelySoft404) {
+        issues.push(
+          mkIssue(
+            "http_soft_404",
+            "Soft 404 detected",
+            "The page returns 200 OK but appears to be a 'not found' error page. This can waste crawl budget and mislead search engines.",
+            {
+              start_url: start,
+              final_url: finalUrl,
+              final_status: finalStatus,
+              fetched_url: htmlRes.finalUrl,
+              title,
+              title_hits: titleHits,
+              body_hits: bodyHits,
+              html_bytes: htmlRes.bytes,
+            },
+            "fix_next"
+          )
+        );
+      }
     }
   }
 
