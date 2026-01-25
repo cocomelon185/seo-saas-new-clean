@@ -146,6 +146,22 @@ async function fetchChain(startUrl, { maxHops = 5, method = "HEAD", timeoutMs = 
   return { chain, finalUrl: chain[chain.length - 1]?.url || startUrl, finalStatus: chain[chain.length - 1]?.status || 0, repeats, maxHops };
 }
 
+function extractCanonicalHref(html) {
+  const m = /<link[^>]+rel=["']?canonical["']?[^>]*>/i.exec(html || "");
+  if (!m) return "";
+  const tag = m[0];
+  const m2 = /href=["']([^"']+)["']/i.exec(tag);
+  return m2 ? String(m2[1]).trim() : "";
+}
+
+function resolveUrlMaybe(href, base) {
+  try {
+    return new URL(href, base).toString();
+  } catch {
+    return "";
+  }
+}
+
 function extractTitle(html) {
   const m = /<title[^>]*>([\s\S]*?)<\/title>/i.exec(html || "");
   if (!m) return "";
@@ -358,6 +374,37 @@ async function detectHttpStatusRedirectHygiene(ctx) {
       ];
       const titleHits = findPhrases(title, ["404", "not found", "page not found"]);
       const bodyHits = findPhrases(html, phrases);
+      const canonicalHref = extractCanonicalHref(html);
+      const canonicalUrl = canonicalHref ? resolveUrlMaybe(canonicalHref, htmlRes.finalUrl || finalUrl) : "";
+      const finalObj = (() => { try { return new URL(finalUrl); } catch { return null; } })();
+      const canonObj = (() => { try { return new URL(canonicalUrl); } catch { return null; } })();
+      const finalHost2 = finalObj ? normHost(finalObj.hostname) : "";
+      const canonHost2 = canonObj ? normHost(canonObj.hostname) : "";
+      const finalNorm = normUrl(finalUrl);
+      const canonNorm = canonicalUrl ? normUrl(canonicalUrl) : "";
+      const canonHostMismatch = !!(canonHost2 && finalHost2 && canonHost2 !== finalHost2);
+      const canonUrlMismatch = !!(canonNorm && finalNorm && canonNorm !== finalNorm);
+      if (canonHostMismatch || canonUrlMismatch) {
+        issues.push(
+          mkIssue(
+            "canonical_redirect_mismatch",
+            "Canonical URL does not match resolved URL",
+            "The page resolves to one URL but declares a different canonical. This can split ranking signals and cause indexing/canonicalization confusion.",
+            {
+              start_url: start,
+              final_url: finalUrl,
+              final_host: finalHost2,
+              canonical_href: canonicalHref,
+              canonical_url: canonicalUrl,
+              canonical_host: canonHost2,
+              canonical_host_mismatch: canonHostMismatch,
+              canonical_url_mismatch: canonUrlMismatch,
+              chain,
+            },
+            "fix_next"
+          )
+        );
+      }
       const likelySoft404 = (titleHits.length && bodyHits.length) || (titleHits.length && htmlRes.bytes < 8000) || (bodyHits.length >= 2 && htmlRes.bytes < 12000);
       if (likelySoft404) {
         issues.push(
