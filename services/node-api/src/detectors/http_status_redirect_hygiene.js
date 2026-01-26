@@ -423,6 +423,7 @@ async function detectHttpStatusRedirectHygiene(ctx) {
 
   if (finalStatus === 200) {
     const htmlRes = await fetchHtml(finalUrl, ctx?.timeouts?.httpMs || 15000, ctx?.userAgent || "RankyPulseBot/1.0");
+    const xrtRaw = (htmlRes && htmlRes.x_robots_tag) ? htmlRes.x_robots_tag : ((chain && chain.length) ? (chain[chain.length - 1]?.x_robots_tag || "") : "");
     if (htmlRes && htmlRes.ok && htmlRes.status === 200) {
       const html = htmlRes.html || "";
       const title = extractTitle(html);
@@ -453,7 +454,7 @@ async function detectHttpStatusRedirectHygiene(ctx) {
 
       // X-ROBOTS-TAG + META ROBOTS (indexability) cross-check
       const metaRobots = extractMetaRobots(html);
-      const xrt = parseRobotsDirectives(htmlRes.x_robots_tag || (chain && chain.length ? chain[chain.length - 1]?.x_robots_tag : ""));
+      const xrt = parseRobotsDirectives(xrtRaw);
       const mrd = parseRobotsDirectives(metaRobots);
       const noindex = !!(xrt.noindex || mrd.noindex);
       const xRobotsHeaderPresent = !!(xrt.raw && xrt.raw.trim());
@@ -565,7 +566,7 @@ async function detectHttpStatusRedirectHygiene(ctx) {
 
 
   // INDEXABILITY CONTRADICTIONS
-  const hasNoindex = (htmlRes && htmlRes.ok && /<meta[^>]+name=["']robots["'][^>]*content=["'][^"']*noindex/i.test(htmlRes.html || ""));
+  const hasNoindex = /<meta[^>]+name=["']robots["'][^>]*content=["'][^"']*noindex/i.test(html || "");
   const isSoft404 = issues.some(i => i.issue_id === "http_soft_404");
 
   if (hasNoindex && canonNorm && canonNorm === finalNorm) {
