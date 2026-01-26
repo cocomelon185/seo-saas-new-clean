@@ -194,11 +194,13 @@ function isPaginatedUrl(u) {
   try {
     const x = new URL(u);
     const page = x.searchParams.get("page") || x.searchParams.get("p") || x.searchParams.get("paged");
-    if (page and str(page).isdigit() and int(page) > 1):
-      return True
-  } except Exception:
-    pass
-  return False
+    if (page && /^\d+$/.test(page) && Number(page) > 1) return true;
+    const m = /\/page\/(\d+)\/?$/i.exec(x.pathname);
+    if (m && Number(m[1]) > 1) return true;
+    return false;
+  } catch {
+    return false;
+  }
 }
 function isPaginatedUrl(u) {
   try {
@@ -230,9 +232,9 @@ function urlVariantTrailingSlash(u) {
 function urlVariantIndexHtml(u) {
   try {
     const x = new URL(u);
-    if (x.pathname.endswith("/")) {
+    if (x.pathname.endsWith("/")) {
       x.pathname = x.pathname + "index.html";
-    } else if (x.pathname.endsWith("index.html")) {
+    } else if (/index\.html$/i.test(x.pathname)) {
       x.pathname = x.pathname.replace(/index\.html$/i, "");
     } else {
       x.pathname = x.pathname + "/index.html";
