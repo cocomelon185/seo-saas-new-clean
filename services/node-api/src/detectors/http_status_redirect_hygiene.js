@@ -195,18 +195,6 @@ function isPaginatedUrl(u) {
     const x = new URL(u);
     const page = x.searchParams.get("page") || x.searchParams.get("p") || x.searchParams.get("paged");
     if (page && /^\d+$/.test(page) && Number(page) > 1) return true;
-    const m = /\/page\/(\d+)\/?$/i.exec(x.pathname);
-    if (m && Number(m[1]) > 1) return true;
-    return false;
-  } catch {
-    return false;
-  }
-}
-function isPaginatedUrl(u) {
-  try {
-    const x = new URL(u);
-    const page = x.searchParams.get("page") || x.searchParams.get("p") || x.searchParams.get("paged");
-    if (page && /^\d+$/.test(page) && Number(page) > 1) return true;
     if (/\/page\/(\d+)\/?$/i.test(x.pathname)) {
       const m = /\/page\/(\d+)\/?$/i.exec(x.pathname);
       if (m && Number(m[1]) > 1) return true;
