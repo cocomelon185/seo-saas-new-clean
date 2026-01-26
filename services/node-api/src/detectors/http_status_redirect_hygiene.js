@@ -123,11 +123,13 @@ async function fetchChain(startUrl, { maxHops = 5, method = "HEAD", timeoutMs = 
 
     const status = res.status || 0;
     const location = res.headers ? res.headers.get("location") : null;
+    const xRobotsTag = res.headers ? (res.headers.get("x-robots-tag") || res.headers.get("X-Robots-Tag")) : null;
 
     chain.push({
       url: current,
       status,
       location: location || null,
+      x_robots_tag: xRobotsTag || null,
     });
 
     const isRedirect = status >= 300 && status <= 399 && location;
@@ -168,6 +170,79 @@ function extractTitle(html) {
   return String(m[1]).replace(/\s+/g, " ").trim().slice(0, 200);
 }
 
+function parseRobotsDirectives(v) {
+  const raw = String(v || "");
+  const t = raw.toLowerCase();
+  const has = (k) => t.includes(k);
+  return {
+    raw,
+    noindex: has("noindex"),
+    index: has("index"),
+    nofollow: has("nofollow"),
+    follow: has("follow"),
+    nosnippet: has("nosnippet"),
+    noarchive: has("noarchive"),
+  };
+}
+
+function extractMetaRobots(html) {
+  const m = /<meta[^>]+name=["']robots["'][^>]*content=["']([^"']+)["'][^>]*>/i.exec(html || "");
+  return m ? String(m[1]).trim() : "";
+}
+
+function isPaginatedUrl(u) {
+  try {
+    const x = new URL(u);
+    const page = x.searchParams.get("page") || x.searchParams.get("p") || x.searchParams.get("paged");
+    if (page and str(page).isdigit() and int(page) > 1):
+      return True
+  } except Exception:
+    pass
+  return False
+}
+function isPaginatedUrl(u) {
+  try {
+    const x = new URL(u);
+    const page = x.searchParams.get("page") || x.searchParams.get("p") || x.searchParams.get("paged");
+    if (page && /^\d+$/.test(page) && Number(page) > 1) return true;
+    if (/\/page\/(\d+)\/?$/i.test(x.pathname)) {
+      const m = /\/page\/(\d+)\/?$/i.exec(x.pathname);
+      if (m && Number(m[1]) > 1) return true;
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+function urlVariantTrailingSlash(u) {
+  try {
+    const x = new URL(u);
+    if (x.pathname === "/") return u;
+    if (x.pathname.endsWith("/")) x.pathname = x.pathname.slice(0, -1);
+    else x.pathname = x.pathname + "/";
+    return x.toString();
+  } catch {
+    return "";
+  }
+}
+
+function urlVariantIndexHtml(u) {
+  try {
+    const x = new URL(u);
+    if (x.pathname.endswith("/")) {
+      x.pathname = x.pathname + "index.html";
+    } else if (x.pathname.endsWith("index.html")) {
+      x.pathname = x.pathname.replace(/index\.html$/i, "");
+    } else {
+      x.pathname = x.pathname + "/index.html";
+    }
+    return x.toString();
+  } catch {
+    return "";
+  }
+}
+
 function findPhrases(text, phrases) {
   const t = String(text || "").toLowerCase();
   const hits = [];
@@ -193,7 +268,8 @@ async function fetchHtml(url, timeoutMs, userAgent) {
     const txt = await res.text();
     clearTimeout(t);
     const clip = txt.length > 300000 ? txt.slice(0, 300000) : txt;
-    return { ok: true, status: res.status || 0, finalUrl: res.url || url, html: clip, bytes: txt.length };
+    const xRobotsTag = res.headers ? (res.headers.get("x-robots-tag") || res.headers.get("X-Robots-Tag")) : null;
+    return { ok: true, status: res.status || 0, finalUrl: res.url || url, html: clip, bytes: txt.length, x_robots_tag: xRobotsTag || null };
   } catch (e) {
     clearTimeout(t);
     return { ok: false, status: 0, finalUrl: url, html: "", bytes: 0, error: String(e && e.name ? e.name : e) };
@@ -384,6 +460,74 @@ async function detectHttpStatusRedirectHygiene(ctx) {
       const canonNorm = canonicalUrl ? normUrl(canonicalUrl) : "";
       const canonHostMismatch = !!(canonHost2 && finalHost2 && canonHost2 !== finalHost2);
       const canonUrlMismatch = !!(canonNorm && finalNorm && canonNorm !== finalNorm);
+
+      // X-ROBOTS-TAG + META ROBOTS (indexability) cross-check
+      const metaRobots = extractMetaRobots(html);
+      const xrt = parseRobotsDirectives(htmlRes.x_robots_tag || (chain && chain.length ? chain[chain.length - 1]?.x_robots_tag : ""));
+      const mrd = parseRobotsDirectives(metaRobots);
+      const noindex = !!(xrt.noindex || mrd.noindex);
+      const xRobotsHeaderPresent = !!(xrt.raw && xrt.raw.trim());
+      if (xRobotsHeaderPresent && mrd.raw && ((xrt.noindex && mrd.index) || (xrt.index && mrd.noindex))) {
+        issues.push(mkIssue(
+          "x_robots_tag_contradiction",
+          "Robots directives conflict (header vs meta)",
+          "X-Robots-Tag header and meta robots provide conflicting directives. Crawlers may follow the stricter directive, causing unexpected indexing behavior.",
+          {
+            start_url: start,
+            final_url: finalUrl,
+            x_robots_tag: xrt.raw,
+            meta_robots: mrd.raw,
+          },
+          "fix_now"
+        ));
+      }
+
+      // PAGINATION canonical misuse (conservative)
+      const paginated = isPaginatedUrl(finalUrl);
+      if (paginated && canonicalUrl && canonNorm && finalNorm && canonNorm !== finalNorm) {
+        issues.push(mkIssue(
+          "canonical_pagination_misuse",
+          "Paginated page canonicals to a different page",
+          "Paginated pages usually should self-canonical unless a true view-all page exists. Canonicalizing page 2+ to another URL can cause pagination to drop from the index.",
+          {
+            start_url: start,
+            final_url: finalUrl,
+            canonical_url: canonicalUrl,
+            chain,
+          },
+          "fix_next"
+        ));
+      }
+
+      // TRAILING SLASH / index.html duplication probes (only when indexable)
+      if (!noindex) {
+        const slashVar = urlVariantTrailingSlash(finalUrl);
+        const indexVar = urlVariantIndexHtml(finalUrl);
+        const variants = [slashVar, indexVar].filter(v => v && v !== finalUrl);
+        for (const v of variants) {
+          const probe = await fetchChain(v, { maxHops: 5, method: "HEAD", timeoutMs: ctx?.timeouts?.httpMs || 15000, userAgent: ctx?.userAgent || "RankyPulseBot/1.0" });
+          const vFinalUrl = probe.finalUrl || v;
+          const vFinalStatus = probe.finalStatus || 0;
+          const vNorm = normUrl(vFinalUrl);
+          if (vFinalStatus === 200 && vNorm && finalNorm && vNorm !== finalNorm) {
+            issues.push(mkIssue(
+              "duplicate_url_variant",
+              "Duplicate URL variants detected",
+              "Multiple URL variants return 200 without consolidating via redirects. This can split signals (trailing slash / index.html duplication).",
+              {
+                start_url: start,
+                final_url: finalUrl,
+                variant_tested: v,
+                variant_final_url: vFinalUrl,
+                variant_status: vFinalStatus,
+                variant_chain: probe.chain || [],
+              },
+              "fix_next"
+            ));
+            break;
+          }
+        }
+      }
       if (canonHostMismatch || canonUrlMismatch) {
         issues.push(
           mkIssue(
