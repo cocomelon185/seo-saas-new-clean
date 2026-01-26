@@ -429,6 +429,53 @@ async function detectHttpStatusRedirectHygiene(ctx) {
     }
   }
 
+
+  // INDEXABILITY CONTRADICTIONS
+  const hasNoindex = (htmlRes && htmlRes.ok && /<meta[^>]+name=["']robots["'][^>]*content=["'][^"']*noindex/i.test(htmlRes.html || ""));
+  const isSoft404 = issues.some(i => i.issue_id === "http_soft_404");
+
+  if (hasNoindex && canonNorm && canonNorm === finalNorm) {
+    issues.push(mkIssue(
+      "indexability_contradiction",
+      "Noindex page declares itself as canonical",
+      "The page is marked noindex but also declares itself as canonical, sending conflicting signals to search engines.",
+      {
+        final_url: finalUrl,
+        canonical_url: canonicalUrl,
+        noindex: true
+      },
+      "fix_now"
+    ));
+  }
+
+  if (!hasNoindex && canonNorm && canonNorm !== finalNorm) {
+    const canonIsNoindex = issues.some(i => i.issue_id === "canonical_redirect_mismatch");
+    if (canonIsNoindex) {
+      issues.push(mkIssue(
+        "indexability_contradiction",
+        "Indexable page canonicals to non-indexable URL",
+        "The page is indexable but its canonical target appears to be non-indexable.",
+        {
+          final_url: finalUrl,
+          canonical_url: canonicalUrl
+        },
+        "fix_now"
+      ));
+    }
+  }
+
+  if (isSoft404 && !hasNoindex) {
+    issues.push(mkIssue(
+      "indexability_contradiction",
+      "Soft 404 page is indexable",
+      "The page appears to be a soft 404 but is still indexable, which can waste crawl budget and harm quality signals.",
+      {
+        final_url: finalUrl
+      },
+      "fix_now"
+    ));
+  }
+
   return issues;
 }
 
