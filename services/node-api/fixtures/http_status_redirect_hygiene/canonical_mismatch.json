@@ -1,1 +1,26 @@
-{"url":"http://example.com"}
+{
+  "url": "https://fixture.local/canon-mismatch",
+  "mock": {
+    "fetch": {
+      "https://fixture.local/canon-mismatch": {
+        "GET": {
+          "status": 200,
+          "headers": { "content-type": "text/html; charset=utf-8" },
+          "body": "<html><head><link rel='canonical' href='https://fixture.local/other'/></head><body>ok</body></html>"
+        },
+        "HEAD": {
+          "status": 200,
+          "headers": { "content-type": "text/html; charset=utf-8" },
+          "body": ""
+        }
+      },
+      "https://fixture.local/other": {
+        "HEAD": {
+          "status": 200,
+          "headers": { "content-type": "text/html; charset=utf-8" },
+          "body": ""
+        }
+      }
+    }
+  }
+}
