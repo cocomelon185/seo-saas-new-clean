@@ -14,11 +14,15 @@ async function main() {
   for (const f of files) {
     const p = path.join(dir, f);
     const data = JSON.parse(fs.readFileSync(p, "utf8"));
+    globalThis.__RP_HTTP_HYGIENE_FIXTURE__ = data.mock || null;
+
     const issues = await detector.default.run({
       url: data.url,
       timeouts: { httpMs: 15000 },
       userAgent: "RankyPulseFixtureRunner/1.0",
     });
+
+    globalThis.__RP_HTTP_HYGIENE_FIXTURE__ = null;
     out.push({ fixture: f, url: data.url, issues });
   }
   process.stdout.write(JSON.stringify(out, null, 2) + "\n");
