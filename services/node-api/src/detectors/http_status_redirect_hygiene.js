@@ -282,6 +282,9 @@ async function detectHttpStatusRedirectHygiene(ctx) {
 
   const issues = [];
   let html = "";
+  let finalNorm = "";
+  let canonNorm = "";
+  let canonicalUrl = "";
 
   const start = String(targetUrl);
   const startUrlObj = (() => { try { return new URL(start); } catch { return null; } })();
@@ -322,6 +325,7 @@ async function detectHttpStatusRedirectHygiene(ctx) {
 
   const hops = Math.max(0, chain.length - 1);
   const finalUrl = primary.finalUrl || start;
+  finalNorm = normUrl(finalUrl);
   const finalStatus = primary.finalStatus || 0;
 
   if (finalStatus !== 200) {
@@ -444,13 +448,12 @@ async function detectHttpStatusRedirectHygiene(ctx) {
       const titleHits = findPhrases(title, ["404", "not found", "page not found"]);
       const bodyHits = findPhrases(html, phrases);
       const canonicalHref = extractCanonicalHref(html);
-      const canonicalUrl = canonicalHref ? resolveUrlMaybe(canonicalHref, htmlRes.finalUrl || finalUrl) : "";
+      canonicalUrl = canonicalHref ? resolveUrlMaybe(canonicalHref, htmlRes.finalUrl || finalUrl) : "";
+  canonNorm = canonicalUrl ? normUrl(canonicalUrl) : "";
       const finalObj = (() => { try { return new URL(finalUrl); } catch { return null; } })();
       const canonObj = (() => { try { return new URL(canonicalUrl); } catch { return null; } })();
       const finalHost2 = finalObj ? normHost(finalObj.hostname) : "";
       const canonHost2 = canonObj ? normHost(canonObj.hostname) : "";
-      const finalNorm = normUrl(finalUrl);
-      const canonNorm = canonicalUrl ? normUrl(canonicalUrl) : "";
       const canonHostMismatch = !!(canonHost2 && finalHost2 && canonHost2 !== finalHost2);
       const canonUrlMismatch = !!(canonNorm && finalNorm && canonNorm !== finalNorm);
 
