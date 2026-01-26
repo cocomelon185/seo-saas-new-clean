@@ -1,4 +1,74 @@
+
 import { URL } from "node:url";
+
+
+function __rpFixtureEnabled() {
+  const v = process.env.__RP_HTTP_HYGIENE_FIXTURE__;
+  return v === "1" || v === "true" || v === "yes";
+}
+
+function __rpHeadersGet(headersObj, key) {
+  if (!headersObj) return null;
+  const k = String(key || "");
+  const lk = k.toLowerCase();
+  if (Object.prototype.hasOwnProperty.call(headersObj, lk)) return headersObj[lk];
+  if (Object.prototype.hasOwnProperty.call(headersObj, k)) return headersObj[k];
+  for (const kk of Object.keys(headersObj)) {
+    if (String(kk).toLowerCase() === lk) return headersObj[kk];
+  }
+  return null;
+}
+
+function __rpMakeResponse(hit, fallbackUrl) {
+  const status = Number((hit && hit.status) ?? 200);
+  const headersObj = (hit && hit.headers) ? hit.headers : {};
+  const body = (hit && hit.body) ?? "";
+  const finalUrl = (hit && (hit.final_url || hit.url)) || fallbackUrl;
+
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    url: finalUrl,
+    headers: { get: (k) => __rpHeadersGet(headersObj, k) },
+    text: async () => String(body),
+  };
+}
+
+async function __rpFetch(url, opts = {}) {
+  if (__rpFixtureEnabled()) {
+    try {
+      const fx = globalThis.__RP_HTTP_HYGIENE_FIXTURE__;
+
+      // If mock is a function: (url, opts) => hit|null
+      if (typeof fx === "function") {
+        const hit = await fx(url, opts);
+        if (hit) return __rpMakeResponse(hit, String(url));
+      }
+
+      // If mock is an object or array:
+      if (fx && (typeof fx === "object")) {
+        const u = String(url);
+
+        // Shape A: map keyed by URL
+        if (!Array.isArray(fx) && fx[u]) {
+          return __rpMakeResponse(fx[u], u);
+        }
+
+        // Shape B: { responses: [...] }
+        const arr = Array.isArray(fx) ? fx : (Array.isArray(fx.responses) ? fx.responses : null);
+        if (arr) {
+          const hit = arr.find(r => String(r.url) === u);
+          if (hit) return __rpMakeResponse(hit, u);
+        }
+      }
+    } catch (e) {
+      // fall through to real fetch
+    }
+  }
+
+  return fetch(url, opts);
+}
+
 
 function normUrl(u) {
   try {
@@ -33,7 +103,7 @@ async function fetchOnce(url, method, timeoutMs, userAgent) {
   const controller = new AbortController();
   const t = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const res = await fetch(url, {
+    const res = await __rpFetch(url, {
       method,
       redirect: "manual",
       signal: controller.signal,
@@ -58,16 +128,12 @@ async function fetchChain(startUrl, { maxHops = 5, method = "HEAD", timeoutMs = 
   const repeats = [];
 
   let current = startUrl;
+
   for (let hop = 0; hop <= maxHops; hop++) {
     const key = normUrl(current);
-    if (seen.has(key)) {
-      repeats.push({ url: current, norm: key, first_hop: seen.get(key), repeat_hop: hop });
-    } else {
-      seen.set(key, hop);
-    }
+    if (seen.has(key)) repeats.push({ url: current, norm: key, first_hop: seen.get(key), repeat_hop: hop });
+    else seen.set(key, hop);
 
-    const controller = new AbortController();
-    const t = setTimeout(() => controller.abort(), timeoutMs);
     let res;
     try {
       res = await fetchOnce(current, method, timeoutMs, userAgent);
@@ -84,68 +150,29 @@ async function fetchChain(startUrl, { maxHops = 5, method = "HEAD", timeoutMs = 
         return { chain, finalUrl: current, finalStatus: 0, repeats, maxHops };
       }
     }
-    try {
-      res = await fetchOnce(current, method, timeoutMs, userAgent);
-    } catch (e) {
-      if (method === "HEAD") {
-        try {
-          res = await fetchOnce(current, "GET", timeoutMs, userAgent);
-        } catch (e2) {
-          chain.push({ url: current, status: 0, location: null, error: String(e2 && e2.name ? e2.name : e2) });
-          return { chain, finalUrl: current, finalStatus: 0, repeats, maxHops };
-        }
-      } else {
-        chain.push({ url: current, status: 0, location: null, error: String(e && e.name ? e.name : e) });
-        return { chain, finalUrl: current, finalStatus: 0, repeats, maxHops };
-      }
-    }
-    try {
-      res = await fetch(current, {
-        method,
-        redirect: "manual",
-        signal: controller.signal,
-        headers: {
-          "user-agent": userAgent,
-          "accept": "*/*",
-        },
-      });
-    } catch (e) {
-      clearTimeout(t);
-      chain.push({
-        url: current,
-        status: 0,
-        location: null,
-        error: String(e && e.name ? e.name : e),
-      });
-      return { chain, finalUrl: current, finalStatus: 0, repeats, maxHops };
-    }
-    clearTimeout(t);
 
     const status = res.status || 0;
     const location = res.headers ? res.headers.get("location") : null;
     const xRobotsTag = res.headers ? (res.headers.get("x-robots-tag") || res.headers.get("X-Robots-Tag")) : null;
 
-    chain.push({
-      url: current,
-      status,
-      location: location || null,
-      x_robots_tag: xRobotsTag || null,
-    });
+    chain.push({ url: current, status, location: location || null, x_robots_tag: xRobotsTag || null });
 
     const isRedirect = status >= 300 && status <= 399 && location;
-    if (!isRedirect) {
-      return { chain, finalUrl: current, finalStatus: status, repeats, maxHops };
-    }
+    if (!isRedirect) return { chain, finalUrl: current, finalStatus: status, repeats, maxHops };
 
     let next;
-    try {
-      next = new URL(location, current).toString();
-    } catch {
-      return { chain, finalUrl: current, finalStatus: status, repeats, maxHops };
-    }
+    try { next = new URL(location, current).toString(); }
+    catch { return { chain, finalUrl: current, finalStatus: status, repeats, maxHops }; }
     current = next;
   }
-  return { chain, finalUrl: chain[chain.length - 1]?.url || startUrl, finalStatus: chain[chain.length - 1]?.status || 0, repeats, maxHops };
+
+  return {
+    chain,
+    finalUrl: chain[chain.length - 1]?.url || startUrl,
+    finalStatus: chain[chain.length - 1]?.status || 0,
+    repeats,
+    maxHops
+  };
 }
 
 function extractCanonicalHref(html) {
@@ -246,7 +273,7 @@ async function fetchHtml(url, timeoutMs, userAgent) {
   const controller = new AbortController();
   const t = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const res = await fetch(url, {
+    const res = await __rpFetch(url, {
       method: "GET",
       redirect: "follow",
       signal: controller.signal,
