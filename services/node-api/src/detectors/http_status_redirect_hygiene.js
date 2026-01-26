@@ -281,6 +281,7 @@ async function detectHttpStatusRedirectHygiene(ctx) {
   if (!targetUrl) return [];
 
   const issues = [];
+  let html = "";
 
   const start = String(targetUrl);
   const startUrlObj = (() => { try { return new URL(start); } catch { return null; } })();
@@ -423,6 +424,7 @@ async function detectHttpStatusRedirectHygiene(ctx) {
 
   if (finalStatus === 200) {
     const htmlRes = await fetchHtml(finalUrl, ctx?.timeouts?.httpMs || 15000, ctx?.userAgent || "RankyPulseBot/1.0");
+    if (htmlRes && htmlRes.ok && typeof htmlRes.html === "string") html = htmlRes.html;
     const xrtRaw = (htmlRes && htmlRes.x_robots_tag) ? htmlRes.x_robots_tag : ((chain && chain.length) ? (chain[chain.length - 1]?.x_robots_tag || "") : "");
     if (htmlRes && htmlRes.ok && htmlRes.status === 200) {
       const html = htmlRes.html || "";
