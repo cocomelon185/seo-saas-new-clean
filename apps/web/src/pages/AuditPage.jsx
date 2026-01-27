@@ -151,6 +151,12 @@ try {
         )}
 
         {status === "success" && (
+        {result?.ok === false && (
+          <div className="rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200">
+            {result?.warning || "Audit failed. See debug for details."}
+          </div>
+        )}
+
           <div className="grid gap-4 md:grid-cols-3">
             <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
               <div className="text-sm font-semibold text-white/80">SEO Score</div>
