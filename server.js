@@ -1,4 +1,5 @@
 import express from "express"
+import pageReport from "./api/page-report.js";
 
 import helmet from "helmet";
 import compression from "compression";
@@ -239,6 +240,10 @@ app.post(["/api/auth/register","/api/auth/login"], (req, res) => {
   res.json({ ok: true, token: "dev", user });
 });
 
+app.post("/api/page-report", pageReport);
+console.log("Registered POST /api/page-report");
+
+
 app.listen(process.env.PORT || 3000, "0.0.0.0", () => { console.log("SERVER LISTENING ON", process.env.PORT || 3000); });
 /* ==== END FORCE LISTENER ==== */
 
@@ -256,11 +261,6 @@ app.get("/api/auth/me", (req, res) => {
   const cookie = req.headers.cookie || "";
   res.json({ ok: true, hasAuthHeader: auth.startsWith("Bearer "), hasCookie: cookie.length > 0 });
 });
-
-const pageReport = require("./api/page-report.cjs");
-
-app.post("/api/page-report", pageReport);
-
 app.get("/__routes__", (req, res) => {
   const out = [];
   for (const layer of (app._router?.stack || [])) {
