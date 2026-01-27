@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import PricingModal from "../components/PricingModal.jsx";
 import AppShell from "../components/AppShell.jsx";
 import IssuesPanel from "../components/IssuesPanel.jsx";
+import AuditImpactBanner from "../components/AuditImpactBanner.jsx";
 import AuditHistoryPanel from "../components/AuditHistoryPanel.jsx";
 import { pushAuditHistory } from "../lib/auditHistory.js";
 
@@ -165,7 +166,8 @@ export default function AuditPage() {
           navigate("/pricing");
         }}
       />
-          <IssuesPanel issues={result?.issues} />
+          <AuditImpactBanner score={result?.score} issues={result?.issues} />
+            <IssuesPanel issues={result?.issues} />
 </AppShell>
   );
 }
