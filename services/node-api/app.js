@@ -19,6 +19,10 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import path from "path";
+import fs from "fs";
+const SPA_DIST_LEGACY = path.join(process.cwd(), "services", "node-api", "frontend", "dist");
+const SPA_INDEX_LEGACY = path.join(SPA_DIST_LEGACY, "index.html");
+const HAS_SPA_LEGACY = fs.existsSync(SPA_INDEX_LEGACY);
 import { fileURLToPath } from "url";
 import { Worker } from "worker_threads";
 
@@ -430,8 +434,12 @@ app.get("/api/audits/:id", requireAuth, (req, res) => {
 });
 
 // ===== Static frontend (single-port) =====
-app.use(express.static(FRONTEND_DIST));
-app.get("*", (req, res) => res.sendFile(path.join(FRONTEND_DIST, "index.html")));
+if (HAS_SPA_LEGACY) app.use(express.static(FRONTEND_DIST));
+app.get("*", (req, res, next) => {
+  if (req.path && req.path.startsWith("/api")) return next();
+  if (!HAS_SPA_LEGACY) return res.status(404).json({ ok: false, error: "SPA dist missing" });
+  return res.sendFile(path.join(FRONTEND_DIST, "index.html"));
+});
 
 const port = process.env.PORT || 3000;
 __seedDemoAudit(auditCache, __mockAudit);
