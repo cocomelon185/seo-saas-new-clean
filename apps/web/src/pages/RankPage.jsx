@@ -1,7 +1,12 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import AppShell from "../components/AppShell.jsx";
+import RankHistoryPanel from "../components/RankHistoryPanel.jsx";
+import { saveRankCheck } from "../utils/rankHistory.js";
+import { exportRankSummary } from "../utils/exportRankSummary.js";
 
 export default function RankPage() {
+  const navigate = useNavigate();
   const [keyword, setKeyword] = useState("");
   const [domain, setDomain] = useState("");
   const [status, setStatus] = useState("idle");
@@ -34,7 +39,9 @@ export default function RankPage() {
       }
 
       const data = await res.json();
-      setResult({ ...data, rank: data.rank ?? data.position });
+      const normalized = { ...data, rank: data.rank ?? data.position };
+      setResult(normalized);
+      try { saveRankCheck(normalized); } catch {}
       setStatus("success");
     } catch (e) {
       setStatus("error");
@@ -48,6 +55,7 @@ export default function RankPage() {
       subtitle="Check where your domain ranks for a keyword. Keep it fast and simple — history comes later."
     >
       <div className="flex flex-col gap-4">
+        <RankHistoryPanel onPick={({ keyword, domain }) => { setKeyword(keyword); setDomain(domain); }} />
         <div className="grid gap-3 md:grid-cols-3 md:items-end">
           <div>
             <label className="mb-2 block text-sm font-medium text-white/80">Keyword</label>

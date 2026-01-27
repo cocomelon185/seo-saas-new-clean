@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import PricingModal from "../components/PricingModal.jsx";
 import AppShell from "../components/AppShell.jsx";
 import IssuesPanel from "../components/IssuesPanel.jsx";
@@ -11,12 +11,21 @@ import { pushAuditHistory } from "../lib/auditHistory.js";
 
 export default function AuditPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [pricingOpen, setPricingOpen] = useState(false);
 
   const [url, setUrl] = useState("");
   const [status, setStatus] = useState("idle"); // idle | loading | success | error
   const [error, setError] = useState("");
   const [result, setResult] = useState(null);
+
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(location.search || "");
+      const u = (params.get("url") || "").trim();
+      if (u) setUrl(u);
+    } catch {}
+  }, [location.search]);
 
   const canRun = useMemo(() => {
     try {
