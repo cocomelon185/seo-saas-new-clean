@@ -4,6 +4,7 @@ import PricingModal from "../components/PricingModal.jsx";
 import AppShell from "../components/AppShell.jsx";
 import IssuesPanel from "../components/IssuesPanel.jsx";
 import { exportAuditSummary } from "../utils/exportAuditSummary.js";
+import ShareAuditButton from "../components/ShareAuditButton.jsx";
 import SavedAuditsPanel from "../components/SavedAuditsPanel.jsx";
 import AuditImpactBanner from "../components/AuditImpactBanner.jsx";
 import AuditHistoryPanel from "../components/AuditHistoryPanel.jsx";
