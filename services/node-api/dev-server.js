@@ -3,30 +3,281 @@ import express from "express";
 const app = express();
 app.use(express.json());
 
-app.get("/__ping__", (req, res) => {
-  res.json({ ok: true });
+app.get("/__ping__", (req, res) => res.json({ ok: true }));
+
+app.get("/__test__/all-bad", (req, res) => {
+  res.type("html").send(`<!doctype html>
+<html>
+  <head>
+    <title>This is a deliberately very long SEO title that exceeds sixty characters to trigger the title too long detector</title>
+  </head>
+  <body>
+    <p>No meta description and no H1.</p>
+  </body>
+</html>`);
 });
 
-app.post("/api/page-report", async (req, res) => {
-  const url = String(req.body?.url || "").trim();
-  if (!url) return res.status(400).json({ ok: false, error: "Missing url" });
+app.get("/__test__/redirect", (req, res) => {
+  res.redirect(301, "/__test__/all-bad");
+});
 
-  return res.json({
-    ok: true,
-    url,
-    score: 42,
-    quick_wins: [
-      "Missing meta description",
-      "Title too long"
-    ],
-    issues: [
-      { issue_id: "missing_meta_description", priority: "fix_now" },
-      { issue_id: "title_too_long", priority: "fix_next" }
-    ]
-  });
+
+app.get("/__test__/canonical", (req, res) => {
+  res.type("html").send(`<!doctype html>
+<html>
+  <head>
+    <title>Canonical Page</title>
+    <meta name="description" content="Has canonical and metadata.">
+    <link rel="canonical" href="/__test__/canonical-target">
+  </head>
+  <body>
+    <h1>Canonical</h1>
+    <p>Has a canonical link.</p>
+  </body>
+</html>`);
+});
+app.get("/__test__/canonical-target", (req, res) => {
+  res.type("html").send(`<!doctype html>
+<html>
+  <head>
+    <title>Canonical Target</title>
+  </head>
+  <body>
+    <h1>Target</h1>
+  </body>
+</html>`);
+});
+
+
+app.get("/__test__/noindex", (req, res) => {
+  res.type("html").send(`<!doctype html>
+<html>
+  <head>
+    <title>Noindex Page</title>
+    <meta name="robots" content="noindex, nofollow">
+  </head>
+  <body>
+    <h1>Noindex</h1>
+    <p>This page should be flagged as noindex.</p>
+  </body>
+</html>`);
+});
+
+
+
+function normSpaces(s) {
+  return String(s || "").replace(/\s+/g, " ").trim();
+}
+
+function pickFirst(re, html) {
+  const m = re.exec(html);
+  return m ? m[1] : "";
+}
+
+function stripTags(s) {
+  return String(s || "").replace(/<[^>]+>/g, "");
+}
+
+function safeUrlJoin(base, loc) {
+  try {
+    return new URL(loc, base).toString();
+  } catch {
+    return String(loc || "");
+  }
+}
+
+async function fetchWithRedirects(startUrl, maxHops = 10) {
+  const chain = [];
+  let cur = startUrl;
+
+  for (let i = 0; i < maxHops; i++) {
+    const r = await fetch(cur, { redirect: "manual" });
+    const status = r.status;
+    const headers = r.headers;
+
+    const loc = headers.get("location");
+    chain.push({
+      url: cur,
+      status,
+      location: loc || null,
+      content_type: headers.get("content-type") || null,
+      x_robots_tag: headers.get("x-robots-tag") || null,
+    });
+
+    if (status >= 300 && status < 400 && loc) {
+      cur = safeUrlJoin(cur, loc);
+      continue;
+    }
+
+    const body = await r.text();
+    return { finalUrl: cur, finalStatus: status, finalHeaders: headers, html: body, chain };
+  }
+
+  return {
+    finalUrl: cur,
+    finalStatus: 0,
+    finalHeaders: new Headers(),
+    html: "",
+    chain,
+    error: "Too many redirects",
+  };
+}
+
+function mkIssue(issue_id, priority, title, evidence) {
+  return { issue_id, priority, title, evidence: evidence || {} };
+}
+
+function scoreFromIssues(issues) {
+  const w = { fix_now: 18, fix_next: 10, fix_later: 6 };
+  const penalty = issues.reduce((s, it) => s + (w[it.priority] || 8), 0);
+  const score = Math.max(0, Math.min(100, 100 - penalty));
+  return score;
+}
+
+app.post("/api/page-report", async (req, res) => {
+  try {
+    const url = String(req.body?.url || "").trim();
+    if (!url) return res.status(400).json({ ok: false, error: "Missing url" });
+
+    const fx = await fetchWithRedirects(url, 10);
+
+    const chain = fx.chain || [];
+    const final_url = fx.finalUrl || url;
+    const status = fx.finalStatus || 0;
+    const html = fx.html || "";
+    const content_type = (chain[chain.length - 1]?.content_type || "").toLowerCase();
+
+    const issues = [];
+    const quick_wins = [];
+
+    const hasRedirects = chain.some((x) => x.status >= 300 && x.status < 400);
+    if (hasRedirects) {
+      issues.push(
+        mkIssue("http_redirects_present", "fix_next", "Redirects detected", {
+          redirect_chain: chain.map((x) => ({ url: x.url, status: x.status, location: x.location })),
+        })
+      );
+    }
+
+    if (status >= 400 || status === 0) {
+      issues.push(
+        mkIssue("http_status_error", "fix_now", `HTTP status ${status || "unknown"}`, {
+          final_url,
+          status,
+          redirect_chain: chain.map((x) => ({ url: x.url, status: x.status, location: x.location })),
+        })
+      );
+      quick_wins.push(`HTTP status is ${status || "unknown"}`);
+    }
+
+    if (!content_type.includes("text/html") && html && html.trim().startsWith("{")) {
+      issues.push(
+        mkIssue("non_html_content", "fix_next", "Response does not look like HTML", {
+          final_url,
+          status,
+          content_type: chain[chain.length - 1]?.content_type || null,
+        })
+      );
+    }
+
+    const titleRaw = pickFirst(/<title[^>]*>([\s\S]*?)<\/title>/i, html);
+    const title = normSpaces(stripTags(titleRaw));
+    const titleLen = title.length;
+
+    if (!title) {
+      issues.push(mkIssue("missing_title", "fix_now", "Missing <title> tag", { final_url, status }));
+      quick_wins.push("Missing <title> tag");
+    } else if (titleLen > 60) {
+      issues.push(
+        mkIssue("title_too_long", "fix_next", "Title tag is too long", {
+          title,
+          title_len: titleLen,
+          final_url,
+          status,
+        })
+      );
+      quick_wins.push("Title tag is too long");
+    }
+
+    const metaDesc = normSpaces(
+      pickFirst(/<meta[^>]+name=["']description["'][^>]*content=["']([^"']*)["'][^>]*>/i, html)
+    );
+
+    if (!metaDesc) {
+      issues.push(
+        mkIssue("missing_meta_description", "fix_next", "Missing meta description", { final_url, status })
+      );
+      quick_wins.push("Missing meta description");
+    }
+
+    const h1Raw = pickFirst(/<h1[^>]*>([\s\S]*?)<\/h1>/i, html);
+    const h1 = normSpaces(stripTags(h1Raw));
+
+    if (!h1) {
+      issues.push(mkIssue("missing_h1", "fix_next", "Missing H1 heading", { final_url, status }));
+      quick_wins.push("Missing H1 heading");
+    }
+
+    const robotsMeta = normSpaces(
+      pickFirst(/<meta[^>]+name=["']robots["'][^>]*content=["']([^"']*)["'][^>]*>/i, html)
+    ).toLowerCase();
+
+    const xRobots = String(chain[chain.length - 1]?.x_robots_tag || "").toLowerCase();
+    const isNoindex = robotsMeta.includes("noindex") || xRobots.includes("noindex");
+
+    if (isNoindex) {
+      issues.push(
+        mkIssue("robots_noindex", "fix_now", "Page is marked noindex", {
+          robots_meta: robotsMeta || null,
+          x_robots_tag: chain[chain.length - 1]?.x_robots_tag || null,
+          final_url,
+          status,
+        })
+      );
+      quick_wins.push("Page is marked as noindex");
+    }
+
+    const canonicalHref = normSpaces(
+      pickFirst(/<link[^>]+rel=["']canonical["'][^>]*href=["']([^"']+)["'][^>]*>/i, html)
+    );
+
+    if (!canonicalHref) {
+      issues.push(mkIssue("missing_canonical", "fix_later", "Missing canonical link", { final_url, status }));
+    } else {
+      issues.push(
+        mkIssue("canonical_present", "fix_later", "Canonical present", {
+          canonical: safeUrlJoin(final_url, canonicalHref),
+          final_url,
+          status,
+        })
+      );
+    }
+
+    const score = scoreFromIssues(issues);
+
+    return res.json({
+      ok: true,
+      url,
+      final_url,
+      status,
+      score,
+      quick_wins,
+      issues,
+      evidence: {
+        title,
+        title_len: titleLen,
+        meta_description: metaDesc,
+        h1,
+        robots_meta: robotsMeta || null,
+        x_robots_tag: chain[chain.length - 1]?.x_robots_tag || null,
+        canonical: canonicalHref ? safeUrlJoin(final_url, canonicalHref) : null,
+        redirect_chain: chain.map((x) => ({ url: x.url, status: x.status, location: x.location })),
+      },
+    });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
 });
 
 const PORT = 3001;
-app.listen(PORT, () => {
-  console.log("DEV API running on port", PORT);
-});
+app.listen(PORT, () => console.log("DEV API running on port", PORT));
