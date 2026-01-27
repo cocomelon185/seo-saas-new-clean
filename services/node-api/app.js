@@ -82,6 +82,25 @@ function __mockAudit(url) {
 
 app.use(express.json());
 
+app.post("/api/page-report", async (req, res) => {
+  try {
+    const url = String((req.body && req.body.url) || "").trim();
+    if (!url) return res.status(400).json({ ok: false, error: "Missing url" });
+
+    // TEMP: until wired to full analyzer
+    return res.json({
+      ok: true,
+      url,
+      score: 0,
+      quick_wins: [],
+      issues: []
+    });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e && e.message ? e.message : e) });
+  }
+});
+
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -437,10 +456,9 @@ app.get("/api/audits/:id", requireAuth, (req, res) => {
 if (HAS_SPA_LEGACY) app.use(express.static(FRONTEND_DIST));
 app.get("*", (req, res, next) => {
   if (req.path && req.path.startsWith("/api")) return next();
-  if (!HAS_SPA_LEGACY) return res.status(404).json({ ok: false, error: "SPA dist missing" });
+  if (!HAS_SPA_LEGACY) return res.status(404).send("SPA dist missing");
   return res.sendFile(path.join(FRONTEND_DIST, "index.html"));
 });
-
 const port = process.env.PORT || 3000;
 __seedDemoAudit(auditCache, __mockAudit);
 
