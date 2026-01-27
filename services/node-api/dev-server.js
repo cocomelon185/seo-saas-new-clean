@@ -7,42 +7,62 @@ app.get("/__ping__", (req, res) => res.json({ ok: true }));
 
 const ISSUE_COPY = {
   http_status_error: {
+    severity: "High",
+    impact: ["Indexing", "Availability"],
     why: "Non-200 responses prevent indexing and waste crawl budget.",
     example_fix: "Ensure the URL returns 200 OK (fix routing, server errors, or missing pages).",
   },
   http_redirects_present: {
+    severity: "Medium",
+    impact: ["Indexing", "Crawl Efficiency"],
     why: "Redirect chains slow crawlers and can dilute signals; long chains may break.",
     example_fix: "Reduce to a single 301 hop where possible and avoid redirect loops.",
   },
   missing_title: {
+    severity: "High",
+    impact: ["CTR", "Relevance"],
     why: "Title tags are a primary relevance signal and are often used as the SERP headline.",
     example_fix: "Add a unique, descriptive <title> (~50–60 chars) targeting the main intent.",
   },
   title_too_long: {
+    severity: "Medium",
+    impact: ["CTR"],
     why: "Overlong titles are truncated in search results and may reduce click-through.",
     example_fix: "Rewrite to ~50–60 chars; keep the core keyword near the front.",
   },
   missing_meta_description: {
+    severity: "Low",
+    impact: ["CTR"],
     why: "Descriptions influence CTR and help search engines understand page intent.",
     example_fix: "Add a compelling 140–160 char description with benefits + keyword.",
   },
   missing_h1: {
+    severity: "Medium",
+    impact: ["Relevance", "UX"],
     why: "H1 helps clarify the page topic and improves content structure for users.",
     example_fix: "Add a single, descriptive <h1> matching the page’s primary topic.",
   },
   robots_noindex: {
+    severity: "High",
+    impact: ["Indexing"],
     why: "noindex prevents the page from appearing in search results.",
     example_fix: "Remove noindex (meta robots / X-Robots-Tag) if the page should rank.",
   },
   missing_canonical: {
+    severity: "Medium",
+    impact: ["Duplicates", "Indexing"],
     why: "Canonicals help consolidate duplicates and prevent index bloat.",
     example_fix: "Add <link rel='canonical' href='https://preferred-url' /> for the primary version.",
   },
   canonical_present: {
+    severity: "Low",
+    impact: ["Duplicates"],
     why: "Canonical is set; verify it points to the preferred, indexable URL.",
     example_fix: "Ensure canonical is absolute, 200 OK, and not noindexed/redirected.",
   },
   non_html_content: {
+    severity: "Medium",
+    impact: ["Rendering", "Indexing"],
     why: "Non-HTML responses can’t be evaluated for on-page tags and may be misconfigured.",
     example_fix: "Serve HTML for content pages; verify content-type and rendering path.",
   },
@@ -169,15 +189,19 @@ async function fetchWithRedirects(startUrl, maxHops = 10) {
 
 function mkIssue(issue_id, priority, title, evidence, why = "", example_fix = "") {
   const c = ISSUE_COPY[issue_id] || {};
+  const sevDefault = (priority === "fix_now") ? "High" : (priority === "fix_next") ? "Medium" : "Low";
   return {
     issue_id,
     priority,
+    severity: String(c.severity || sevDefault),
+    impact: Array.isArray(c.impact) ? c.impact : (c.impact ? [String(c.impact)] : []),
     title,
     why: String(why || c.why || ""),
     example_fix: String(example_fix || c.example_fix || ""),
     evidence: evidence || {},
   };
 }
+
 
 
 function scoreFromIssues(issues) {
