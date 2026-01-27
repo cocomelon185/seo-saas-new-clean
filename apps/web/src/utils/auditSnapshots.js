@@ -21,11 +21,12 @@ export function saveSnapshot(result) {
   const createdAt = new Date().toISOString();
 
   const snap = {
-    id: `${createdAt}__${url || "no-url"}`,
+    id: `__`,
     createdAt,
     url,
     score,
     issues,
+    keyword_ideas: Array.isArray(result?.keyword_ideas) ? result.keyword_ideas : (Array.isArray(result?.keywordIdeas) ? result.keywordIdeas : []),
   };
 
   const all = listSnapshots();
