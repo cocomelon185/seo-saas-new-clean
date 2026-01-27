@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import PricingModal from "../components/PricingModal.jsx";
 import ShareAuditButton from "../components/ShareAuditButton.jsx";
@@ -19,6 +19,7 @@ export default function AuditPage() {
   const [status, setStatus] = useState("idle"); // idle | loading | success | error
   const [error, setError] = useState("");
   const [result, setResult] = useState(null);
+  const autoRunRef = useRef(false);
 
   useEffect(() => {
     try {
@@ -27,6 +28,15 @@ export default function AuditPage() {
       if (u) setUrl(u);
     } catch {}
   }, [location.search]);
+
+  useEffect(() => {
+    if (autoRunRef.current) return;
+    if (status !== "idle") return;
+    if (!canRun) return;
+    if (!url.trim()) return;
+    autoRunRef.current = true;
+    run();
+  }, [url, canRun, status]);
 
   const canRun = useMemo(() => {
     try {
