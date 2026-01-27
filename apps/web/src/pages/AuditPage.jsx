@@ -2,6 +2,8 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import PricingModal from "../components/PricingModal.jsx";
 import AppShell from "../components/AppShell.jsx";
+import IssuesPanel from "../components/IssuesPanel.jsx";
+import { pushAuditHistory } from "../lib/auditHistory.js";
 
 export default function AuditPage() {
   const navigate = useNavigate();
@@ -46,6 +48,15 @@ export default function AuditPage() {
 
       const data = await res.json();
       setResult(data);
+      try {
+        pushAuditHistory({
+          url: data?.url || url,
+          score: data?.score,
+          issues_found: Array.isArray(data?.issues) ? data.issues.length : (data?.issues_found ?? data?.issuesFound),
+          created_at: new Date().toISOString()
+        });
+      } catch {}
+
       setStatus("success");
     } catch (e) {
       setStatus("error");
@@ -150,6 +161,7 @@ export default function AuditPage() {
           navigate("/pricing");
         }}
       />
-    </AppShell>
+          <IssuesPanel issues={result?.issues} />
+</AppShell>
   );
 }
