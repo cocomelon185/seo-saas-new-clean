@@ -67,6 +67,24 @@ export default function IssuesPanel({ issues = [] }) {
 
   const filtered = useMemo(() => {
   const summary = useMemo(() => {
+  const nextActions = useMemo(() => {
+    const important = filtered.filter(
+      (it) => it?.priority === "fix_now" || it?.severity === "High"
+    );
+
+    const byImpact = {};
+    for (const it of important) {
+      for (const tag of (Array.isArray(it?.impact) ? it.impact : [])) {
+        byImpact[tag] = (byImpact[tag] || 0) + 1;
+      }
+    }
+
+    return Object.entries(byImpact)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([impact, count]) => ({ impact, count }));
+  }, [filtered]);
+
     const out = { fix_now: 0, fix_next: 0, fix_later: 0, high_sev: 0 };
     for (const it of filtered) {
       if (it?.priority === "fix_now") out.fix_now += 1;
@@ -160,6 +178,20 @@ export default function IssuesPanel({ issues = [] }) {
             <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <div className="rounded-xl border border-red-200 bg-red-50 p-3">
           <div className="text-xs font-semibold text-red-700">Fix now</div>
+      {nextActions.length > 0 && (
+        <div className="mb-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+          <div className="text-sm font-semibold text-slate-900">Recommended next actions</div>
+          <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm text-slate-700">
+            {nextActions.map((x, i) => (
+              <li key={i}>
+                Fix <span className="font-semibold">{x.count}</span>{" "}
+                <span className="font-semibold">{x.impact}</span> issue{x.count > 1 ? "s" : ""}
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
+
           <div className="mt-1 text-2xl font-bold text-red-800">{summary.fix_now}</div>
         </div>
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-3">
