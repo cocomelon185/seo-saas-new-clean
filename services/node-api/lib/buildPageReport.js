@@ -28,9 +28,17 @@ function pickFirst(re, html) {
 
 export async function buildPageReport(url) {
   const r = await fetch(url, { redirect: "follow" });
+  if (debug) {
+    debug.fetch_status = r.status;
+    debug.final_url = r.url;
+    debug.content_type = r.headers.get("content-type");
+  }
+
   const status = r.status;
   const final_url = r.url || url;
   const html = await r.text();
+  if (debug) { debug.html_len = html.length; }
+
 
   const title = pickFirst(/<title[^>]*>([\s\S]*?)<\/title>/i, html).trim();
   const metaDesc = pickFirst(/<meta[^>]+name=["']description["'][^>]*content=["']([^"']*)["'][^>]*>/i, html).trim();
