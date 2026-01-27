@@ -66,6 +66,18 @@ export default function IssuesPanel({ issues = [] }) {
   }, [issues]);
 
   const filtered = useMemo(() => {
+  const summary = useMemo(() => {
+    const out = { fix_now: 0, fix_next: 0, fix_later: 0, high_sev: 0 };
+    for (const it of filtered) {
+      if (it?.priority === "fix_now") out.fix_now += 1;
+      else if (it?.priority === "fix_next") out.fix_next += 1;
+      else out.fix_later += 1;
+      if (it?.severity === "High") out.high_sev += 1;
+    }
+    return out;
+  }, [filtered]);
+
+
     const out = [];
     for (const it of issues || []) {
       if (priority !== "all" && String(it?.priority || "") !== priority) continue;
@@ -145,7 +157,26 @@ export default function IssuesPanel({ issues = [] }) {
         </div>
       </div>
 
-      <div className="mt-4 space-y-5">
+            <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="rounded-xl border border-red-200 bg-red-50 p-3">
+          <div className="text-xs font-semibold text-red-700">Fix now</div>
+          <div className="mt-1 text-2xl font-bold text-red-800">{summary.fix_now}</div>
+        </div>
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-3">
+          <div className="text-xs font-semibold text-amber-700">Fix next</div>
+          <div className="mt-1 text-2xl font-bold text-amber-800">{summary.fix_next}</div>
+        </div>
+        <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+          <div className="text-xs font-semibold text-slate-700">Fix later</div>
+          <div className="mt-1 text-2xl font-bold text-slate-800">{summary.fix_later}</div>
+        </div>
+        <div className="rounded-xl border border-red-200 bg-red-50 p-3">
+          <div className="text-xs font-semibold text-red-700">High severity</div>
+          <div className="mt-1 text-2xl font-bold text-red-800">{summary.high_sev}</div>
+        </div>
+      </div>
+
+<div className="mt-4 space-y-5">
         {grouped.map((g) => {
           if (!g.items.length) return null;
           return (
