@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import PricingModal from "../components/PricingModal.jsx";
+import ShareAuditButton from "../components/ShareAuditButton.jsx";
 import AppShell from "../components/AppShell.jsx";
 import IssuesPanel from "../components/IssuesPanel.jsx";
 import { exportAuditSummary } from "../utils/exportAuditSummary.js";
@@ -84,6 +85,9 @@ export default function AuditPage() {
       subtitle="Paste a URL and get a score, quick wins, and a prioritized list of issues. Fast, clear, and usable."
     >
       <div className="flex flex-col gap-4">
+        <div className="flex items-center justify-end">
+          <ShareAuditButton result={result} />
+        </div>
         <div className="flex items-center justify-end">
           <ShareAuditButton result={result} />
         </div>
