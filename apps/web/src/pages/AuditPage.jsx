@@ -156,6 +156,7 @@ try {
           </div>
         )}
 
+{status === "success" && (
           <div className="grid gap-4 md:grid-cols-3">
             <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
               <div className="text-sm font-semibold text-white/80">SEO Score</div>
@@ -210,6 +211,7 @@ try {
           <pre className="mt-3 overflow-auto text-xs text-white/80">{debug}</pre>
         </div>
       )}
+        )}
     </AppShell>
   );
 }
