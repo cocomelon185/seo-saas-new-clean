@@ -123,8 +123,15 @@ async function fetchWithRedirects(startUrl, maxHops = 10) {
   };
 }
 
-function mkIssue(issue_id, priority, title, evidence) {
-  return { issue_id, priority, title, evidence: evidence || {} };
+function mkIssue(issue_id, priority, title, evidence, why = "", example_fix = "") {
+  return {
+    issue_id,
+    priority,
+    title,
+    why: String(why || ""),
+    example_fix: String(example_fix || ""),
+    evidence: evidence || {},
+  };
 }
 
 function scoreFromIssues(issues) {
@@ -255,12 +262,25 @@ app.post("/api/page-report", async (req, res) => {
 
     const score = scoreFromIssues(issues);
 
+    const counts = issues.reduce(
+      (acc, it) => {
+        const k = String(it.priority || "");
+        if (k === "fix_now") acc.fix_now += 1;
+        else if (k === "fix_next") acc.fix_next += 1;
+        else acc.fix_later += 1;
+        acc.total += 1;
+        return acc;
+      },
+      { fix_now: 0, fix_next: 0, fix_later: 0, total: 0 }
+    );
+
     return res.json({
       ok: true,
       url,
       final_url,
       status,
       score,
+      counts,
       quick_wins,
       issues,
       evidence: {
