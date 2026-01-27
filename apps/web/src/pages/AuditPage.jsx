@@ -150,8 +150,7 @@ try {
           </div>
         )}
 
-        {status === "success" && (
-        {result?.ok === false && (
+        {status === "success" && result?.ok === false && (
           <div className="rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200">
             {result?.warning || "Audit failed. See debug for details."}
           </div>
