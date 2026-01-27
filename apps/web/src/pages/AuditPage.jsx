@@ -32,13 +32,17 @@ export default function AuditPage() {
   useEffect(() => {
     if (autoRunRef.current) return;
     if (status !== "idle") return;
-    if (!canRun) return;
+    try {
+      const u = new URL(url.trim());
+      if (!(u.protocol === "http:" || u.protocol === "https:")) return;
+    } catch {
+      return;
+    }
     if (!url.trim()) return;
     autoRunRef.current = true;
     run();
-  }, [url, canRun, status]);
-
-  const canRun = useMemo(() => {
+  }, [url, status]);
+const canRun = useMemo(() => {
     try {
       const u = new URL(url.trim());
       return u.protocol === "http:" || u.protocol === "https:";
