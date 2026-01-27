@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import PricingModal from "../components/PricingModal.jsx";
 import AppShell from "../components/AppShell.jsx";
 import IssuesPanel from "../components/IssuesPanel.jsx";
+import AuditHistoryPanel from "../components/AuditHistoryPanel.jsx";
 import { pushAuditHistory } from "../lib/auditHistory.js";
 
 export default function AuditPage() {
@@ -65,7 +66,10 @@ export default function AuditPage() {
   }
 
   return (
-    <AppShell
+    {/* history */}
+      <AuditHistoryPanel onPickUrl={(u) => setUrl(u)} />
+
+<AppShell
       title="SEO Page Audit"
       subtitle="Paste a URL and get a score, quick wins, and a prioritized list of issues. Fast, clear, and usable."
     >
