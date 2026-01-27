@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 function bucketLabel(p) {
   if (p === "fix_now") return "Fix now";
@@ -59,7 +59,12 @@ function buildSummaryText(allIssues, shownIssues) {
     ? allIssues.issues.filter((x) => x?.severity === "High").length
     : 0;
 
-  const totalAll = cAll && typeof cAll.total === "number" ? cAll.total : (Array.isArray(allIssues?.issues) ? allIssues.issues.length : 0);
+  const totalAll =
+    cAll && typeof cAll.total === "number"
+      ? cAll.total
+      : Array.isArray(allIssues?.issues)
+      ? allIssues.issues.length
+      : 0;
 
   const score = typeof allIssues?.score === "number" ? allIssues.score : null;
 
@@ -85,11 +90,55 @@ function buildSummaryText(allIssues, shownIssues) {
   return lines.join("\n");
 }
 
+function readQuery() {
+  try {
+    const sp = new URLSearchParams(window.location.search || "");
+    return {
+      p: sp.get("p") || "all",
+      sev: sp.get("sev") || "all",
+      impact: sp.get("impact") || "all",
+      q: sp.get("q") || "",
+    };
+  } catch {
+    return { p: "all", sev: "all", impact: "all", q: "" };
+  }
+}
+
+function writeQuery(next) {
+  try {
+    const sp = new URLSearchParams(window.location.search || "");
+    if (next.p && next.p !== "all") sp.set("p", next.p); else sp.delete("p");
+    if (next.sev && next.sev !== "all") sp.set("sev", next.sev); else sp.delete("sev");
+    if (next.impact && next.impact !== "all") sp.set("impact", next.impact); else sp.delete("impact");
+    if (next.q && String(next.q).trim()) sp.set("q", String(next.q).trim()); else sp.delete("q");
+    const qs = sp.toString();
+    const url = qs ? `${window.location.pathname}?${qs}` : window.location.pathname;
+    window.history.replaceState(null, "", url);
+  } catch {}
+}
+
 export default function IssuesPanel({ issues: rawIssues = [] }) {
-  const [q, setQ] = useState("");
-  const [priority, setPriority] = useState("all");
-  const [severity, setSeverity] = useState("all");
-  const [impact, setImpact] = useState("all");
+  const init = useMemo(() => readQuery(), []);
+  const [q, setQ] = useState(init.q);
+  const [priority, setPriority] = useState(init.p);
+  const [severity, setSeverity] = useState(init.sev);
+  const [impact, setImpact] = useState(init.impact);
+
+  useEffect(() => {
+    const onPop = () => {
+      const v = readQuery();
+      setPriority(v.p);
+      setSeverity(v.sev);
+      setImpact(v.impact);
+      setQ(v.q);
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+
+  useEffect(() => {
+    writeQuery({ p: priority, sev: severity, impact, q });
+  }, [priority, severity, impact, q]);
 
   const impactOptions = useMemo(() => {
     const set = new Set();
@@ -331,23 +380,43 @@ export default function IssuesPanel({ issues: rawIssues = [] }) {
                     <div key={(issue.issue_id || "issue") + "-" + idx} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
                       <div className="flex flex-wrap items-center gap-2">
                         {issue?.priority && (
-                          <span className={"inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold " + bucketClass(issue.priority)}>
+                          <button
+                            type="button"
+                            className={"inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold hover:opacity-90 " + bucketClass(issue.priority)}
+                            onClick={() => { setPriority(issue.priority); setSeverity("all"); setImpact("all"); }}
+                            title={`Filter by priority: ${bucketLabel(issue.priority)}`}
+                          >
                             {bucketLabel(issue.priority)}
-                          </span>
+                          </button>
                         )}
+
                         {sev && (
-                          <span className={"inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold " + sevClass(sev)}>
+                          <button
+                            type="button"
+                            className={"inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold hover:opacity-90 " + sevClass(sev)}
+                            onClick={() => { setSeverity(sev); setPriority("all"); setImpact("all"); }}
+                            title={`Filter by severity: ${sev}`}
+                          >
                             {sev}
-                          </span>
+                          </button>
                         )}
+
                         {impacts.map((t) => (
-                          <span key={t} className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-semibold text-slate-700">
+                          <button
+                            key={t}
+                            type="button"
+                            className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-semibold text-slate-700 hover:bg-slate-100"
+                            onClick={() => { setImpact(t); setPriority("all"); setSeverity("all"); }}
+                            title={`Filter by impact: ${t}`}
+                          >
                             {t}
-                          </span>
+                          </button>
                         ))}
+
                         <div className="min-w-0 flex-1 truncate text-sm font-semibold text-slate-900">
                           {issue?.title || issue?.issue_id || "Issue"}
                         </div>
+
                         {issue?.issue_id && (
                           <span className="text-xs text-slate-500">{issue.issue_id}</span>
                         )}
