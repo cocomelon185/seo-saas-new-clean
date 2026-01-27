@@ -83,20 +83,15 @@ function __mockAudit(url) {
 app.use(express.json());
 
 app.post("/api/page-report", async (req, res) => {
+  const url = (req.body && req.body.url) ? String(req.body.url) : "";
+  const debug = { fetch_status: null, final_url: null, content_type: null, html_len: null, fetch_error: null };
   try {
-    const url = String((req.body && req.body.url) || "").trim();
-    if (!url) return res.status(400).json({ ok: false, error: "Missing url" });
-
-    // TEMP: until wired to full analyzer
-    return res.json({
-      ok: true,
-      url,
-      score: 0,
-      quick_wins: [],
-      issues: []
-    });
+    const report = await buildPageReport(url, debug);
+    if (report && typeof report === "object" && report.ok === true) return res.json(report);
+    return res.json(Object.assign({ ok: false, url, score: null, quick_wins: [], issues: [], warning: "Failed to analyze page" }, report || {}, { debug }));
   } catch (e) {
-    return res.status(500).json({ ok: false, error: String(e && e.message ? e.message : e) });
+    debug.fetch_error = String(e && (e.stack || e.message || e));
+    return res.json({ ok: false, url, score: null, quick_wins: [], issues: [], warning: "Failed to analyze page", debug });
   }
 });
 
