@@ -100,6 +100,22 @@ app.post("/api/page-report", async (req, res) => {
   }
 });
 
+app.post("/api/rank-check", (req, res) => {
+  const { keyword, domain } = req.body || {};
+
+  if (!keyword || !domain) {
+    return res.status(400).json({ error: "Missing keyword or domain" });
+  }
+
+  return res.json({
+    keyword,
+    domain,
+    position: Math.floor(Math.random() * 50) + 1,
+    checked_at: new Date().toISOString()
+  });
+});
+
+
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

@@ -369,5 +369,21 @@ app.post("/api/page-report", async (req, res) => {
   }
 });
 
+app.post("/api/rank-check", (req, res) => {
+  const { keyword, domain } = req.body || {};
+
+  if (!keyword || !domain) {
+    return res.status(400).json({ error: "Missing keyword or domain" });
+  }
+
+  return res.json({
+    keyword,
+    domain,
+    position: Math.floor(Math.random() * 50) + 1,
+    checked_at: new Date().toISOString()
+  });
+});
+
+
 const PORT = 3001;
 app.listen(PORT, () => console.log("DEV API running on port", PORT));
