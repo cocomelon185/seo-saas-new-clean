@@ -76,7 +76,12 @@ const canRun = useMemo(() => {
 
       const data = await res.json();
       setResult(data);
-      try {
+      if (data?.warning) {
+        setStatus("error");
+        setError(String(data.warning));
+        return;
+      }
+try {
         pushAuditHistory({
           url: data?.url || url,
           score: data?.score,
@@ -99,12 +104,6 @@ const canRun = useMemo(() => {
       subtitle="Paste a URL and get a score, quick wins, and a prioritized list of issues. Fast, clear, and usable."
     >
       <div className="flex flex-col gap-4">
-        <div className="flex items-center justify-end">
-          <ShareAuditButton result={result} />
-        </div>
-        <div className="flex items-center justify-end">
-          <ShareAuditButton result={result} />
-        </div>
         <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
           <div>
             <label className="mb-2 block text-sm font-medium text-white/80">Page URL</label>
