@@ -26,7 +26,7 @@ function pickFirst(re, html) {
   return m ? m[1] : "";
 }
 
-export async function buildPageReport(url) {
+export async function buildPageReport(url, debug = null) {
   const r = await fetch(url, { redirect: "follow" });
   if (debug) {
     debug.fetch_status = r.status;
