@@ -26,7 +26,7 @@ export default function AuditImpactBanner({ score, issues }) {
           Before vs After preview
         </div>
         <div className="text-sm font-semibold text-emerald-900">
-          If you fix all <span className="font-extrabold">Fix now</span> issues, your score could improve by{" "}
+          If you fix all <span className="font-extrabold">Fix now ({n})</span> issues, your score could improve by{" "}
           <span className="font-extrabold">+{min}–{max}</span> points
         </div>
       </div>
