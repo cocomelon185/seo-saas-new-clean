@@ -4,7 +4,6 @@ import PricingModal from "../components/PricingModal.jsx";
 import AppShell from "../components/AppShell.jsx";
 import IssuesPanel from "../components/IssuesPanel.jsx";
 import { exportAuditSummary } from "../utils/exportAuditSummary.js";
-import ShareAuditButton from "../components/ShareAuditButton.jsx";
 import SavedAuditsPanel from "../components/SavedAuditsPanel.jsx";
 import AuditImpactBanner from "../components/AuditImpactBanner.jsx";
 import AuditHistoryPanel from "../components/AuditHistoryPanel.jsx";
@@ -76,6 +75,9 @@ export default function AuditPage() {
       subtitle="Paste a URL and get a score, quick wins, and a prioritized list of issues. Fast, clear, and usable."
     >
       <div className="flex flex-col gap-4">
+        <div className="flex items-center justify-end">
+          <ShareAuditButton result={result} />
+        </div>
         <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
           <div>
             <label className="mb-2 block text-sm font-medium text-white/80">Page URL</label>
