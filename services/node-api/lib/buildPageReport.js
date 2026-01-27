@@ -1,6 +1,4 @@
-import { createRequire } from "module";
-const require = createRequire(import.meta.url);
-const { getIssueDef, loadIssuesCatalog } = require("./issuesCatalog.js");
+import { getIssueDef } from "./issuesCatalog.js";
 function mkIssue(issue_id, evidence = {}, extra = {}) {
   const def = getIssueDef(issue_id) || {};
   return {
