@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import PricingModal from "../components/PricingModal.jsx";
 import AppShell from "../components/AppShell.jsx";
 import IssuesPanel from "../components/IssuesPanel.jsx";
+import { exportAuditSummary } from "../utils/exportAuditSummary.js";
+import SavedAuditsPanel from "../components/SavedAuditsPanel.jsx";
 import AuditImpactBanner from "../components/AuditImpactBanner.jsx";
 import AuditHistoryPanel from "../components/AuditHistoryPanel.jsx";
 import { pushAuditHistory } from "../lib/auditHistory.js";
