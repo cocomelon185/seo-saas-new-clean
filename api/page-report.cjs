@@ -1,4 +1,5 @@
 const fs = require("fs");
+const buildPageReport = require(\"../services/node-api/lib/buildPageReport.js\");
 const auditHistoryStore = require("./audit-history-store.cjs");
 
 const path = require("path");
@@ -7,6 +8,8 @@ const AUDIT_HISTORY_PATH = path.join(process.cwd(), "data", "audit-history.json"
 
 function readAuditHistory() {
   try {
+    const report = await buildPageReport(url, debug);
+    return res.json(report);
     if (!fs.existsSync(AUDIT_HISTORY_PATH)) return [];
     const raw = fs.readFileSync(AUDIT_HISTORY_PATH, "utf8");
     const parsed = JSON.parse(raw || "[]");
@@ -304,6 +307,7 @@ function enrichPriority(issue) {
 // --- Handler ---
 
 module.exports = async (req, res) => {
+  const debug = { fetch_status: null, final_url: null, content_type: null, html_len: null, fetch_error: null };
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'Method not allowed' });
     return;
