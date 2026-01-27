@@ -34,7 +34,7 @@ export default function RankPage() {
       }
 
       const data = await res.json();
-      setResult(data);
+      setResult({ ...data, rank: data.rank ?? data.position });
       setStatus("success");
     } catch (e) {
       setStatus("error");
