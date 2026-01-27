@@ -69,8 +69,6 @@ export default function AuditPage() {
   }
 
   return (
-    {/* history */}
-      <AuditHistoryPanel onPickUrl={(u) => setUrl(u)} />
 
 <AppShell
       title="SEO Page Audit"
