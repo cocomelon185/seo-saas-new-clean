@@ -1,34 +1,110 @@
 import * as buildPageReportNS from "../services/node-api/lib/buildPageReport.js";
+import { auditErrorResponse } from "../services/node-api/src/lib/audit_error_response.js";
 
 const buildPageReport =
   buildPageReportNS?.default ||
   buildPageReportNS?.buildPageReport ||
   buildPageReportNS;
 
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+function isRetryableText(s) {
+  const t = String(s || "");
+  const tl = t.toLowerCase();
+  return (
+    t.includes("timeout") ||
+    t.includes("AbortError") ||
+    t.includes("ECONNRESET") ||
+    t.includes("ECONNREFUSED") ||
+    t.includes("ENOTFOUND") ||
+    t.includes("ETIMEDOUT") ||
+    tl.includes("fetch failed") ||
+    tl.includes("network") ||
+    tl.includes("undici")
+  );
+}
+
 export default async function pageReport(req, res) {
   const url = (req.body && req.body.url) ? String(req.body.url) : "";
-  const debug = { handler_id: "api/page-report.js", fetch_status: null, final_url: null, content_type: null, html_len: null, fetch_error: null };
+  const debug = {
+    handler_id: "api/page-report.js",
+    fetch_status: null,
+    final_url: null,
+    content_type: null,
+    html_len: null,
+    fetch_error: null
+  };
 
-  try {
-    const fn = (typeof buildPageReport === "function")
+  const fn =
+    typeof buildPageReport === "function"
       ? buildPageReport
-      : (typeof buildPageReportNS?.buildPageReport === "function" ? buildPageReportNS.buildPageReport : null);
+      : typeof buildPageReportNS?.buildPageReport === "function"
+      ? buildPageReportNS.buildPageReport
+      : null;
 
-    if (!fn) {
-      return res.json({ ok: false, url, score: null, quick_wins: [], issues: [], warning: "buildPageReport export not found", debug });
-    }
+  if (!fn) {
+    const out = auditErrorResponse(new Error("buildPageReport export not found"), url, { debug });
+    out.debug = debug;
+    return res.json(out);
+  }
 
-    const report = await fn(url, debug);
+  const maxAttempts = 3;
+  const baseDelayMs = 350;
 
-    if (report && typeof report === "object") {
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const report = await fn(url, debug);
+
+      if (!report || typeof report !== "object") {
+        const out = auditErrorResponse(new Error("Invalid report object"), url, { debug });
+        out.debug = debug;
+        return res.json(out);
+      }
+
       if (!report.debug) report.debug = debug;
       if (typeof report.ok !== "boolean") report.ok = (typeof report.score === "number");
-      return res.json(report);
-    }
 
-    return res.json({ ok: false, url, score: null, quick_wins: [], issues: [], warning: "Invalid report object", debug });
-  } catch (e) {
-    debug.fetch_error = String(e && (e.stack || e.message || e));
-    return res.json({ ok: false, url, score: null, quick_wins: [], issues: [], warning: "Failed to analyze page", debug });
+      if (report.ok === false) {
+        report.score = null;
+
+        const failureText =
+          (report.debug && report.debug.fetch_error) ||
+          debug.fetch_error ||
+          report.warning ||
+          "Failed to analyze page";
+
+        const retryable = isRetryableText(failureText);
+
+        if (attempt < maxAttempts && retryable) {
+          const jitter = Math.floor(Math.random() * 150);
+          const delay = baseDelayMs * Math.pow(2, attempt - 1) + jitter;
+          await sleep(delay);
+          continue;
+        }
+
+        const friendly = auditErrorResponse(new Error(failureText), url, { debug });
+        report.warning = friendly.warning;
+        report.error = friendly.error;
+      }
+
+      return res.json(report);
+    } catch (e) {
+      debug.fetch_error = String(e && (e.stack || e.message || e));
+
+      if (attempt < maxAttempts && isRetryableText(debug.fetch_error)) {
+        const jitter = Math.floor(Math.random() * 150);
+        const delay = baseDelayMs * Math.pow(2, attempt - 1) + jitter;
+        await sleep(delay);
+        continue;
+      }
+
+      const out = auditErrorResponse(e, url, { debug });
+      out.debug = debug;
+      return res.json(out);
+    }
   }
+
+  const out = auditErrorResponse(new Error("Audit failed"), url, { debug });
+  out.debug = debug;
+  return res.json(out);
 }

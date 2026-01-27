@@ -1,5 +1,6 @@
 import express from "express"
 import cors from "cors";
+import pageReport from "../../api/page-report.js";
 
 const __DEMO_AUDIT_URL = "https://httpstat.us";
 
@@ -82,18 +83,7 @@ function __mockAudit(url) {
 
 app.use(express.json());
 
-app.post("/api/page-report", async (req, res) => {
-  const url = (req.body && req.body.url) ? String(req.body.url) : "";
-  const debug = { fetch_status: null, final_url: null, content_type: null, html_len: null, fetch_error: null };
-  try {
-    const report = await buildPageReport(url, debug);
-    if (report && typeof report === "object" && report.ok === true) return res.json(report);
-    return res.json(Object.assign({ ok: false, url, score: null, quick_wins: [], issues: [], warning: "Failed to analyze page" }, report || {}, { debug }));
-  } catch (e) {
-    debug.fetch_error = String(e && (e.stack || e.message || e));
-    return res.json({ ok: false, url, score: null, quick_wins: [], issues: [], warning: "Failed to analyze page", debug });
-  }
-});
+app.post("/api/page-report", pageReport);
 
 app.post("/api/rank-check", (req, res) => {
   const { keyword, domain } = req.body || {};

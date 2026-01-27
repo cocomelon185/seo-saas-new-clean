@@ -161,7 +161,7 @@ try {
             <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
               <div className="text-sm font-semibold text-white/80">SEO Score</div>
               <div className="mt-2 text-4xl font-semibold">
-                {typeof result?.score === "number" ? result.score : 0}
+                {(result && result.ok === false) ? "—" : (typeof result?.score === "number" ? result.score : "—")}
               </div>
               <button
                 onClick={() => setPricingOpen(true)}
