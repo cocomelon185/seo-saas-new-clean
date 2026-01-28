@@ -1,9 +1,31 @@
 import express from "express"
 import pageReport from "./api/page-report.js";
-
+import path from "path";
+import { fileURLToPath } from "url";
+import { makeStore } from "./services/node-api/src/utils/audit_store_fs.mjs";
+import { makeAuditRoutes } from "./services/node-api/src/audits/routes.mjs";
+import { buildScoreDeltaPreview } from "./services/node-api/src/utils/score_delta_preview.mjs";
 import helmet from "helmet";
 import compression from "compression";
 import rateLimit from "express-rate-limit";
+import Database from "better-sqlite3";
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+import crypto from "crypto";
+import { Worker } from "worker_threads";
+import { normalizeUrl, TTLCache, RateLimiter, jsonError } from "./api_hardening.js";
+import cors from "cors";
+import { createRequire } from "module";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// ALLOWLIST_AUDITS_PATCH
+function __allowPublicPath(req) {
+  const p = (req && (req.path || req.url) ? String(req.path || req.url) : "");
+  return p.startsWith("/api/page-report") || p.startsWith("/api/audits");
+}
+
 
 const __DEMO_AUDIT_URL = "https://httpstat.us";
 
@@ -16,20 +38,6 @@ function __seedDemoAudit(auditCache, __mockAudit) {
     console.log("Demo seed failed:", String(e?.message || e));
   }
 }
-
-;
-import Database from "better-sqlite3";
-import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
-import crypto from "crypto";
-import path from "path";
-import { fileURLToPath } from "url";
-import { Worker } from "worker_threads";
-
-import { normalizeUrl, TTLCache, RateLimiter, jsonError } from "./api_hardening.js";
-
-import cors from "cors";
-
 // RANKYPULSE_CORS_PATCH_V1
 const CORS_ALLOWLIST = new Set([
   "https://rank.rankypulse.com",
@@ -52,6 +60,8 @@ const corsMiddleware = cors({
   allowedHeaders: ["content-type","authorization","x-requested-with"]
 });
 const app = express();
+const auditStore = makeStore(path.join(__dirname, "data"));
+app.use("/api", makeAuditRoutes(auditStore));
 app.use(express.static(process.cwd() + "/public"));
 
 
@@ -127,8 +137,6 @@ function __mockAudit(url) {
 
 
 app.use(express.json());
-
-import { createRequire } from "module";
 const require = createRequire(import.meta.url);
 const projectsRouter = require("./api/projects.cjs");
 
@@ -139,8 +147,6 @@ app.use("/api/projects", projectsRouter);
 
 
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 
 const db = new Database(path.join(__dirname, "database.db"));
@@ -155,7 +161,10 @@ function signToken(user) {
 function requireAuth(req, res, next) {
   const h = req.headers.authorization || "";
   const m = h.match(/^Bearer\s+(.+)$/i);
-  if (!m) return jsonError(res, 401, "UNAUTHORIZED", "Missing Bearer token.");
+  if (!m) {
+    if (__allowPublicPath(req)) return next();
+    return jsonError(res, 401, "UNAUTHORIZED", "Missing Bearer token.");
+  }
   try {
     req.user = jwt.verify(m[1], JWT_SECRET);
     return next();
@@ -240,7 +249,20 @@ app.post(["/api/auth/register","/api/auth/login"], (req, res) => {
   res.json({ ok: true, token: "dev", user });
 });
 
-app.post("/api/page-report", pageReport);
+app.post("/api/page-report", async (req, res, next) => {
+  const _json = res.json.bind(res);
+  res.json = (obj) => {
+    try {
+      if (obj && typeof obj === "object") {
+        obj.score_delta_preview = buildScoreDeltaPreview(obj);
+        const hasSome = (Array.isArray(obj.issues) && obj.issues.length) || (Array.isArray(obj.quick_wins) && obj.quick_wins.length) || (obj.evidence && typeof obj.evidence === "object");
+        if (obj.warning && hasSome) obj.partial_success = true;
+      }
+    } catch (e) {}
+    return _json(obj);
+  };
+  return pageReport(req, res, next);
+});
 console.log("Registered POST /api/page-report");
 
 
