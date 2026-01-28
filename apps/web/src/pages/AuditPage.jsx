@@ -4,6 +4,9 @@ import PricingModal from "../components/PricingModal.jsx";
 import ShareAuditButton from "../components/ShareAuditButton.jsx";
 import AppShell from "../components/AppShell.jsx";
 import IssuesPanel from "../components/IssuesPanel.jsx";
+import ScoreDeltaPreview from "../components/ScoreDeltaPreview.jsx";
+import SavedAuditCompare from "../components/SavedAuditCompare.jsx";
+import { apiPost } from "../utils/api.js";
 import { exportAuditSummary } from "../utils/exportAuditSummary.js";
 import SavedAuditsPanel from "../components/SavedAuditsPanel.jsx";
 import AuditImpactBanner from "../components/AuditImpactBanner.jsx";
@@ -18,6 +21,21 @@ export default function AuditPage() {
   const [url, setUrl] = useState("");
   const [status, setStatus] = useState("idle"); // idle | loading | success | error
   const [error, setError] = useState("");
+  
+  const [saveMsg, setSaveMsg] = useState("");
+  async function auditSave() {
+    try {
+      setSaveMsg("");
+      if (!result || !result.url) return;
+      const j = await apiPost("/api/audits/save", { url: result.url, result, label: "manual" });
+      setSaveMsg("Saved");
+      setTimeout(() => setSaveMsg(""), 1500);
+      return j;
+    } catch (e) {
+      setSaveMsg(String(e.message || e));
+    }
+  }
+
   const [result, setResult] = useState(null);
   const [debug, setDebug] = useState("");
   const autoRunRef = useRef(false);
@@ -204,7 +222,20 @@ try {
         }}
       />
           <AuditImpactBanner score={result?.score} issues={result?.issues} />
-            <IssuesPanel issues={result?.issues} />
+            <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <button onClick={auditSave} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-900 shadow-sm">Save audit</button>
+                {saveMsg ? <div className="text-sm text-slate-600">{saveMsg}</div> : null}
+              </div>
+              <ScoreDeltaPreview preview={result?.score_delta_preview} />
+              {result?.partial_success ? (
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                  Partial success audit: some checks worked even though fetch/parse was incomplete.
+                </div>
+              ) : null}
+              <IssuesPanel issues={result?.issues} />
+              <SavedAuditCompare url={result?.url} />
+            </div>
       {import.meta.env.DEV && debug && (
         <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
           <div className="text-sm font-semibold text-white/80">Raw response (debug)</div>
