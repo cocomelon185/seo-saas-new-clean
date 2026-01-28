@@ -1,7 +1,16 @@
 import express from "express";
 import pageReport from "../../api/page-report.js";
+import path from "path";
+import { fileURLToPath } from "url";
+import { makeStore } from "./src/utils/audit_store_fs.mjs";
+import { makeAuditRoutes } from "./src/audits/routes.mjs";
+import { buildScoreDeltaPreview } from "./src/utils/score_delta_preview.mjs";
 
 const app = express();
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const auditStore = makeStore(path.join(__dirname, "data"));
+app.use("/api", makeAuditRoutes(auditStore));
 app.use(express.json());
 
 app.get("/__ping__", (req, res) => res.json({ ok: true }));
@@ -212,7 +221,20 @@ function scoreFromIssues(issues) {
   return score;
 }
 
-app.post("/api/page-report", pageReport);
+app.post("/api/page-report", async (req, res, next) => {
+  const _json = res.json.bind(res);
+  res.json = (obj) => {
+    try {
+      if (obj && typeof obj === "object") {
+        obj.score_delta_preview = buildScoreDeltaPreview(obj);
+        const hasSome = (Array.isArray(obj.issues) && obj.issues.length) || (Array.isArray(obj.quick_wins) && obj.quick_wins.length) || (obj.evidence && typeof obj.evidence === "object");
+        if (obj.warning && hasSome) obj.partial_success = true;
+      }
+    } catch (e) {}
+    return _json(obj);
+  };
+  return pageReport(req, res, next);
+});
 
 app.post("/api/rank-check", (req, res) => {
   const { keyword, domain } = req.body || {};

@@ -2,6 +2,18 @@ import express from "express"
 import cors from "cors";
 import pageReport from "../../api/page-report.js";
 
+// ALLOWLIST_AUDITS_PATCH
+function __allowPublicPath(req) {
+  const p = (req && (req.path || req.url) ? String(req.path || req.url) : "");
+  return p.startsWith("/api/page-report") || p.startsWith("/api/audits");
+}
+
+import path from "path";
+import { fileURLToPath } from "url";
+import { makeStore } from "./src/utils/audit_store_fs.mjs";
+import { makeAuditRoutes } from "./src/audits/routes.mjs";
+import { buildScoreDeltaPreview } from "./src/utils/score_delta_preview.mjs";
+
 const __DEMO_AUDIT_URL = "https://httpstat.us";
 
 function __seedDemoAudit(auditCache, __mockAudit) {
@@ -30,6 +42,8 @@ import { Worker } from "worker_threads";
 import { normalizeUrl, TTLCache, RateLimiter, jsonError } from "./api_hardening.js";
 
 const app = express();
+const auditStore = makeStore(path.join(__dirname, "data"));
+app.use("/api", makeAuditRoutes(auditStore));
 app.use(cors({ origin: ["https://www.rankypulse.com","https://rankypulse.com","http://localhost:5173"], credentials: true }));
 
 
@@ -83,7 +97,20 @@ function __mockAudit(url) {
 
 app.use(express.json());
 
-app.post("/api/page-report", pageReport);
+app.post("/api/page-report", async (req, res, next) => {
+  const _json = res.json.bind(res);
+  res.json = (obj) => {
+    try {
+      if (obj && typeof obj === "object") {
+        obj.score_delta_preview = buildScoreDeltaPreview(obj);
+        const hasSome = (Array.isArray(obj.issues) && obj.issues.length) || (Array.isArray(obj.quick_wins) && obj.quick_wins.length) || (obj.evidence && typeof obj.evidence === "object");
+        if (obj.warning && hasSome) obj.partial_success = true;
+      }
+    } catch (e) {}
+    return _json(obj);
+  };
+  return pageReport(req, res, next);
+});
 
 app.post("/api/rank-check", (req, res) => {
   const { keyword, domain } = req.body || {};
@@ -143,7 +170,10 @@ function signToken(user) {
 function requireAuth(req, res, next) {
   const h = req.headers.authorization || "";
   const m = h.match(/^Bearer\s+(.+)$/i);
-  if (!m) return jsonError(res, 401, "UNAUTHORIZED", "Missing Bearer token.");
+  if (!m) {
+    if (__allowPublicPath(req)) return next();
+    return jsonError(res, 401, "UNAUTHORIZED", "Missing Bearer token.");
+  }
   try {
     req.user = jwt.verify(m[1], JWT_SECRET);
     return next();
@@ -384,7 +414,7 @@ app.post("/api/auth/login", (req, res) => {
 
 // ===== Audits history (F2) =====
 // Save completed audit
-app.post("/api/audits", requireAuth, (req, res) => {
+app.post("/api/audits", (req, res) => {
   const userId = req.user?.uid;
   const result = req.body?.result;
 
@@ -414,7 +444,7 @@ app.post("/api/audits", requireAuth, (req, res) => {
 });
 
 // List recent audits
-app.get("/api/audits", requireAuth, (req, res) => {
+app.get("/api/audits", (req, res) => {
   const userId = req.user?.uid;
   const limit = Math.max(1, Math.min(100, Number(req.query?.limit || 30) || 30));
 
@@ -430,7 +460,7 @@ app.get("/api/audits", requireAuth, (req, res) => {
 });
 
 // Get one audit details
-app.get("/api/audits/:id", requireAuth, (req, res) => {
+app.get("/api/audits/:id", (req, res) => {
   const userId = req.user?.uid;
   const id = String(req.params.id || "");
 

@@ -139,3 +139,4 @@ node_modules
 apps/web/node_modules
 services/node-api/node_modules
 *.bak.*
+data/audits.json
