@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 
+import { issueKey } from "../lib/issue_diff.js";
 function bucketLabel(p) {
   if (p === "fix_now") return "Fix now";
   if (p === "fix_next") return "Fix next";
@@ -117,7 +118,10 @@ function writeQuery(next) {
   } catch {}
 }
 
-export default function IssuesPanel({ issues: rawIssues = [] }) {
+export default function IssuesPanel({ 
+  const fixedKeySet = compareMeta?.fixedKeySet || new Set();
+  const addedKeySet = compareMeta?.addedKeySet || new Set();
+issues: rawIssues = [] }) {
   const init = useMemo(() => readQuery(), []);
   const [q, setQ] = useState(init.q);
   const [priority, setPriority] = useState(init.p);
@@ -362,6 +366,22 @@ export default function IssuesPanel({ issues: rawIssues = [] }) {
           return (
             <div key={g.key} className="rounded-2xl border border-slate-200 bg-white p-3">
               <div className="flex items-center gap-2">
+            {(() => {
+              const k = issueKey(issue);
+              const isNew = addedKeySet.has(k);
+              const isFixed = fixedKeySet.has(k);
+              if (!isNew && !isFixed) return null;
+              const cls = isNew
+                ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                : "border-sky-200 bg-sky-50 text-sky-800";
+              const label = isNew ? "New" : "Fixed";
+              return (
+                <span className={"inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold " + cls}>
+                  {label}
+                </span>
+              );
+            })()}
+
                 <span className={"inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold " + bucketClass(g.key)}>
                   {g.label}
                 </span>

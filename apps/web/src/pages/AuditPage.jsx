@@ -1,4 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { makeSnapshotFromResult, upsertAuditSnapshot } from "../lib/audit_history.js";
+import CompareControls from "../components/CompareControls.jsx";
 import { useLocation, useNavigate } from "react-router-dom";
 import PricingModal from "../components/PricingModal.jsx";
 import ShareAuditButton from "../components/ShareAuditButton.jsx";
@@ -14,7 +16,9 @@ import AuditHistoryPanel from "../components/AuditHistoryPanel.jsx";
 import { pushAuditHistory } from "../lib/auditHistory.js";
 
 export default function AuditPage() {
-  const navigate = useNavigate();
+  
+  const [compareCtx, setCompareCtx] = React.useState(null);
+const navigate = useNavigate();
   const location = useLocation();
   const [pricingOpen, setPricingOpen] = useState(false);
 
@@ -117,8 +121,21 @@ try {
     }
   }
 
-  return (
+  
+  React.useEffect(() => {
+    const ok = !!result?.ok;
+    const u = String(url || result?.url || \"\").trim();
+    const sig = ok ? (u + \"|\" + String(result?.score ?? \"\") + \"|\" + String((result?.issues || []).length)) : \"\";
+    if (!ok || !u) return;
+    if (sig && sig !== lastPromptSigRef.current) {
+      lastPromptSigRef.current = sig;
+      setSavePromptOpen(true);
+    }
+  }, [result, url]);
 
+return (
+
+  const issuesForPanel = compareCtx?.compare?.issues ?? result?.issues;
 <AppShell
       title="SEO Page Audit"
       subtitle="Paste a URL and get a score, quick wins, and a prioritized list of issues. Fast, clear, and usable."
@@ -233,7 +250,9 @@ try {
                   Partial success audit: some checks worked even though fetch/parse was incomplete.
                 </div>
               ) : null}
-              <IssuesPanel issues={result?.issues} />
+              <CompareControls currentResult={result} currentUrl={url} refreshKey={historyRefreshKey} onCompareIssues={setCompareCtx} onSaveSnapshot={saveSnapshotFromUI} />
+
+            <IssuesPanel issues={issuesForPanel} compareMeta={compareCtx?.delta} />
               <SavedAuditCompare url={result?.url} />
             </div>
       {import.meta.env.DEV && debug && (
