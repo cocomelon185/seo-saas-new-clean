@@ -1,4 +1,3 @@
-import React from "react";
 import { NavLink } from "react-router-dom";
 import { Separator } from "components/ui/separator";
 import { Button } from "components/ui/button";

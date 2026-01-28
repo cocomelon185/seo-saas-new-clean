@@ -1,5 +1,3 @@
-import React from "react";
-
 // components
 
 import MapExample from "components/Maps/MapExample.jsx";

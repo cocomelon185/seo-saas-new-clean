@@ -242,7 +242,6 @@ try {
           <pre className="mt-3 overflow-auto text-xs text-white/80">{debug}</pre>
         </div>
       )}
-        )}
     </AppShell>
   );
 }

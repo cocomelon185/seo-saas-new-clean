@@ -1,5 +1,3 @@
-import React from "react";
-
 function MapExample() {
   const mapRef = React.useRef(null);
   React.useEffect(() => {

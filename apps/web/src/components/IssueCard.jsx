@@ -1,5 +1,3 @@
-import React from "react";
-
 function badgeClass(kind) {
   if (kind === "high") return "bg-red-50 text-red-700 border-red-200";
   if (kind === "medium") return "bg-amber-50 text-amber-700 border-amber-200";
