@@ -116,6 +116,15 @@ export default function AuditPage() {
                 {typeof result?.score === "number" ? result.score : 0}
               </div>
               <button
+                type="button"
+                disabled
+                aria-disabled="true"
+                className="mt-4 w-full rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3 text-sm font-semibold text-white/60 transition"
+              >
+                Export summary
+              </button>
+              <div className="mt-2 text-xs text-white/50">Export coming soon.</div>
+              <button
                 onClick={() => setPricingOpen(true)}
                 className="mt-4 w-full rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/[0.10]"
               >
