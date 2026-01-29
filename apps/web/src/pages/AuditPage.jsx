@@ -150,7 +150,7 @@ export default function AuditPage() {
                 <div className="mt-4 space-y-3">
                   {issues.slice(0, 10).map((issue, index) => (
                     <div
-                      key={issue?.id ?? index}
+                      key={issue?.issue_id ?? issue?.id ?? index}
                       className="rounded-xl border border-white/10 bg-white/[0.02] p-4"
                     >
                       <div className="flex flex-wrap items-center gap-2">

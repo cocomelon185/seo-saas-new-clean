@@ -7,6 +7,9 @@ function normalizeItem(text) {
 }
 
 function parseContentBrief(raw) {
+  const MAX_OUTLINE = 20;
+  const MAX_FAQS = 20;
+  const MAX_KEYWORDS = 30;
   const data = {
     primaryTopic: "",
     outline: [],
@@ -20,13 +23,25 @@ function parseContentBrief(raw) {
 
   const headingPattern = /^(primary topic|suggested outline|faqs?|keywords to cover)\s*[:\-]?\s*(.*)$/i;
   let current = null;
+  const keywordSet = new Set();
+
+  const addListItem = (target, value, maxItems) => {
+    if (target.length >= maxItems) return;
+    const item = normalizeItem(value);
+    if (item) target.push(item);
+  };
 
   const addKeywords = (value) => {
     const cleaned = normalizeItem(value);
     if (!cleaned) return;
-    cleaned.split(",").forEach((entry) => {
+    cleaned.split(/[;,]/).forEach((entry) => {
       const token = entry.trim();
-      if (token) data.keywords.push(token);
+      if (!token) return;
+      const tokenKey = token.toLowerCase();
+      if (keywordSet.has(tokenKey)) return;
+      if (data.keywords.length >= MAX_KEYWORDS) return;
+      keywordSet.add(tokenKey);
+      data.keywords.push(token);
     });
   };
 
@@ -49,8 +64,11 @@ function parseContentBrief(raw) {
         } else if (current === "keywords") {
           addKeywords(rest);
         } else {
-          const item = normalizeItem(rest);
-          if (item) data[current].push(item);
+          addListItem(
+            data[current],
+            rest,
+            current === "outline" ? MAX_OUTLINE : MAX_FAQS
+          );
         }
       }
       return;
@@ -70,30 +88,24 @@ function parseContentBrief(raw) {
       return;
     }
 
-    const item = normalizeItem(trimmed);
-    if (item) data[current].push(item);
-  });
-
-  const keywordSet = new Set();
-  const keywords = [];
-  data.keywords.forEach((kw) => {
-    if (!keywordSet.has(kw)) {
-      keywordSet.add(kw);
-      keywords.push(kw);
-    }
+    addListItem(
+      data[current],
+      trimmed,
+      current === "outline" ? MAX_OUTLINE : MAX_FAQS
+    );
   });
 
   const hasContent =
     Boolean(data.primaryTopic) ||
     data.outline.length > 0 ||
     data.faqs.length > 0 ||
-    keywords.length > 0;
+    data.keywords.length > 0;
 
   return {
     primaryTopic: data.primaryTopic,
     outline: data.outline,
     faqs: data.faqs,
-    keywords,
+    keywords: data.keywords,
     hasContent
   };
 }
