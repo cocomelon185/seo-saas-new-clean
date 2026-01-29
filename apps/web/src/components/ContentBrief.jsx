@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 function normalizeItem(text) {
   if (!text) return "";
@@ -116,12 +116,21 @@ export default function ContentBrief({ content }) {
   const raw = typeof content === "string" ? content : "";
   const [copyState, setCopyState] = useState("idle");
   const [showRaw, setShowRaw] = useState(false);
-  const preRef = useRef(null);
+  const rawOnlyPreRef = useRef(null);
+  const rawTogglePreRef = useRef(null);
   const copyTimeout = useRef(null);
   if (!raw.trim()) return null;
 
   const parsed = parseContentBrief(raw);
   const hasStructured = parsed.hasContent;
+
+  useEffect(() => {
+    return () => {
+      if (copyTimeout.current) {
+        clearTimeout(copyTimeout.current);
+      }
+    };
+  }, []);
 
   const flashCopyState = (nextState) => {
     if (copyTimeout.current) {
@@ -134,11 +143,12 @@ export default function ContentBrief({ content }) {
   };
 
   const selectRawText = () => {
-    if (!preRef.current) return false;
+    const target = rawTogglePreRef.current || rawOnlyPreRef.current;
+    if (!target) return false;
     const selection = window.getSelection?.();
     if (!selection) return false;
     const range = document.createRange();
-    range.selectNodeContents(preRef.current);
+    range.selectNodeContents(target);
     selection.removeAllRanges();
     selection.addRange(range);
     return true;
@@ -238,7 +248,7 @@ export default function ContentBrief({ content }) {
         </div>
       ) : (
         <pre
-          ref={preRef}
+          ref={rawOnlyPreRef}
           className="mt-3 max-h-64 overflow-auto whitespace-pre-wrap rounded-xl border border-white/10 bg-black/20 p-4 text-sm text-white/80"
         >
           {raw}
@@ -246,7 +256,7 @@ export default function ContentBrief({ content }) {
       )}
       {hasStructured && showRaw ? (
         <pre
-          ref={preRef}
+          ref={rawTogglePreRef}
           className="mt-4 max-h-64 overflow-auto whitespace-pre-wrap rounded-xl border border-white/10 bg-black/20 p-4 text-sm text-white/80"
         >
           {raw}
