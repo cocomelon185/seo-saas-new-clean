@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import PricingModal from "../components/PricingModal.jsx";
 import AppShell from "../components/AppShell.jsx";
+import ActionPlan from "../components/ActionPlan.jsx";
 
 export default function AuditPage() {
   const navigate = useNavigate();
@@ -117,6 +118,8 @@ export default function AuditPage() {
                 Unlock Full Fix Plan
               </button>
             </div>
+
+            <ActionPlan result={result} />
 
             <div className="md:col-span-2 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
               <div className="text-sm font-semibold text-white/80">Quick Wins</div>
