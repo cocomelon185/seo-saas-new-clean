@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import PricingModal from "../components/PricingModal.jsx";
 import AppShell from "../components/AppShell.jsx";
+import ContentBrief from "../components/ContentBrief.jsx";
 
 export default function AuditPage() {
   const navigate = useNavigate();
@@ -52,6 +53,10 @@ export default function AuditPage() {
       setError(String(e?.message || "Request failed."));
     }
   }
+
+  const briefText = typeof result?.content_brief === "string" ? result.content_brief : "";
+  const hasBrief = Boolean(briefText && briefText.trim());
+  const issues = Array.isArray(result?.issues) ? result.issues : [];
 
   return (
     <AppShell
@@ -133,11 +138,50 @@ export default function AuditPage() {
               </div>
             </div>
 
-            <div className="md:col-span-3 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-              <div className="text-sm font-semibold text-white/80">Content Brief</div>
-              <div className="mt-3 whitespace-pre-wrap text-white/85">
-                {result?.content_brief || "No brief returned."}
+            {hasBrief ? (
+              <div className="md:col-span-3">
+                <ContentBrief content={briefText} />
               </div>
+            ) : null}
+
+            <div className="md:col-span-3 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+              <div className="text-sm font-semibold text-white/80">Issues</div>
+              {issues.length > 0 ? (
+                <div className="mt-4 space-y-3">
+                  {issues.slice(0, 10).map((issue, index) => (
+                    <div
+                      key={issue?.id ?? index}
+                      className="rounded-xl border border-white/10 bg-white/[0.02] p-4"
+                    >
+                      <div className="flex flex-wrap items-center gap-2">
+                        <div className="text-sm font-semibold text-white/90">
+                          {issue?.title || issue?.message || `Issue ${index + 1}`}
+                        </div>
+                        {issue?.impact ? (
+                          <span className="rounded-full border border-white/10 bg-white/[0.06] px-2.5 py-1 text-xs font-semibold text-white/70">
+                            {String(issue.impact).toUpperCase()}
+                          </span>
+                        ) : null}
+                        {issue?.type ? (
+                          <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-white/50">
+                            {issue.type}
+                          </span>
+                        ) : null}
+                      </div>
+                      {issue?.description ? (
+                        <div className="mt-2 text-sm text-white/70">{issue.description}</div>
+                      ) : null}
+                      {issue?.how_to_fix ? (
+                        <div className="mt-2 text-xs text-white/60">
+                          <span className="font-semibold text-white/70">Fix:</span> {issue.how_to_fix}
+                        </div>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="mt-3 text-white/60">No issues returned.</div>
+              )}
             </div>
           </div>
         )}
