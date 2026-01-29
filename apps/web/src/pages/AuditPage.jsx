@@ -195,7 +195,7 @@ export default function AuditPage() {
                   <button
                     type="button"
                     onClick={() => setIssueFilter("all")}
-                    className={`rounded-full border px-2.5 py-1 text-xs font-semibold transition ${
+                    className={`rounded-full border px-2.5 py-1 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 ${
                       issueFilter === "all"
                         ? "border-white/40 bg-white/20 text-white"
                         : "border-white/10 bg-white/[0.04] text-white/70"
@@ -208,9 +208,9 @@ export default function AuditPage() {
                       key={chip.key}
                       type="button"
                       onClick={() => setIssueFilter(chip.key)}
-                      className={`rounded-full border px-2.5 py-1 text-xs font-semibold transition ${
+                      className={`rounded-full border px-2.5 py-1 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 ${
                         issueFilter === chip.key
-                          ? "border-white/50 bg-white/20 text-white"
+                          ? `${chip.className} ring-2 ring-white/20 border-white/40`
                           : chip.className
                       }`}
                     >
