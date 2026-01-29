@@ -1,3 +1,5 @@
+import { useRef, useState } from "react";
+
 function normalizeItem(text) {
   if (!text) return "";
   return text
@@ -112,15 +114,82 @@ function parseContentBrief(raw) {
 
 export default function ContentBrief({ content }) {
   const raw = typeof content === "string" ? content : "";
+  const [copyState, setCopyState] = useState("idle");
+  const [showRaw, setShowRaw] = useState(false);
+  const preRef = useRef(null);
+  const copyTimeout = useRef(null);
   if (!raw.trim()) return null;
 
   const parsed = parseContentBrief(raw);
+  const hasStructured = parsed.hasContent;
+
+  const flashCopyState = (nextState) => {
+    if (copyTimeout.current) {
+      clearTimeout(copyTimeout.current);
+    }
+    setCopyState(nextState);
+    copyTimeout.current = setTimeout(() => {
+      setCopyState("idle");
+    }, 1500);
+  };
+
+  const selectRawText = () => {
+    if (!preRef.current) return false;
+    const selection = window.getSelection?.();
+    if (!selection) return false;
+    const range = document.createRange();
+    range.selectNodeContents(preRef.current);
+    selection.removeAllRanges();
+    selection.addRange(range);
+    return true;
+  };
+
+  const handleCopy = async () => {
+    try {
+      if (!navigator?.clipboard?.writeText) {
+        throw new Error("Clipboard unavailable");
+      }
+      await navigator.clipboard.writeText(raw);
+      flashCopyState("copied");
+    } catch {
+      if (!showRaw && hasStructured) {
+        setShowRaw(true);
+        setTimeout(() => {
+          const didSelect = selectRawText();
+          flashCopyState("failed");
+        }, 0);
+        return;
+      }
+      selectRawText();
+      flashCopyState("failed");
+    }
+  };
 
   return (
     <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-      <div className="text-sm font-semibold text-white/80">Content Brief</div>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="text-sm font-semibold text-white/80">Content Brief</div>
+        <div className="flex items-center gap-3">
+          {hasStructured ? (
+            <button
+              type="button"
+              onClick={() => setShowRaw((prev) => !prev)}
+              className="text-xs font-semibold text-white/50 transition hover:text-white/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+            >
+              {showRaw ? "Hide raw" : "Show raw"}
+            </button>
+          ) : null}
+          <button
+            type="button"
+            onClick={handleCopy}
+            className="min-w-[96px] rounded-full border border-white/10 bg-white/[0.06] px-3 py-1 text-xs font-semibold text-white/70 transition hover:bg-white/[0.12] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+          >
+            {copyState === "copied" ? "Copied" : copyState === "failed" ? "Copy failed" : "Copy"}
+          </button>
+        </div>
+      </div>
 
-      {parsed.hasContent ? (
+      {hasStructured ? (
         <div className="mt-4 grid gap-4 md:grid-cols-2">
           {parsed.primaryTopic ? (
             <div className="md:col-span-2 rounded-xl border border-white/10 bg-white/[0.04] p-4">
@@ -168,10 +237,21 @@ export default function ContentBrief({ content }) {
           ) : null}
         </div>
       ) : (
-        <pre className="mt-3 whitespace-pre-wrap rounded-xl border border-white/10 bg-black/20 p-4 text-sm text-white/80">
+        <pre
+          ref={preRef}
+          className="mt-3 max-h-64 overflow-auto whitespace-pre-wrap rounded-xl border border-white/10 bg-black/20 p-4 text-sm text-white/80"
+        >
           {raw}
         </pre>
       )}
+      {hasStructured && showRaw ? (
+        <pre
+          ref={preRef}
+          className="mt-4 max-h-64 overflow-auto whitespace-pre-wrap rounded-xl border border-white/10 bg-black/20 p-4 text-sm text-white/80"
+        >
+          {raw}
+        </pre>
+      ) : null}
     </div>
   );
 }
