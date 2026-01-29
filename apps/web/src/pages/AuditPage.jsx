@@ -12,6 +12,7 @@ export default function AuditPage() {
   const [status, setStatus] = useState("idle"); // idle | loading | success | error
   const [error, setError] = useState("");
   const [result, setResult] = useState(null);
+  const [issueFilter, setIssueFilter] = useState("all");
 
   const canRun = useMemo(() => {
     try {
@@ -57,6 +58,10 @@ export default function AuditPage() {
   const briefText = typeof result?.content_brief === "string" ? result.content_brief : "";
   const hasBrief = Boolean(briefText && briefText.trim());
   const issues = Array.isArray(result?.issues) ? result.issues : [];
+  const filteredIssues =
+    issueFilter === "all"
+      ? issues
+      : issues.filter((issue) => issue?.priority === issueFilter);
   const priorityCounts = issues.reduce(
     (acc, issue) => {
       const priority = issue?.priority;
@@ -185,21 +190,39 @@ export default function AuditPage() {
 
             <div className="md:col-span-3 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
               <div className="text-sm font-semibold text-white/80">Issues</div>
-              {priorityChips.length > 0 ? (
+              {issues.length > 0 ? (
                 <div className="mt-3 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIssueFilter("all")}
+                    className={`rounded-full border px-2.5 py-1 text-xs font-semibold transition ${
+                      issueFilter === "all"
+                        ? "border-white/40 bg-white/20 text-white"
+                        : "border-white/10 bg-white/[0.04] text-white/70"
+                    }`}
+                  >
+                    All · {issues.length}
+                  </button>
                   {priorityChips.map((chip) => (
-                    <span
+                    <button
                       key={chip.key}
-                      className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${chip.className}`}
+                      type="button"
+                      onClick={() => setIssueFilter(chip.key)}
+                      className={`rounded-full border px-2.5 py-1 text-xs font-semibold transition ${
+                        issueFilter === chip.key
+                          ? "border-white/50 bg-white/20 text-white"
+                          : chip.className
+                      }`}
                     >
                       {chip.label} · {chip.count}
-                    </span>
+                    </button>
                   ))}
                 </div>
               ) : null}
               {issues.length > 0 ? (
+                filteredIssues.length > 0 ? (
                 <div className="mt-4 space-y-3">
-                  {issues.slice(0, 10).map((issue, index) => (
+                  {filteredIssues.slice(0, 10).map((issue, index) => (
                     <div
                       key={issue?.issue_id ?? issue?.id ?? index}
                       className="rounded-xl border border-white/10 bg-white/[0.02] p-4"
@@ -230,6 +253,9 @@ export default function AuditPage() {
                     </div>
                   ))}
                 </div>
+                ) : (
+                  <div className="mt-3 text-white/60">No issues in this priority.</div>
+                )
               ) : (
                 <div className="mt-3 text-white/60">No issues returned.</div>
               )}
