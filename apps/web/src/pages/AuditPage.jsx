@@ -16,6 +16,7 @@ export default function AuditPage() {
   const [pricingOpen, setPricingOpen] = useState(false);
 
   const [url, setUrl] = useState("");
+  const hasUrl = Boolean(url?.trim());
   const [status, setStatus] = useState("idle"); // idle | loading | success | error
   const [error, setError] = useState("");
   const [result, setResult] = useState(null);
@@ -120,10 +121,11 @@ try {
 
           <button
             onClick={run}
-            disabled={status === "loading"}
+            disabled={!hasUrl || status === "loading"}
+            title={!hasUrl ? "Runs audit for the URL below" : ""}
             className={[
               "rounded-2xl px-5 py-3 text-sm font-semibold transition",
-              status === "loading"
+              !hasUrl || status === "loading"
                 ? "cursor-not-allowed bg-white/10 text-white/60"
                 : "bg-gradient-to-r from-indigo-500 to-fuchsia-500 text-white hover:opacity-95"
             ].join(" ")}
