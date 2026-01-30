@@ -39,6 +39,9 @@ function splitOutlineItem(item) {
     return null;
   };
 
+  const byNewline = splitAndClean(item, /\r?\n+/);
+  if (byNewline.length > 1) return byNewline.slice(0, 20);
+
   const byPeriod = splitAndClean(item, /\.\s+/);
   if (byPeriod.length > 1) return byPeriod.slice(0, 20);
 
