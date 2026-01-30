@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import PricingModal from "../components/PricingModal.jsx";
 import AppShell from "../components/AppShell.jsx";
@@ -13,6 +13,8 @@ export default function AuditPage() {
   const [error, setError] = useState("");
   const [result, setResult] = useState(null);
   const [issueFilter, setIssueFilter] = useState("all");
+  const [exportState, setExportState] = useState("idle");
+  const exportTimeoutRef = useRef(null);
 
   const canRun = useMemo(() => {
     try {
@@ -54,6 +56,104 @@ export default function AuditPage() {
       setError(String(e?.message || "Request failed."));
     }
   }
+
+  useEffect(() => {
+    return () => {
+      if (exportTimeoutRef.current) {
+        clearTimeout(exportTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const buildExportText = () => {
+    const lines = [];
+    const auditedUrl = result?.url || url.trim();
+    lines.push("RankyPulse — SEO Audit Summary");
+    lines.push(`Exported: ${new Date().toLocaleString()}`);
+    lines.push(`URL: ${auditedUrl || "Not available"}`);
+    lines.push("");
+    lines.push(`SEO Score: ${typeof result?.score === "number" ? result.score : "N/A"}`);
+    lines.push("");
+
+    lines.push("Quick Wins:");
+    const quickWins = Array.isArray(result?.quick_wins) ? result.quick_wins.slice(0, 10) : [];
+    if (quickWins.length > 0) {
+      quickWins.forEach((win) => lines.push(`- ${win}`));
+    } else {
+      lines.push("None");
+    }
+    lines.push("");
+
+    lines.push("Issues:");
+    const matchingIssues = issueFilter === "all" ? issues : filteredIssues;
+    const totalMatching = matchingIssues.length;
+    const exportedIssues = matchingIssues.slice(0, 50);
+    if (exportedIssues.length === 0) {
+      lines.push("None");
+    } else {
+      exportedIssues.forEach((issue, index) => {
+        const title = issue?.title || issue?.message || `Issue ${index + 1}`;
+        lines.push(`- ${title}`);
+        lines.push(`  Priority: ${issue?.priority || "unknown"}`);
+        if (issue?.severity) lines.push(`  Severity: ${issue.severity}`);
+        if (issue?.description) lines.push(`  Description: ${issue.description}`);
+        if (issue?.how_to_fix) lines.push(`  How to fix: ${issue.how_to_fix}`);
+        if (issue?.evidence) {
+          let evidenceText = "";
+          try {
+            evidenceText = typeof issue.evidence === "string" ? issue.evidence : JSON.stringify(issue.evidence);
+          } catch {
+            evidenceText = String(issue.evidence);
+          }
+          if (evidenceText) lines.push(`  Evidence: ${evidenceText}`);
+        }
+        lines.push("");
+      });
+    }
+    lines.push(`Issues exported: ${exportedIssues.length} of ${totalMatching} matching (total ${issues.length})`);
+    lines.push("");
+
+    lines.push("Content Brief:");
+    if (briefText && briefText.trim()) {
+      lines.push(briefText.trim());
+    } else {
+      lines.push("Not available");
+    }
+
+    return lines.join("\n");
+  };
+
+  const downloadTextFile = (filename, text) => {
+    const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+    const objectUrl = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = objectUrl;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(objectUrl);
+  };
+
+  const flashExportState = (nextState) => {
+    if (exportTimeoutRef.current) {
+      clearTimeout(exportTimeoutRef.current);
+    }
+    setExportState(nextState);
+    exportTimeoutRef.current = setTimeout(() => {
+      setExportState("idle");
+    }, 1500);
+  };
+
+  const handleExport = () => {
+    try {
+      const text = buildExportText();
+      downloadTextFile("rankypulse-audit-summary.txt", text);
+      flashExportState("success");
+    } catch {
+      flashExportState("error");
+    }
+  };
 
   const briefText = typeof result?.content_brief === "string" ? result.content_brief : "";
   const hasBrief = Boolean(briefText && briefText.trim());
@@ -152,13 +252,15 @@ export default function AuditPage() {
               </div>
               <button
                 type="button"
-                disabled
-                aria-disabled="true"
-                className="mt-4 w-full rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3 text-sm font-semibold text-white/60 transition"
+                onClick={handleExport}
+                className="mt-4 w-full rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/[0.10]"
               >
-                Export summary
+                {exportState === "success"
+                  ? "Exported"
+                  : exportState === "error"
+                    ? "Export failed"
+                    : "Export summary"}
               </button>
-              <div className="mt-2 text-xs text-white/50">Export coming soon.</div>
               <button
                 onClick={() => setPricingOpen(true)}
                 className="mt-4 w-full rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/[0.10]"
