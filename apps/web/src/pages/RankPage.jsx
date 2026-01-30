@@ -38,7 +38,7 @@ function domainFromInput(s) {
 function latestKeywordIdeasForDomain(domain) {
   const d = domainFromInput(domain);
   if (!d) return [];
-  const snaps = listSnapshots();
+  const snaps = Array.isArray(listSnapshots()) ? listSnapshots() : [];
   const hit = snaps.find(s => {
     const u = String(s?.url || "");
     return u.includes(d);
@@ -110,8 +110,16 @@ export default function RankPage() {
         throw new Error(text || `HTTP ${res.status}`);
       }
 
-      const data = await res.json();
-      const normalized = { ...data, domain: domainFromInput(data?.domain || domain), rank: data.rank ?? data.position };
+      const data = await res.json().catch(() => null);
+      if (!data || typeof data !== "object") {
+        throw new Error("Unexpected response.");
+      }
+      const normalized = {
+        ...data,
+        keyword: String(data?.keyword ?? keyword ?? "").trim(),
+        domain: domainFromInput(data?.domain || domain),
+        rank: data.rank ?? data.position
+      };
       setResult(normalized);
       try { saveRankCheck(normalized); } catch {}
       setStatus("success");
@@ -128,6 +136,9 @@ export default function RankPage() {
     if (keyword.trim()) return [];
     return latestKeywordIdeasForDomain(domain);
   }, [domain, keyword]);
+
+  const safeKeyword = String(result?.keyword || keyword || "");
+  const safeDomain = String(result?.domain || domainFromInput(domain) || "");
 
   return (
     <AppShell
@@ -216,7 +227,7 @@ export default function RankPage() {
 
         {status === "error" && (
           <div className="rounded-2xl border border-rose-400/30 bg-rose-500/10 p-5 text-rose-100">
-            {error}
+            {String(error || "")}
           </div>
         )}
 
@@ -232,8 +243,8 @@ export default function RankPage() {
             </div>
 
             <div className="mt-3 grid gap-2 text-white/90">
-              <div><span className="text-white/60">Keyword:</span> {result?.keyword || keyword}</div>
-              <div><span className="text-white/60">Domain:</span> {result?.domain || domainFromInput(domain)}</div>
+              <div><span className="text-white/60">Keyword:</span> {safeKeyword || "—"}</div>
+              <div><span className="text-white/60">Domain:</span> {safeDomain || "—"}</div>
 
               <div className="text-2xl font-semibold">
                 <span className="text-white/60 text-base font-medium">Rank:</span> {shownRank ?? "—"}

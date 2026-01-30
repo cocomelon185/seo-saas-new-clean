@@ -9,8 +9,9 @@ import SavedAuditsPanel from "../components/SavedAuditsPanel.jsx";
 import AuditImpactBanner from "../components/AuditImpactBanner.jsx";
 import AuditHistoryPanel from "../components/AuditHistoryPanel.jsx";
 import { pushAuditHistory } from "../lib/auditHistory.js";
+import ErrorBoundary from "../components/ErrorBoundary.jsx";
 
-export default function AuditPage() {
+function AuditPageInner() {
   const navigate = useNavigate();
   const location = useLocation();
   const [pricingOpen, setPricingOpen] = useState(false);
@@ -100,6 +101,10 @@ try {
     }
   }
 
+  const issues = Array.isArray(result?.issues) ? result.issues : [];
+  const quickWins = Array.isArray(result?.quick_wins) ? result.quick_wins : [];
+  const brief = typeof result?.content_brief === "string" ? result.content_brief : "";
+
   return (
 
 <AppShell
@@ -148,7 +153,7 @@ try {
 
         {status === "error" && (
           <div className="rounded-2xl border border-rose-400/30 bg-rose-500/10 p-5 text-rose-100">
-            {error}
+            {String(error || "")}
           </div>
         )}
 
@@ -176,9 +181,9 @@ try {
             <div className="md:col-span-2 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
               <div className="text-sm font-semibold text-white/80">Quick Wins</div>
               <div className="mt-3">
-                {Array.isArray(result?.quick_wins) && result.quick_wins.length > 0 ? (
+                {quickWins.length > 0 ? (
                   <ul className="list-disc space-y-2 pl-5 text-white/85">
-                    {result.quick_wins.slice(0, 10).map((x, i) => (
+                    {quickWins.slice(0, 10).map((x, i) => (
                       <li key={i}>{x}</li>
                     ))}
                   </ul>
@@ -191,7 +196,7 @@ try {
             <div className="md:col-span-3 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
               <div className="text-sm font-semibold text-white/80">Content Brief</div>
               <div className="mt-3 whitespace-pre-wrap text-white/85">
-                {result?.content_brief || "No brief returned."}
+                {brief || "No brief returned."}
               </div>
             </div>
           </div>
@@ -205,8 +210,8 @@ try {
           navigate("/pricing");
         }}
       />
-          <AuditImpactBanner score={result?.score} issues={result?.issues} />
-            <IssuesPanel issues={result?.issues} />
+          <AuditImpactBanner score={result?.score} issues={issues} />
+            <IssuesPanel issues={issues} />
       {import.meta.env.DEV && debug && (
         <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
           <div className="text-sm font-semibold text-white/80">Raw response (debug)</div>
@@ -215,5 +220,13 @@ try {
       )}
         )}
     </AppShell>
+  );
+}
+
+export default function AuditPage() {
+  return (
+    <ErrorBoundary>
+      <AuditPageInner />
+    </ErrorBoundary>
   );
 }

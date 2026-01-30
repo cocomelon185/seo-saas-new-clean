@@ -7,6 +7,7 @@ export default function ImprovePage() {
   const [error, setError] = useState("");
   const [result, setResult] = useState(null);
 
+  const [includeAi, setIncludeAi] = useState(false);
   const canRun = useMemo(() => {
     try {
       const u = new URL(url.trim());
@@ -30,7 +31,9 @@ export default function ImprovePage() {
     try {
       const res = await fetch("/api/page-report", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json",
+        ...(includeAi && import.meta.env.VITE_INTERNAL_AI_TOKEN ? { "x-internal-ai": import.meta.env.VITE_INTERNAL_AI_TOKEN } : {}),
+},
         body: JSON.stringify({ url: url.trim() })
       });
 
@@ -47,6 +50,10 @@ export default function ImprovePage() {
       setError(String(e?.message || "Request failed."));
     }
   }
+
+  const contentBrief = typeof result?.content_brief === "string" ? result.content_brief : "";
+  const keywordIdeas = Array.isArray(result?.keyword_ideas) ? result.keyword_ideas : [];
+  const quickWins = Array.isArray(result?.quick_wins) ? result.quick_wins : [];
 
   return (
     <AppShell
@@ -93,7 +100,7 @@ export default function ImprovePage() {
 
         {status === "error" && (
           <div className="rounded-2xl border border-rose-400/30 bg-rose-500/10 p-5 text-rose-100">
-            {error}
+            {String(error || "")}
           </div>
         )}
 
@@ -102,15 +109,15 @@ export default function ImprovePage() {
             <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
               <div className="text-sm font-semibold text-white/80">Content Brief</div>
               <div className="mt-3 whitespace-pre-wrap text-white/85">
-                {result?.content_brief || "No brief returned."}
+                {contentBrief || "No brief returned."}
               </div>
             </div>
 
             <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
               <div className="text-sm font-semibold text-white/80">Keyword Ideas</div>
-              {Array.isArray(result?.keyword_ideas) && result.keyword_ideas.length > 0 ? (
+              {keywordIdeas.length > 0 ? (
                 <ul className="mt-3 list-disc space-y-2 pl-5 text-white/85">
-                  {result.keyword_ideas.slice(0, 24).map((k, i) => (
+                  {keywordIdeas.slice(0, 24).map((k, i) => (
                     <li key={i}>{k}</li>
                   ))}
                 </ul>
@@ -121,9 +128,9 @@ export default function ImprovePage() {
 
             <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
               <div className="text-sm font-semibold text-white/80">Quick Wins</div>
-              {Array.isArray(result?.quick_wins) && result.quick_wins.length > 0 ? (
+              {quickWins.length > 0 ? (
                 <ul className="mt-3 list-disc space-y-2 pl-5 text-white/85">
-                  {result.quick_wins.slice(0, 12).map((x, i) => (
+                  {quickWins.slice(0, 12).map((x, i) => (
                     <li key={i}>{x}</li>
                   ))}
                 </ul>
