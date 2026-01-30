@@ -4,6 +4,33 @@ import PricingModal from "../components/PricingModal.jsx";
 import AppShell from "../components/AppShell.jsx";
 import ContentBrief from "../components/ContentBrief.jsx";
 
+function getHowToFixList(text) {
+  if (!text || typeof text !== "string") return null;
+  const lines = text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  if (lines.length < 2) return null;
+
+  const bulletRegex = /^[-*•]\s+/;
+  const numberedRegex = /^\d+[\.\)]\s+/;
+  const numberedCount = lines.filter((line) => numberedRegex.test(line)).length;
+  const bulletCount = lines.filter((line) => bulletRegex.test(line)).length;
+  const isNumbered = numberedCount >= 2;
+  const isBulleted = bulletCount >= 2;
+
+  if (!isNumbered && !isBulleted) return null;
+
+  const listType = isNumbered ? "ol" : "ul";
+  const stripRegex = isNumbered ? numberedRegex : bulletRegex;
+  const items = lines
+    .map((line) => line.replace(stripRegex, "").trim())
+    .filter(Boolean)
+    .slice(0, 12);
+
+  return items.length ? { type: listType, items } : null;
+}
+
 export default function AuditPage() {
   const navigate = useNavigate();
   const [pricingOpen, setPricingOpen] = useState(false);
@@ -199,6 +226,9 @@ export default function AuditPage() {
       className: "border-white/10 bg-white/[0.04] text-white/70"
     }
   ].filter((chip) => chip.count > 0);
+  const priorityByKey = useMemo(() => {
+    return new Map(priorityChips.map((chip) => [chip.key, chip]));
+  }, [priorityChips]);
 
   return (
     <AppShell
@@ -357,9 +387,9 @@ export default function AuditPage() {
                 filteredIssues.length > 0 ? (
                 <div className="mt-4 space-y-3">
                   {filteredIssues.slice(0, 10).map((issue, index) => {
-                    const issueKey = issue?.issue_id ?? issue?.id ?? String(index);
+                    const issueKey = issue?.issue_id ?? issue?.id ?? `${issue?.priority || "p"}:${(issue?.title || issue?.message || `Issue ${index + 1}`).slice(0, 80)}`;
                     const isOpen = openIssueKey === issueKey;
-                    const priorityMeta = priorityChips.find((chip) => chip.key === issue?.priority);
+                    const priorityMeta = priorityByKey.get(issue?.priority);
                     const priorityLabel = priorityMeta?.label || String(issue?.priority || "").replace(/_/g, " ");
                     const priorityClass = priorityMeta?.className || "border-white/10 bg-white/[0.04] text-white/70";
                     let evidenceText = "";
@@ -373,6 +403,7 @@ export default function AuditPage() {
                         evidenceText = String(issue.evidence);
                       }
                     }
+                    const howToFixList = getHowToFixList(issue?.how_to_fix);
 
                     return (
                       <div key={issueKey} className="rounded-xl border border-white/10 bg-white/[0.02]">
@@ -403,7 +434,7 @@ export default function AuditPage() {
                         <div
                           id={`issue-panel-${issueKey}`}
                           className={`overflow-hidden px-4 transition-all duration-200 ${
-                            isOpen ? "max-h-[420px] pb-4 opacity-100" : "max-h-0 pb-0 opacity-0"
+                            isOpen ? "max-h-[1200px] pb-4 opacity-100" : "max-h-0 pb-0 opacity-0"
                           }`}
                         >
                           <div className="space-y-3 text-sm text-white/70">
@@ -416,7 +447,23 @@ export default function AuditPage() {
                             {issue?.how_to_fix ? (
                               <div>
                                 <div className="text-xs font-semibold uppercase tracking-wide text-white/50">How to fix</div>
-                                <div className="mt-1">{issue.how_to_fix}</div>
+                                {howToFixList ? (
+                                  howToFixList.type === "ol" ? (
+                                    <ol className="mt-2 list-decimal space-y-2 pl-5 text-sm text-white/70">
+                                      {howToFixList.items.map((item, itemIndex) => (
+                                        <li key={`${issueKey}-fix-${itemIndex}`}>{item}</li>
+                                      ))}
+                                    </ol>
+                                  ) : (
+                                    <ul className="mt-2 list-disc space-y-2 pl-5 text-sm text-white/70">
+                                      {howToFixList.items.map((item, itemIndex) => (
+                                        <li key={`${issueKey}-fix-${itemIndex}`}>{item}</li>
+                                      ))}
+                                    </ul>
+                                  )
+                                ) : (
+                                  <div className="mt-1">{issue.how_to_fix}</div>
+                                )}
                               </div>
                             ) : null}
                             {evidenceText ? (
