@@ -220,6 +220,22 @@ export default function AuditPage() {
                 </div>
               ) : null}
               {issues.length > 0 ? (
+                <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                  <div className="text-xs text-white/50">
+                    Showing {Math.min(10, filteredIssues.length)} of {filteredIssues.length} (total {issues.length})
+                  </div>
+                  {issueFilter !== "all" ? (
+                    <button
+                      type="button"
+                      onClick={() => setIssueFilter("all")}
+                      className="text-xs font-semibold text-white/50 transition hover:text-white/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+                    >
+                      Clear filter
+                    </button>
+                  ) : null}
+                </div>
+              ) : null}
+              {issues.length > 0 ? (
                 filteredIssues.length > 0 ? (
                 <div className="mt-4 space-y-3">
                   {filteredIssues.slice(0, 10).map((issue, index) => (
