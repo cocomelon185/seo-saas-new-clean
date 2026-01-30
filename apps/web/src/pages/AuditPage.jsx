@@ -24,6 +24,7 @@ function getHowToFixList(text) {
   const listType = isNumbered ? "ol" : "ul";
   const stripRegex = isNumbered ? numberedRegex : bulletRegex;
   const items = lines
+    .filter((line) => stripRegex.test(line))
     .map((line) => line.replace(stripRegex, "").trim())
     .filter(Boolean)
     .slice(0, 12);
@@ -462,7 +463,7 @@ export default function AuditPage() {
                                     </ul>
                                   )
                                 ) : (
-                                  <div className="mt-1">{issue.how_to_fix}</div>
+                                  <div className="mt-1 whitespace-pre-wrap">{issue.how_to_fix}</div>
                                 )}
                               </div>
                             ) : null}
