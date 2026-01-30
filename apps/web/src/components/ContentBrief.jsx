@@ -3,9 +3,22 @@ import { useEffect, useRef, useState } from "react";
 function normalizeItem(text) {
   if (!text) return "";
   return text
-    .replace(/^[-*]\s+/, "")
+    .replace(/^[-*\u2022]\s+/, "")
     .replace(/^\d+[\).\s]+/, "")
     .trim();
+}
+
+function normalizeBriefText(text) {
+  if (!text || typeof text !== "string") return "";
+  const decoded = text
+    .replace(/\\n/g, "\n")
+    .replace(/\\r/g, "\r")
+    .replace(/&#39;/g, "'")
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, "\"")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">");
+  return decoded.trim();
 }
 
 function parseContentBrief(raw) {
@@ -23,9 +36,12 @@ function parseContentBrief(raw) {
     return { ...data, hasContent: false };
   }
 
-  const headingPattern = /^(primary topic|suggested outline|faqs?|keywords to cover)\s*[:\-]?\s*(.*)$/i;
+  const headingPattern =
+    /^(primary topic|primary|suggested outline|outline|faqs?|faq|keywords(?:\s+(?:to\s+)?(?:include|target|cover))?)\s*[:\-]?\s*(.*)$/i;
   let current = null;
   const keywordSet = new Set();
+  const primarySplitPattern =
+    /\b(suggested outline|outline|faqs?|faq|keywords(?:\s+(?:to\s+)?(?:include|target|cover))?)\b/i;
 
   const addListItem = (target, value, maxItems) => {
     if (target.length >= maxItems) return;
@@ -54,15 +70,17 @@ function parseContentBrief(raw) {
     const match = trimmed.match(headingPattern);
     if (match) {
       const heading = match[1].toLowerCase();
-      if (heading === "primary topic") current = "primaryTopic";
-      else if (heading === "suggested outline") current = "outline";
+      if (heading.includes("primary")) current = "primaryTopic";
+      else if (heading.includes("outline")) current = "outline";
       else if (heading.startsWith("faq")) current = "faqs";
       else current = "keywords";
 
       const rest = match[2] ? match[2].trim() : "";
       if (rest) {
         if (current === "primaryTopic" && !data.primaryTopic) {
-          data.primaryTopic = normalizeItem(rest);
+          const cleaned = normalizeItem(rest);
+          const splitIndex = cleaned.search(primarySplitPattern);
+          data.primaryTopic = splitIndex >= 0 ? cleaned.slice(0, splitIndex).trim() : cleaned;
         } else if (current === "keywords") {
           addKeywords(rest);
         } else {
@@ -80,7 +98,9 @@ function parseContentBrief(raw) {
 
     if (current === "primaryTopic") {
       if (!data.primaryTopic) {
-        data.primaryTopic = normalizeItem(trimmed);
+        const cleaned = normalizeItem(trimmed);
+        const splitIndex = cleaned.search(primarySplitPattern);
+        data.primaryTopic = splitIndex >= 0 ? cleaned.slice(0, splitIndex).trim() : cleaned;
       }
       return;
     }
@@ -114,14 +134,15 @@ function parseContentBrief(raw) {
 
 export default function ContentBrief({ content }) {
   const raw = typeof content === "string" ? content : "";
+  const normalizedRaw = normalizeBriefText(raw);
   const [copyState, setCopyState] = useState("idle");
   const [showRaw, setShowRaw] = useState(false);
   const rawOnlyPreRef = useRef(null);
   const rawTogglePreRef = useRef(null);
   const copyTimeout = useRef(null);
-  if (!raw.trim()) return null;
+  if (!normalizedRaw) return null;
 
-  const parsed = parseContentBrief(raw);
+  const parsed = parseContentBrief(normalizedRaw);
   const hasStructured = parsed.hasContent;
 
   useEffect(() => {
@@ -159,7 +180,7 @@ export default function ContentBrief({ content }) {
       if (!navigator?.clipboard?.writeText) {
         throw new Error("Clipboard unavailable");
       }
-      await navigator.clipboard.writeText(raw);
+      await navigator.clipboard.writeText(normalizedRaw);
       flashCopyState("copied");
     } catch {
       if (!showRaw && hasStructured) {
@@ -253,7 +274,7 @@ export default function ContentBrief({ content }) {
           ref={rawOnlyPreRef}
           className="mt-3 max-h-64 overflow-auto whitespace-pre-wrap rounded-xl border border-white/10 bg-black/20 p-4 text-sm text-white/80"
         >
-          {raw}
+          {normalizedRaw}
         </pre>
       )}
       {hasStructured && showRaw ? (
@@ -261,7 +282,7 @@ export default function ContentBrief({ content }) {
           ref={rawTogglePreRef}
           className="mt-4 max-h-64 overflow-auto whitespace-pre-wrap rounded-xl border border-white/10 bg-black/20 p-4 text-sm text-white/80"
         >
-          {raw}
+          {normalizedRaw}
         </pre>
       ) : null}
     </div>

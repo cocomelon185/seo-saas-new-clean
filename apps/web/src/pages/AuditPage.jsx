@@ -42,6 +42,7 @@ export default function AuditPage() {
   const [result, setResult] = useState(null);
   const [issueFilter, setIssueFilter] = useState("all");
   const [openIssueKey, setOpenIssueKey] = useState(null);
+  const [openEvidenceKeys, setOpenEvidenceKeys] = useState({});
   const [exportState, setExportState] = useState("idle");
   const exportTimeoutRef = useRef(null);
 
@@ -319,6 +320,9 @@ export default function AuditPage() {
 
             <div className="md:col-span-2 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
               <div className="text-sm font-semibold text-white/80">Quick Wins</div>
+              <div className="mt-1 text-xs text-white/50">
+                High-impact fixes you can do quickly (fewer is better).
+              </div>
               <div className="mt-3">
                 {Array.isArray(result?.quick_wins) && result.quick_wins.length > 0 ? (
                   <ul className="list-disc space-y-2 pl-5 text-white/85">
@@ -327,7 +331,7 @@ export default function AuditPage() {
                     ))}
                   </ul>
                 ) : (
-                  <div className="text-white/60">No major quick wins returned.</div>
+                  <div className="text-white/60">No quick wins found — that’s a good sign.</div>
                 )}
               </div>
             </div>
@@ -398,6 +402,16 @@ export default function AuditPage() {
                     const priorityMeta = priorityByKey.get(issue?.priority);
                     const priorityLabel = priorityMeta?.label || String(issue?.priority || "").replace(/_/g, " ");
                     const priorityClass = priorityMeta?.className || "border-white/10 bg-white/[0.04] text-white/70";
+                    const titleText = String(issue?.title || issue?.message || "").toLowerCase();
+                    const issueId = String(issue?.issue_id || "").toLowerCase();
+                    const isMissingMetaDescription =
+                      issueId === "missing_meta_description" || titleText.includes("meta description");
+                    const isMissingH1 = issueId === "missing_h1" || titleText.includes("h1");
+                    const whatThisMeans = isMissingMetaDescription
+                      ? "Your page doesn’t provide a description for Google search results, so Google will guess. This can reduce clicks."
+                      : isMissingH1
+                        ? "Your page doesn’t have a clear main headline (H1), which makes it harder for Google and visitors to understand the topic."
+                        : "";
                     let evidenceText = "";
                     if (issue?.evidence) {
                       try {
@@ -409,6 +423,14 @@ export default function AuditPage() {
                         evidenceText = String(issue.evidence);
                       }
                     }
+                    const evidenceSummary = evidenceText
+                      ? isMissingMetaDescription
+                        ? "We did not find a <meta name=\"description\"> tag in the page HTML."
+                        : isMissingH1
+                          ? "We did not find an <h1> tag in the page HTML."
+                          : "We checked the page and found the following technical details:"
+                      : "";
+                    const isEvidenceOpen = Boolean(openEvidenceKeys[issueKey]);
                     const howToFixList = getHowToFixList(issue?.how_to_fix);
 
                     return (
@@ -445,6 +467,12 @@ export default function AuditPage() {
                           }`}
                         >
                           <div className="space-y-3 text-sm text-white/70">
+                            {whatThisMeans ? (
+                              <div>
+                                <div className="text-xs font-semibold uppercase tracking-wide text-white/50">What this means</div>
+                                <div className="mt-1 text-sm text-white/70">{whatThisMeans}</div>
+                              </div>
+                            ) : null}
                             {issue?.description ? (
                               <div>
                                 <div className="text-xs font-semibold uppercase tracking-wide text-white/50">Description</div>
@@ -476,9 +504,24 @@ export default function AuditPage() {
                             {evidenceText ? (
                               <div>
                                 <div className="text-xs font-semibold uppercase tracking-wide text-white/50">Evidence</div>
-                                <pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap rounded-lg border border-white/10 bg-black/20 p-3 text-xs text-white/70">
-                                  {evidenceText}
-                                </pre>
+                                <div className="mt-1 text-sm text-white/70">{evidenceSummary}</div>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setOpenEvidenceKeys((prev) => ({
+                                      ...prev,
+                                      [issueKey]: !prev[issueKey]
+                                    }))
+                                  }
+                                  className="mt-2 text-xs font-semibold text-white/50 transition hover:text-white/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+                                >
+                                  {isEvidenceOpen ? "Hide technical details" : "Show technical details"}
+                                </button>
+                                {isEvidenceOpen ? (
+                                  <pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap rounded-lg border border-white/10 bg-black/20 p-3 text-xs text-white/70">
+                                    {evidenceText}
+                                  </pre>
+                                ) : null}
                               </div>
                             ) : null}
                           </div>
