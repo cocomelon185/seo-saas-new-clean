@@ -42,9 +42,10 @@ function sanitizeHowToFixText(text) {
       if (line.startsWith("```")) return false;
       if (/^\s*[\{\[]/.test(line)) return false;
       if (/^\s*[\}\]]/.test(line)) return false;
-      if (/<\/?[a-z][^>]*>/i.test(line)) return false;
       return true;
-    });
+    })
+    .map((line) => line.replace(/<\/?[^>]+>/g, "").replace(/`+/g, "").trim())
+    .filter(Boolean);
   return cleanedLines.join("\n").trim();
 }
 

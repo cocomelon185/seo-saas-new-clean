@@ -5,6 +5,9 @@ function normalizeItem(text) {
   const cleaned = text
     .replace(/^[-*\u2022]\s+/, "")
     .replace(/^\d+[\).\s]+/, "")
+    .replace(/\\n/g, " ")
+    .replace(/\\r/g, " ")
+    .replace(/\s+/g, " ")
     .trim();
   if (!cleaned || ["-", "—", "•"].includes(cleaned)) return "";
   return cleaned;
@@ -26,6 +29,7 @@ function normalizeBriefText(text) {
 
 function splitOutlineItem(item) {
   if (!item) return [];
+  const normalizedItem = item.replace(/\\n/g, "\n").replace(/\\r/g, "\r");
 
   const splitAndClean = (value, regex) =>
     value
@@ -41,21 +45,21 @@ function splitOutlineItem(item) {
     return null;
   };
 
-  const byNewline = splitAndClean(item, /\r?\n+/);
+  const byNewline = splitAndClean(normalizedItem, /\r?\n+/);
   if (byNewline.length > 1) return byNewline.slice(0, 20);
 
-  const byPeriod = splitAndClean(item, /\.\s+/);
+  const byPeriod = splitAndClean(normalizedItem, /\.\s+/);
   if (byPeriod.length > 1) return byPeriod.slice(0, 20);
 
-  const hasSeoLabel = /^(h1|h2|h3|title|meta|meta description|description|cta|faq)s?\s*:/i.test(item);
-  const byColon = !hasSeoLabel ? splitAndClean(item, /:\s+/) : [];
+  const hasSeoLabel = /^(h1|h2|h3|title|meta|meta description|description|cta|faq)s?\s*:/i.test(normalizedItem);
+  const byColon = !hasSeoLabel ? splitAndClean(normalizedItem, /:\s+/) : [];
   if (byColon.length > 1) return byColon.slice(0, 20);
 
-  const byComma = splitAndClean(item, /,\s+/);
+  const byComma = splitAndClean(normalizedItem, /,\s+/);
   if (byComma.length > 1) return byComma.slice(0, 20);
 
-  if (item.length > 80) {
-    const fallback = trySplitBySeparators(item, [
+  if (normalizedItem.length > 80) {
+    const fallback = trySplitBySeparators(normalizedItem, [
       /\s+—\s+/,
       /\s+–\s+/,
       /\s+-\s+/,
@@ -67,7 +71,7 @@ function splitOutlineItem(item) {
     if (fallback && fallback.length > 1) return fallback.slice(0, 20);
   }
 
-  return [item];
+  return [normalizedItem];
 }
 
 function parseContentBrief(raw) {
