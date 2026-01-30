@@ -437,12 +437,12 @@ export default function AuditPage() {
                         ["status", "final_url", "finalurl", "url"].includes(key)
                       );
                     const evidenceSummary = evidenceText
-                      ? isTrivialEvidence
-                        ? "We analyzed the page structure and detected this issue."
-                        : isMissingMetaDescription
-                          ? "We did not find a <meta name=\"description\"> tag in the page HTML."
-                          : isMissingH1
-                            ? "We did not find an <h1> tag in the page HTML."
+                      ? isMissingMetaDescription
+                        ? "We did not find a <meta name=\"description\"> tag in the page HTML."
+                        : isMissingH1
+                          ? "We did not find an <h1> tag in the page HTML."
+                          : isTrivialEvidence
+                            ? "We analyzed the page structure and detected this issue."
                             : "We checked the page and found the following technical details:"
                       : "";
                     const isEvidenceOpen = Boolean(openEvidenceKeys[issueKey]);

@@ -34,7 +34,8 @@ function splitOutlineItem(item) {
   const byPeriod = splitAndClean(item, /\.\s+/);
   if (byPeriod.length > 1) return byPeriod;
 
-  const byColon = splitAndClean(item, /:\s+/);
+  const hasSeoLabel = /^(h1|title|meta|description)\s*:/i.test(item);
+  const byColon = !hasSeoLabel ? splitAndClean(item, /:\s+/) : [];
   if (byColon.length > 1) return byColon;
 
   const byComma = splitAndClean(item, /,\s+/);
