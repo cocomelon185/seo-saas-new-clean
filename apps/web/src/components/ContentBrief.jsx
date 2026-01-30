@@ -176,7 +176,7 @@ export default function ContentBrief({ content }) {
   };
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5" data-testid="content-brief">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="text-sm font-semibold text-white/80">Content Brief</div>
         <div className="flex items-center gap-3">
@@ -184,6 +184,7 @@ export default function ContentBrief({ content }) {
             <button
               type="button"
               onClick={() => setShowRaw((prev) => !prev)}
+              data-testid="content-brief-toggle-raw"
               className="text-xs font-semibold text-white/50 transition hover:text-white/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
             >
               {showRaw ? "Hide raw" : "Show raw"}
@@ -192,6 +193,7 @@ export default function ContentBrief({ content }) {
           <button
             type="button"
             onClick={handleCopy}
+            data-testid="content-brief-copy"
             className="min-w-[96px] rounded-full border border-white/10 bg-white/[0.06] px-3 py-1 text-xs font-semibold text-white/70 transition hover:bg-white/[0.12] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
           >
             {copyState === "copied" ? "Copied" : copyState === "failed" ? "Copy failed" : "Copy"}

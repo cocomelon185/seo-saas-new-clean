@@ -241,6 +241,7 @@ export default function AuditPage() {
           <div>
             <label className="mb-2 block text-sm font-medium text-white/80">Page URL</label>
             <input
+              data-testid="audit-url-input"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               placeholder="https://example.com/pricing"
@@ -250,6 +251,7 @@ export default function AuditPage() {
           </div>
 
           <button
+            data-testid="audit-run-button"
             onClick={run}
             disabled={status === "loading"}
             className={[
@@ -285,7 +287,7 @@ export default function AuditPage() {
           <div className="grid gap-4 md:grid-cols-3">
             <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
               <div className="text-sm font-semibold text-white/80">SEO Score</div>
-              <div className="mt-2 text-4xl font-semibold">
+              <div className="mt-2 text-4xl font-semibold" data-testid="audit-score">
                 {typeof result?.score === "number" ? result.score : 0}
               </div>
               <button
@@ -293,6 +295,7 @@ export default function AuditPage() {
                 onClick={handleExport}
                 disabled={exportDisabled}
                 aria-disabled={exportDisabled}
+                data-testid="audit-export-summary"
                 className={[
                   "mt-4 w-full rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30",
                   exportDisabled
@@ -342,6 +345,7 @@ export default function AuditPage() {
                   <button
                     type="button"
                     onClick={() => setIssueFilter("all")}
+                    data-testid="issue-filter-all"
                     className={`rounded-full border px-2.5 py-1 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 ${
                       issueFilter === "all"
                         ? "border-white/40 bg-white/20 text-white"
@@ -355,6 +359,7 @@ export default function AuditPage() {
                       key={chip.key}
                       type="button"
                       onClick={() => setIssueFilter(chip.key)}
+                      data-testid={`issue-filter-${chip.key}`}
                       className={`rounded-full border px-2.5 py-1 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 ${
                         issueFilter === chip.key
                           ? `${chip.className} ring-2 ring-white/20 border-white/40`
@@ -413,6 +418,7 @@ export default function AuditPage() {
                           onClick={() => setOpenIssueKey((prev) => (prev === issueKey ? null : issueKey))}
                           aria-expanded={isOpen}
                           aria-controls={`issue-panel-${issueKey}`}
+                          data-testid="issue-toggle"
                           className="flex w-full items-center justify-between gap-3 rounded-xl px-4 py-3 text-left transition hover:bg-white/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
                         >
                           <div className="flex flex-wrap items-center gap-2">

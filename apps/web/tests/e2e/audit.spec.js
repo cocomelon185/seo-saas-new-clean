@@ -3,9 +3,9 @@ import auditFixture from "../fixtures/audit.json" assert { type: "json" };
 import { promises as fs } from "fs";
 
 const runAudit = async (page) => {
-  await page.getByPlaceholder("https://example.com/pricing").fill(auditFixture.url);
-  await page.getByRole("button", { name: "Run SEO Audit" }).click();
-  await expect(page.getByText("SEO Score")).toBeVisible();
+  await page.getByTestId("audit-url-input").fill(auditFixture.url);
+  await page.getByTestId("audit-run-button").click();
+  await expect(page.getByTestId("audit-score")).toBeVisible();
 };
 
 test.beforeEach(async ({ page }) => {
@@ -22,16 +22,16 @@ test.beforeEach(async ({ page }) => {
 test("audit renders score and sections", async ({ page }) => {
   await runAudit(page);
 
-  await expect(page.getByText(String(auditFixture.score))).toBeVisible();
+  await expect(page.getByTestId("audit-score")).toHaveText(String(auditFixture.score));
   await expect(page.getByText("Quick Wins")).toBeVisible();
-  await expect(page.getByText("Content Brief")).toBeVisible();
+  await expect(page.getByTestId("content-brief")).toBeVisible();
   await expect(page.getByText("Issues")).toBeVisible();
 });
 
 test("content brief renders and copy feedback works", async ({ page }) => {
   await runAudit(page);
 
-  const copyButton = page.getByRole("button", { name: "Copy" });
+  const copyButton = page.getByTestId("content-brief-copy");
   await expect(copyButton).toBeVisible();
   await copyButton.click();
   await expect(copyButton).toHaveText("Copied");
@@ -40,10 +40,10 @@ test("content brief renders and copy feedback works", async ({ page }) => {
 test("issue chips filter and clear filter works", async ({ page }) => {
   await runAudit(page);
 
-  const issueButtons = page.locator('button[aria-controls^="issue-panel-"]');
+  const issueButtons = page.getByTestId("issue-toggle");
   await expect(issueButtons).toHaveCount(3);
 
-  await page.getByRole("button", { name: /^Fix now/ }).click();
+  await page.getByTestId("issue-filter-fix_now").click();
   await expect(issueButtons).toHaveCount(1);
 
   await page.getByRole("button", { name: "Clear filter" }).click();
@@ -53,7 +53,7 @@ test("issue chips filter and clear filter works", async ({ page }) => {
 test("issue expands and collapses", async ({ page }) => {
   await runAudit(page);
 
-  const issueButton = page.getByRole("button", { name: /Missing title tag/i });
+  const issueButton = page.getByTestId("issue-toggle").first();
   const panelId = await issueButton.getAttribute("aria-controls");
   const panel = page.locator(`#${panelId}`);
 
@@ -70,7 +70,7 @@ test("export downloads a file and contains expected headings", async ({ page }, 
   await runAudit(page);
 
   const downloadPromise = page.waitForEvent("download");
-  await page.getByRole("button", { name: /Export summary/i }).click();
+  await page.getByTestId("audit-export-summary").click();
   const download = await downloadPromise;
 
   expect(download.suggestedFilename()).toBe("rankypulse-audit-summary.txt");
