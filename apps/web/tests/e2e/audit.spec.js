@@ -54,10 +54,12 @@ test("issue expands and collapses", async ({ page }) => {
   await runAudit(page);
 
   const issueButton = page.getByTestId("issue-toggle").first();
+  await expect(issueButton).toHaveAttribute("aria-expanded", "false");
   const panelId = await issueButton.getAttribute("aria-controls");
   const panel = page.locator(`#${panelId}`);
 
   await issueButton.click();
+  await expect(issueButton).toHaveAttribute("aria-expanded", "true");
   await expect(panel.getByText("Description")).toBeVisible();
   await expect(panel.getByText("How to fix")).toBeVisible();
   await expect(panel.getByText("Evidence")).toBeVisible();
@@ -69,9 +71,10 @@ test("issue expands and collapses", async ({ page }) => {
 test("export downloads a file and contains expected headings", async ({ page }, testInfo) => {
   await runAudit(page);
 
-  const downloadPromise = page.waitForEvent("download");
-  await page.getByTestId("audit-export-summary").click();
-  const download = await downloadPromise;
+  const [download] = await Promise.all([
+    page.waitForEvent("download"),
+    page.getByTestId("audit-export-summary").click()
+  ]);
 
   expect(download.suggestedFilename()).toBe("rankypulse-audit-summary.txt");
 
