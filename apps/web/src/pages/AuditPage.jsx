@@ -414,6 +414,7 @@ export default function AuditPage() {
                         ? "Your page doesn’t have a clear main headline (H1), which makes it harder for Google and visitors to understand the topic."
                         : "";
                     let evidenceText = "";
+                    const evidenceValue = issue?.evidence;
                     if (issue?.evidence) {
                       try {
                         evidenceText =
@@ -424,12 +425,25 @@ export default function AuditPage() {
                         evidenceText = String(issue.evidence);
                       }
                     }
+                    const evidenceKeys =
+                      evidenceValue && typeof evidenceValue === "object" && !Array.isArray(evidenceValue)
+                        ? Object.keys(evidenceValue)
+                        : [];
+                    const normalizedEvidenceKeys = evidenceKeys.map((key) => key.toLowerCase());
+                    const isTrivialEvidence =
+                      normalizedEvidenceKeys.length > 0 &&
+                      normalizedEvidenceKeys.length <= 2 &&
+                      normalizedEvidenceKeys.every((key) =>
+                        ["status", "final_url", "finalurl", "url"].includes(key)
+                      );
                     const evidenceSummary = evidenceText
-                      ? isMissingMetaDescription
-                        ? "We did not find a <meta name=\"description\"> tag in the page HTML."
-                        : isMissingH1
-                          ? "We did not find an <h1> tag in the page HTML."
-                          : "We checked the page and found the following technical details:"
+                      ? isTrivialEvidence
+                        ? "We analyzed the page structure and detected this issue."
+                        : isMissingMetaDescription
+                          ? "We did not find a <meta name=\"description\"> tag in the page HTML."
+                          : isMissingH1
+                            ? "We did not find an <h1> tag in the page HTML."
+                            : "We checked the page and found the following technical details:"
                       : "";
                     const isEvidenceOpen = Boolean(openEvidenceKeys[issueKey]);
                     const howToFixList = getHowToFixList(issue?.how_to_fix);

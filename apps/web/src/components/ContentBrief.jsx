@@ -22,6 +22,27 @@ function normalizeBriefText(text) {
   return decoded.trim();
 }
 
+function splitOutlineItem(item) {
+  if (!item || item.length <= 80) return [item];
+
+  const splitAndClean = (value, regex) =>
+    value
+      .split(regex)
+      .map((part) => part.trim())
+      .filter(Boolean);
+
+  const byPeriod = splitAndClean(item, /\.\s+/);
+  if (byPeriod.length > 1) return byPeriod;
+
+  const byColon = splitAndClean(item, /:\s+/);
+  if (byColon.length > 1) return byColon;
+
+  const byComma = splitAndClean(item, /,\s+/);
+  if (byComma.length > 1) return byComma;
+
+  return [item];
+}
+
 function parseContentBrief(raw) {
   const MAX_OUTLINE = 20;
   const MAX_FAQS = 20;
@@ -147,6 +168,10 @@ export default function ContentBrief({ content }) {
 
   const parsed = parseContentBrief(normalizedRaw);
   const hasStructured = parsed.hasContent;
+  const outlineItems =
+    parsed.outline.length === 1
+      ? splitOutlineItem(parsed.outline[0])
+      : parsed.outline;
 
   useEffect(() => {
     return () => {
@@ -234,11 +259,11 @@ export default function ContentBrief({ content }) {
             </div>
           ) : null}
 
-          {parsed.outline.length > 0 ? (
+          {outlineItems.length > 0 ? (
             <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
               <div className="text-xs font-semibold uppercase tracking-wide text-white/50">Suggested outline</div>
               <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-white/85">
-                {parsed.outline.map((item, index) => (
+                {outlineItems.map((item, index) => (
                   <li key={`outline-${index}`}>{item}</li>
                 ))}
               </ul>
