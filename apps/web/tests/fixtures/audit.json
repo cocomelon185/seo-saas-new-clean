@@ -1,0 +1,45 @@
+{
+  "ok": true,
+  "url": "https://example.com/pricing",
+  "score": 78,
+  "quick_wins": [
+    "Shorten long sentences for readability.",
+    "Add FAQ entries to address pricing objections.",
+    "Strengthen internal links to related pages."
+  ],
+  "issues": [
+    {
+      "issue_id": "missing_title",
+      "priority": "fix_now",
+      "severity": "high",
+      "title": "Missing title tag",
+      "description": "The page does not include a <title> tag.",
+      "how_to_fix": "- Add a concise, keyword-aligned title\n- Keep it within 50-60 characters\n- Make sure it matches page intent",
+      "evidence": {
+        "selector": "title",
+        "found": false
+      }
+    },
+    {
+      "issue_id": "thin_content",
+      "priority": "fix_next",
+      "severity": "medium",
+      "title": "Content is thin",
+      "description": "The page has fewer than 800 words.",
+      "how_to_fix": "1. Expand the core explanation\n2. Add comparisons and FAQs\n3. Include proof points and examples",
+      "evidence": "Word count: 320"
+    },
+    {
+      "issue_id": "unoptimized_images",
+      "priority": "fix_later",
+      "severity": "low",
+      "title": "Images are not optimized",
+      "description": "Large images slow down page load.",
+      "how_to_fix": "Compress images and serve WebP when possible.",
+      "evidence": {
+        "largest_image_kb": 420
+      }
+    }
+  ],
+  "content_brief": "Primary topic: SaaS pricing page optimization\n\nSuggested outline:\n- Explain who the pricing is for\n- Break down plan differences\n- Highlight trust signals\n\nFAQs:\n- Can I cancel anytime?\n- Do you offer annual discounts?\n\nKeywords to cover:\n- saas pricing page\n- pricing page best practices\n- pricing page FAQ"
+}
