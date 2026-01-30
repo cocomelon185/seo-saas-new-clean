@@ -222,7 +222,9 @@ export default function AuditPage() {
               {issues.length > 0 ? (
                 <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
                   <div className="text-xs text-white/50">
-                    Showing {Math.min(10, filteredIssues.length)} of {filteredIssues.length} (total {issues.length})
+                    {filteredIssues.length > 0
+                      ? `Showing ${Math.min(10, filteredIssues.length)} of ${filteredIssues.length} (total ${issues.length})`
+                      : `No matches (total ${issues.length})`}
                   </div>
                   {issueFilter !== "all" ? (
                     <button
