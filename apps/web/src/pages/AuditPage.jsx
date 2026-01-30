@@ -13,6 +13,7 @@ export default function AuditPage() {
   const [error, setError] = useState("");
   const [result, setResult] = useState(null);
   const [issueFilter, setIssueFilter] = useState("all");
+  const [openIssueKey, setOpenIssueKey] = useState(null);
   const [exportState, setExportState] = useState("idle");
   const exportTimeoutRef = useRef(null);
 
@@ -64,6 +65,10 @@ export default function AuditPage() {
       }
     };
   }, []);
+
+  useEffect(() => {
+    setOpenIssueKey(null);
+  }, [issueFilter]);
 
   const buildExportText = () => {
     const lines = [];
@@ -351,36 +356,82 @@ export default function AuditPage() {
               {issues.length > 0 ? (
                 filteredIssues.length > 0 ? (
                 <div className="mt-4 space-y-3">
-                  {filteredIssues.slice(0, 10).map((issue, index) => (
-                    <div
-                      key={issue?.issue_id ?? issue?.id ?? index}
-                      className="rounded-xl border border-white/10 bg-white/[0.02] p-4"
-                    >
-                      <div className="flex flex-wrap items-center gap-2">
-                        <div className="text-sm font-semibold text-white/90">
-                          {issue?.title || issue?.message || `Issue ${index + 1}`}
+                  {filteredIssues.slice(0, 10).map((issue, index) => {
+                    const issueKey = issue?.issue_id ?? issue?.id ?? String(index);
+                    const isOpen = openIssueKey === issueKey;
+                    const priorityMeta = priorityChips.find((chip) => chip.key === issue?.priority);
+                    const priorityLabel = priorityMeta?.label || String(issue?.priority || "").replace(/_/g, " ");
+                    const priorityClass = priorityMeta?.className || "border-white/10 bg-white/[0.04] text-white/70";
+                    let evidenceText = "";
+                    if (issue?.evidence) {
+                      try {
+                        evidenceText =
+                          typeof issue.evidence === "string"
+                            ? issue.evidence
+                            : JSON.stringify(issue.evidence, null, 2);
+                      } catch {
+                        evidenceText = String(issue.evidence);
+                      }
+                    }
+
+                    return (
+                      <div key={issueKey} className="rounded-xl border border-white/10 bg-white/[0.02]">
+                        <button
+                          type="button"
+                          onClick={() => setOpenIssueKey((prev) => (prev === issueKey ? null : issueKey))}
+                          aria-expanded={isOpen}
+                          aria-controls={`issue-panel-${issueKey}`}
+                          className="flex w-full items-center justify-between gap-3 rounded-xl px-4 py-3 text-left transition hover:bg-white/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+                        >
+                          <div className="flex flex-wrap items-center gap-2">
+                            <div className="text-sm font-semibold text-white/90">
+                              {issue?.title || issue?.message || `Issue ${index + 1}`}
+                            </div>
+                            {issue?.priority ? (
+                              <span className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${priorityClass}`}>
+                                {priorityLabel || "Priority"}
+                              </span>
+                            ) : null}
+                            {issue?.severity ? (
+                              <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-xs font-semibold text-white/70">
+                                {String(issue.severity).toUpperCase()}
+                              </span>
+                            ) : null}
+                          </div>
+                          <span className="text-sm text-white/60">{isOpen ? "▾" : "▸"}</span>
+                        </button>
+                        <div
+                          id={`issue-panel-${issueKey}`}
+                          className={`overflow-hidden px-4 transition-all duration-200 ${
+                            isOpen ? "max-h-[420px] pb-4 opacity-100" : "max-h-0 pb-0 opacity-0"
+                          }`}
+                        >
+                          <div className="space-y-3 text-sm text-white/70">
+                            {issue?.description ? (
+                              <div>
+                                <div className="text-xs font-semibold uppercase tracking-wide text-white/50">Description</div>
+                                <div className="mt-1">{issue.description}</div>
+                              </div>
+                            ) : null}
+                            {issue?.how_to_fix ? (
+                              <div>
+                                <div className="text-xs font-semibold uppercase tracking-wide text-white/50">How to fix</div>
+                                <div className="mt-1">{issue.how_to_fix}</div>
+                              </div>
+                            ) : null}
+                            {evidenceText ? (
+                              <div>
+                                <div className="text-xs font-semibold uppercase tracking-wide text-white/50">Evidence</div>
+                                <pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap rounded-lg border border-white/10 bg-black/20 p-3 text-xs text-white/70">
+                                  {evidenceText}
+                                </pre>
+                              </div>
+                            ) : null}
+                          </div>
                         </div>
-                        {issue?.impact ? (
-                          <span className="rounded-full border border-white/10 bg-white/[0.06] px-2.5 py-1 text-xs font-semibold text-white/70">
-                            {String(issue.impact).toUpperCase()}
-                          </span>
-                        ) : null}
-                        {issue?.type ? (
-                          <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-white/50">
-                            {issue.type}
-                          </span>
-                        ) : null}
                       </div>
-                      {issue?.description ? (
-                        <div className="mt-2 text-sm text-white/70">{issue.description}</div>
-                      ) : null}
-                      {issue?.how_to_fix ? (
-                        <div className="mt-2 text-xs text-white/60">
-                          <span className="font-semibold text-white/70">Fix:</span> {issue.how_to_fix}
-                        </div>
-                      ) : null}
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
                 ) : (
                   <div className="mt-3 text-white/60">No issues in this priority.</div>
