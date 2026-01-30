@@ -17,7 +17,8 @@ function normalizeBriefText(text) {
     .replace(/&amp;/g, "&")
     .replace(/&quot;/g, "\"")
     .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">");
+    .replace(/&gt;/g, ">")
+    .replace(/&nbsp;/g, " ");
   return decoded.trim();
 }
 
@@ -80,7 +81,8 @@ function parseContentBrief(raw) {
         if (current === "primaryTopic" && !data.primaryTopic) {
           const cleaned = normalizeItem(rest);
           const splitIndex = cleaned.search(primarySplitPattern);
-          data.primaryTopic = splitIndex >= 0 ? cleaned.slice(0, splitIndex).trim() : cleaned;
+          const candidate = splitIndex > 0 ? cleaned.slice(0, splitIndex).trim() : cleaned;
+          data.primaryTopic = candidate;
         } else if (current === "keywords") {
           addKeywords(rest);
         } else {
@@ -100,7 +102,8 @@ function parseContentBrief(raw) {
       if (!data.primaryTopic) {
         const cleaned = normalizeItem(trimmed);
         const splitIndex = cleaned.search(primarySplitPattern);
-        data.primaryTopic = splitIndex >= 0 ? cleaned.slice(0, splitIndex).trim() : cleaned;
+        const candidate = splitIndex > 0 ? cleaned.slice(0, splitIndex).trim() : cleaned;
+        data.primaryTopic = candidate;
       }
       return;
     }

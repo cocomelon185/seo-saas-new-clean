@@ -97,6 +97,7 @@ export default function AuditPage() {
 
   useEffect(() => {
     setOpenIssueKey(null);
+    setOpenEvidenceKeys({});
   }, [issueFilter]);
 
   const buildExportText = () => {
