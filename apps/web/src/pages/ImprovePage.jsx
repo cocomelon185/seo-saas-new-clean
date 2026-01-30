@@ -34,7 +34,7 @@ export default function ImprovePage() {
         headers: { "Content-Type": "application/json",
         ...(includeAi && import.meta.env.VITE_INTERNAL_AI_TOKEN ? { "x-internal-ai": import.meta.env.VITE_INTERNAL_AI_TOKEN } : {}),
 },
-        body: JSON.stringify({ url: url.trim() })
+        body: JSON.stringify({ url: url.trim(), include_ai: includeAi })
       });
 
       if (!res.ok) {
@@ -72,18 +72,29 @@ export default function ImprovePage() {
             />
           </div>
 
-          <button
-            onClick={run}
-            disabled={status === "loading"}
-            className={[
-              "rounded-2xl px-5 py-3 text-sm font-semibold transition",
-              status === "loading"
-                ? "cursor-not-allowed bg-white/10 text-white/60"
-                : "bg-gradient-to-r from-fuchsia-500 to-indigo-500 text-white hover:opacity-95"
-            ].join(" ")}
-          >
-            {status === "loading" ? "Generating…" : "Generate Plan"}
-          </button>
+          <div className="flex flex-col items-end gap-2">
+            <button
+              onClick={run}
+              disabled={status === "loading"}
+              className={[
+                "rounded-2xl px-5 py-3 text-sm font-semibold transition",
+                status === "loading"
+                  ? "cursor-not-allowed bg-white/10 text-white/60"
+                  : "bg-gradient-to-r from-fuchsia-500 to-indigo-500 text-white hover:opacity-95"
+              ].join(" ")}
+            >
+              {status === "loading" ? "Generating…" : "Generate Plan"}
+            </button>
+            <label className="flex items-center gap-2 text-xs text-white/70">
+              <input
+                type="checkbox"
+                checked={includeAi}
+                onChange={(e) => setIncludeAi(e.target.checked)}
+                className="h-4 w-4 rounded border border-white/20 bg-white/10 text-indigo-400"
+              />
+              Include AI
+            </label>
+          </div>
         </div>
 
         {status === "idle" && (
