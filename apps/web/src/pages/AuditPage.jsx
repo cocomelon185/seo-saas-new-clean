@@ -32,6 +32,22 @@ function getHowToFixList(text) {
   return items.length ? { type: listType, items } : null;
 }
 
+function sanitizeHowToFixText(text) {
+  if (!text || typeof text !== "string") return "";
+  const cleanedLines = text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .filter((line) => {
+      if (line.startsWith("```")) return false;
+      if (/^\s*[\{\[]/.test(line)) return false;
+      if (/^\s*[\}\]]/.test(line)) return false;
+      if (/<\/?[a-z][^>]*>/i.test(line)) return false;
+      return true;
+    });
+  return cleanedLines.join("\n").trim();
+}
+
 export default function AuditPage() {
   const navigate = useNavigate();
   const [pricingOpen, setPricingOpen] = useState(false);
@@ -446,7 +462,8 @@ export default function AuditPage() {
                             : "We checked the page and found the following technical details:"
                       : "";
                     const isEvidenceOpen = Boolean(openEvidenceKeys[issueKey]);
-                    const howToFixList = getHowToFixList(issue?.how_to_fix);
+                    const safeHowToFix = sanitizeHowToFixText(issue?.how_to_fix);
+                    const howToFixList = getHowToFixList(safeHowToFix);
 
                     return (
                       <div key={issueKey} className="rounded-xl border border-white/10 bg-white/[0.02]">
@@ -512,7 +529,9 @@ export default function AuditPage() {
                                     </ul>
                                   )
                                 ) : (
-                                  <div className="mt-1 whitespace-pre-wrap">{issue.how_to_fix}</div>
+                                  <div className="mt-1 whitespace-pre-wrap">
+                                    {safeHowToFix || "Review the page content and make the recommended updates to address this issue."}
+                                  </div>
                                 )}
                               </div>
                             ) : null}

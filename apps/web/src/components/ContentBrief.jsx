@@ -2,10 +2,12 @@ import { useEffect, useRef, useState } from "react";
 
 function normalizeItem(text) {
   if (!text) return "";
-  return text
+  const cleaned = text
     .replace(/^[-*\u2022]\s+/, "")
     .replace(/^\d+[\).\s]+/, "")
     .trim();
+  if (!cleaned || ["-", "—", "•"].includes(cleaned)) return "";
+  return cleaned;
 }
 
 function normalizeBriefText(text) {
@@ -193,10 +195,13 @@ export default function ContentBrief({ content }) {
 
   const parsed = parseContentBrief(normalizedRaw);
   const hasStructured = parsed.hasContent;
-  const outlineItems =
-    parsed.outline.length === 1
-      ? splitOutlineItem(parsed.outline[0])
-      : parsed.outline;
+  const outlineItems = parsed.outline
+    .flatMap((item) => splitOutlineItem(item))
+    .filter(Boolean)
+    .slice(0, 20);
+  const primaryTopicItem = parsed.primaryTopic
+    ? parsed.primaryTopic.replace(/\s+/g, " ").trim()
+    : "";
 
   useEffect(() => {
     return () => {
@@ -277,10 +282,12 @@ export default function ContentBrief({ content }) {
 
       {hasStructured ? (
         <div className="mt-4 grid gap-4 md:grid-cols-2">
-          {parsed.primaryTopic ? (
+          {primaryTopicItem ? (
             <div className="md:col-span-2 rounded-xl border border-white/10 bg-white/[0.04] p-4">
               <div className="text-xs font-semibold uppercase tracking-wide text-white/50">Primary topic</div>
-              <div className="mt-2 text-lg font-semibold text-white/90">{parsed.primaryTopic}</div>
+              <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-white/90">
+                <li>{primaryTopicItem}</li>
+              </ul>
             </div>
           ) : null}
 
