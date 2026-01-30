@@ -211,7 +211,10 @@ try {
         }}
       />
           <AuditImpactBanner score={result?.score} issues={issues} />
-            <IssuesPanel issues={issues} />
+            <IssuesPanel
+              issues={issues}
+              finalUrl={String(result?.debug?.final_url || result?.final_url || "")}
+            />
       {import.meta.env.DEV && debug && (
         <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
           <div className="text-sm font-semibold text-white/80">Raw response (debug)</div>
