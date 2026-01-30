@@ -22,6 +22,7 @@ function AuditPageInner() {
   const [error, setError] = useState("");
   const [result, setResult] = useState(null);
   const [debug, setDebug] = useState("");
+  const [debugExpanded, setDebugExpanded] = useState(false);
   const autoRunRef = useRef(false);
 
   useEffect(() => {
@@ -192,7 +193,122 @@ try {
                 )}
               </div>
             </div>
+          </div>
+        )}
 
+        {status === "success" && result && (
+          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+            <div className="text-sm font-semibold text-white/80 mb-4">Evidence</div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div>
+                <div className="text-xs text-white/60 mb-1">Final URL</div>
+                <div className="text-sm text-white/85 break-all">
+                  {result?.debug?.final_url || result?.final_url || "—"}
+                </div>
+              </div>
+              <div>
+                <div className="text-xs text-white/60 mb-1">HTTP Status</div>
+                <div className="text-sm text-white/85">
+                  {result?.debug?.final_status ?? result?.debug?.fetch_status ?? result?.status ?? "—"}
+                </div>
+              </div>
+              <div>
+                <div className="text-xs text-white/60 mb-1">Title</div>
+                <div className="text-sm text-white/85">
+                  {result?.evidence?.title ? (
+                    <>
+                      <span className={result.evidence.title === "—" ? "text-white/40" : ""}>
+                        {result.evidence.title}
+                      </span>
+                      {result.evidence.title_char_count !== undefined && (
+                        <span className="ml-2 text-xs text-white/50">
+                          ({result.evidence.title_char_count} chars)
+                        </span>
+                      )}
+                    </>
+                  ) : (
+                    <span className="text-white/40">—</span>
+                  )}
+                </div>
+              </div>
+              <div>
+                <div className="text-xs text-white/60 mb-1">Meta Description</div>
+                <div className="text-sm text-white/85">
+                  {result?.evidence?.meta_description ? (
+                    <>
+                      <span className={result.evidence.meta_description === "—" ? "text-white/40" : ""}>
+                        {result.evidence.meta_description}
+                      </span>
+                      {result.evidence.meta_description_char_count !== undefined && (
+                        <span className="ml-2 text-xs text-white/50">
+                          ({result.evidence.meta_description_char_count} chars)
+                        </span>
+                      )}
+                    </>
+                  ) : (
+                    <span className="text-white/40">—</span>
+                  )}
+                </div>
+              </div>
+              <div>
+                <div className="text-xs text-white/60 mb-1">H1</div>
+                <div className="text-sm text-white/85">
+                  {result?.evidence?.h1 ? (
+                    <>
+                      <span className={result.evidence.h1 === "—" ? "text-white/40" : ""}>
+                        {result.evidence.h1}
+                      </span>
+                      {result.evidence.h1_count !== undefined && (
+                        <span className="ml-2 text-xs text-white/50">
+                          ({result.evidence.h1_count} found)
+                        </span>
+                      )}
+                    </>
+                  ) : (
+                    <span className="text-white/40">—</span>
+                  )}
+                </div>
+              </div>
+              <div>
+                <div className="text-xs text-white/60 mb-1">Canonical</div>
+                <div className="text-sm text-white/85 break-all">
+                  {result?.evidence?.canonical ? (
+                    <span>{result.evidence.canonical}</span>
+                  ) : (
+                    <span className="text-white/40">—</span>
+                  )}
+                </div>
+              </div>
+              <div>
+                <div className="text-xs text-white/60 mb-1">Word Count</div>
+                <div className="text-sm text-white/85">
+                  {result?.evidence?.word_count !== undefined ? (
+                    <span>{result.evidence.word_count.toLocaleString()}</span>
+                  ) : (
+                    <span className="text-white/40">—</span>
+                  )}
+                </div>
+              </div>
+              <div>
+                <div className="text-xs text-white/60 mb-1">Links</div>
+                <div className="text-sm text-white/85">
+                  {result?.evidence?.internal_links_count !== undefined || result?.evidence?.external_links_count !== undefined ? (
+                    <>
+                      <span>Internal: {result.evidence.internal_links_count ?? 0}</span>
+                      <span className="mx-2 text-white/50">•</span>
+                      <span>External: {result.evidence.external_links_count ?? 0}</span>
+                    </>
+                  ) : (
+                    <span className="text-white/40">—</span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+{status === "success" && (
+          <div className="grid gap-4 md:grid-cols-3">
             <div className="md:col-span-3 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
               <div className="text-sm font-semibold text-white/80">Content Brief</div>
               <div className="mt-3 whitespace-pre-wrap text-white/85">
@@ -217,11 +333,18 @@ try {
             />
       {import.meta.env.DEV && debug && (
         <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-          <div className="text-sm font-semibold text-white/80">Raw response (debug)</div>
-          <pre className="mt-3 overflow-auto text-xs text-white/80">{debug}</pre>
+          <button
+            onClick={() => setDebugExpanded(!debugExpanded)}
+            className="flex w-full items-center justify-between text-sm font-semibold text-white/80 hover:text-white/90"
+          >
+            <span>Raw response (debug)</span>
+            <span className="text-xs text-white/50">{debugExpanded ? "▼" : "▶"}</span>
+          </button>
+          {debugExpanded && (
+            <pre className="mt-3 overflow-auto text-xs text-white/80">{debug}</pre>
+          )}
         </div>
       )}
-        )}
     </AppShell>
   );
 }
