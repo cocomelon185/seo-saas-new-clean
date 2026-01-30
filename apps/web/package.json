@@ -7,6 +7,8 @@
     "dev": "vite",
     "build": "vite-react-ssg build",
     "lint": "eslint .",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
     "preview": "vite preview",
     "start": "vite preview --host 0.0.0.0 --port $PORT",
     "postbuild": "bash scripts/postbuild-folder-pages.sh"
@@ -26,6 +28,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
+    "@playwright/test": "^1.58.0",
     "@types/react": "^19.2.5",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.1",
