@@ -23,7 +23,7 @@ function normalizeBriefText(text) {
 }
 
 function splitOutlineItem(item) {
-  if (!item || item.length <= 80) return [item];
+  if (!item) return [];
 
   const splitAndClean = (value, regex) =>
     value
@@ -31,15 +31,36 @@ function splitOutlineItem(item) {
       .map((part) => part.trim())
       .filter(Boolean);
 
+  const trySplitBySeparators = (value, separators) => {
+    for (const separator of separators) {
+      const parts = splitAndClean(value, separator);
+      if (parts.length > 1) return parts;
+    }
+    return null;
+  };
+
   const byPeriod = splitAndClean(item, /\.\s+/);
-  if (byPeriod.length > 1) return byPeriod;
+  if (byPeriod.length > 1) return byPeriod.slice(0, 20);
 
   const hasSeoLabel = /^(h1|h2|h3|title|meta|meta description|description|cta|faq)s?\s*:/i.test(item);
   const byColon = !hasSeoLabel ? splitAndClean(item, /:\s+/) : [];
-  if (byColon.length > 1) return byColon;
+  if (byColon.length > 1) return byColon.slice(0, 20);
 
   const byComma = splitAndClean(item, /,\s+/);
-  if (byComma.length > 1) return byComma;
+  if (byComma.length > 1) return byComma.slice(0, 20);
+
+  if (item.length > 80) {
+    const fallback = trySplitBySeparators(item, [
+      /\s+—\s+/,
+      /\s+–\s+/,
+      /\s+-\s+/,
+      /\s+\|\s+/,
+      /\s+•\s+/,
+      /\s+·\s+/,
+      /;\s*/
+    ]);
+    if (fallback && fallback.length > 1) return fallback.slice(0, 20);
+  }
 
   return [item];
 }
