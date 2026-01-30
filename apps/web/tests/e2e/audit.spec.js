@@ -65,6 +65,7 @@ test("issue expands and collapses", async ({ page }) => {
   await expect(panel.getByText("Evidence")).toBeVisible();
 
   await issueButton.click();
+  await expect(issueButton).toHaveAttribute("aria-expanded", "false");
   await expect(panel.getByText("Description")).toBeHidden();
 });
 
