@@ -85,7 +85,7 @@ export default function AuditPage() {
     lines.push("");
 
     lines.push("Issues:");
-    const matchingIssues = issueFilter === "all" ? issues : filteredIssues;
+    const matchingIssues = filteredIssues;
     const totalMatching = matchingIssues.length;
     const exportedIssues = matchingIssues.slice(0, 50);
     if (exportedIssues.length === 0) {
@@ -101,7 +101,8 @@ export default function AuditPage() {
         if (issue?.evidence) {
           let evidenceText = "";
           try {
-            evidenceText = typeof issue.evidence === "string" ? issue.evidence : JSON.stringify(issue.evidence);
+            evidenceText =
+              typeof issue.evidence === "string" ? issue.evidence : JSON.stringify(issue.evidence, null, 2);
           } catch {
             evidenceText = String(issue.evidence);
           }
@@ -162,6 +163,7 @@ export default function AuditPage() {
     issueFilter === "all"
       ? issues
       : issues.filter((issue) => issue?.priority === issueFilter);
+  const exportDisabled = !result || status === "loading";
   const priorityCounts = issues.reduce(
     (acc, issue) => {
       const priority = issue?.priority;
@@ -253,7 +255,14 @@ export default function AuditPage() {
               <button
                 type="button"
                 onClick={handleExport}
-                className="mt-4 w-full rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/[0.10]"
+                disabled={exportDisabled}
+                aria-disabled={exportDisabled}
+                className={[
+                  "mt-4 w-full rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30",
+                  exportDisabled
+                    ? "cursor-not-allowed text-white/60"
+                    : "text-white hover:bg-white/[0.10]"
+                ].join(" ")}
               >
                 {exportState === "success"
                   ? "Exported"
