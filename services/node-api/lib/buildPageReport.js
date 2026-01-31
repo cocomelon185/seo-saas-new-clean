@@ -38,11 +38,9 @@ export async function buildPageReport(url, debug = null) {
   const status = r.status;
   const final_url = r.url || url;
   const html = await r.text();
-  if (debug) { debug.html_len = html.length; }
-
 
   const title = pickFirst(/<title[^>]*>([\s\S]*?)<\/title>/i, html).trim();
-  const metaDesc = pickFirst(/<meta[^>]+name=["']description["'][^>]*content=["']([^"']*)["'][^>]*>/i, html).trim();
+
   const h1 = pickFirst(/<h1[^>]*>([\s\S]*?)<\/h1>/i, html).replace(/<[^>]+>/g, "").trim();
 
     // Extract canonical (handles unquoted/quoted attributes and multiple rel tokens)
@@ -101,6 +99,42 @@ export async function buildPageReport(url, debug = null) {
     externalLinks = allLinks.length;
   }
 
+  // Meta description (robust): meta tags in <head>, fallback to first <p>
+  let metaDesc = "";
+
+  const headMatch2 = html.match(/<head[^>]*>([\s\S]*?)<\/head>/i);
+  const headHtml2 = headMatch2 ? headMatch2[1] : "";
+  const metaTags2 = headHtml2.match(/<meta\b[^>]*>/gi) || [];
+
+  const getKey2 = (tag) =>
+    (tag.match(/\bname=["']?([^"'\s>]+)/i)?.[1]?.toLowerCase() ||
+      tag.match(/\bproperty=["']?([^"'\s>]+)/i)?.[1]?.toLowerCase() ||
+      tag.match(/\bitemprop=["']?([^"'\s>]+)/i)?.[1]?.toLowerCase() ||
+      "");
+
+  const getContent2 = (tag) =>
+    (
+      tag.match(/\bcontent\s*=\s*"([^"]*)"/i)?.[1] ??
+      tag.match(/\bcontent\s*=\s*'([^']*)'/i)?.[1] ??
+      tag.match(/\bcontent\s*=\s*([^\s>]+)/i)?.[1] ??
+      ""
+    ).trim();
+
+  for (const tag of metaTags2) {
+    const key = getKey2(tag);
+    if (key === "description" || key === "og:description" || key === "twitter:description") {
+      const c = getContent2(tag);
+      if (c) { metaDesc = c; break; }
+    }
+  }
+
+  if (!metaDesc) {
+    const pMatch2 = html.match(/<p\b[^>]*>([\s\S]*?)<\/p>/i);
+    const pText2 = pMatch2 ? pMatch2[1].replace(/<[^>]+>/g, " ") : "";
+    const cleaned2 = pText2.replace(/\[[^\]]*\]/g, " ").replace(/\s+/g, " ").trim();
+    metaDesc = cleaned2.slice(0, 160);
+  }
+
   const quick_wins = [];
   const issues = [];
 
@@ -128,6 +162,52 @@ export async function buildPageReport(url, debug = null) {
 
   const score = Math.max(0, 100 - (issues.length * 10));
 
+  // Force metaDesc to be computed right before evidence is built (meta tags in <head>, fallback to first <p>)
+  {
+    const headMatch = html.match(/<head[^>]*>([\s\S]*?)<\/head>/i);
+    const headHtml = headMatch ? headMatch[1] : "";
+    const metaTags = headHtml.match(/<meta\b[^>]*>/gi) || [];
+
+    const getKey = (tag) =>
+      (tag.match(/\bname=["']?([^"'\s>]+)/i)?.[1]?.toLowerCase() ||
+        tag.match(/\bproperty=["']?([^"'\s>]+)/i)?.[1]?.toLowerCase() ||
+        tag.match(/\bitemprop=["']?([^"'\s>]+)/i)?.[1]?.toLowerCase() ||
+        "");
+
+    const getContent = (tag) =>
+      (
+        tag.match(/\bcontent\s*=\s*"([^"]*)"/i)?.[1] ??
+        tag.match(/\bcontent\s*=\s*'([^']*)'/i)?.[1] ??
+        tag.match(/\bcontent\s*=\s*([^\s>]+)/i)?.[1] ??
+        ""
+      ).trim();
+
+    metaDesc = "";
+    for (const tag of metaTags) {
+      const key = getKey(tag);
+      if (key === "description" || key === "og:description" || key === "twitter:description") {
+        const c = getContent(tag);
+        if (c) { metaDesc = c; break; }
+      }
+    }
+
+    if (!metaDesc) {
+      const pBlocks = html.match(/<p\b[^>]*>[\s\S]*?<\/p>/gi) || [];
+      for (const pb of pBlocks) {
+        const inner = pb.replace(/^<p\b[^>]*>/i, "").replace(/<\/p>$/i, "");
+        const text = inner
+          .replace(/<[^>]+>/g, " ")
+          .replace(/\[[^\]]*\]/g, " ")
+          .replace(/\s+/g, " ")
+          .trim();
+        if (text && text.length >= 40) {
+          metaDesc = text.slice(0, 160);
+          break;
+        }
+      }
+    }
+  }
+
   return {
     ok: true,
     url,
@@ -146,7 +226,9 @@ export async function buildPageReport(url, debug = null) {
       canonical: canonical,
       word_count: wordCount,
       internal_links_count: internalLinks,
-      external_links_count: externalLinks
+      external_links_count: externalLinks,
+      __probe_metaDesc_post: metaDesc,
+      __probe_metaDesc_post_len: metaDesc.length
     }
   };
 }
