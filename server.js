@@ -1,6 +1,13 @@
+import "dotenv/config";
 import express from "express"
 import pageReport from "./api/page-report.js";
+import fs from "fs";
 
+import registerUserState from "./api/user-state.js";
+import registerBilling from "./api/billing.js";
+import registerAuditHistory from "./api/audit-history.js";
+import { getEntitlements } from "./services/node-api/lib/entitlementsStore.js";
+import { getUserPlan } from "./services/node-api/lib/planStore.js";
 import helmet from "helmet";
 import compression from "compression";
 import rateLimit from "express-rate-limit";
@@ -49,10 +56,11 @@ const corsMiddleware = cors({
   },
   credentials: true,
   methods: ["GET","HEAD","PUT","PATCH","POST","DELETE","OPTIONS"],
-  allowedHeaders: ["content-type","authorization","x-requested-with"]
+  allowedHeaders: ["content-type","authorization","x-requested-with","x-rp-anon-id","x-razorpay-signature"]
 });
 const app = express();
-app.use(express.static(process.cwd() + "/public"));
+// Don't serve public statically yet - we'll do it after route handlers
+// app.use(express.static(process.cwd() + "/public"));
 
 
 // RANKYPULSE_RAILWAY_ACAO_V1
@@ -65,7 +73,7 @@ app.use((req, res, next) => {
   }
   if (req.method === "OPTIONS") {
     res.setHeader("Access-Control-Allow-Methods", "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS");
-    res.setHeader("Access-Control-Allow-Headers", req.headers["access-control-request-headers"] || "content-type, authorization");
+    res.setHeader("Access-Control-Allow-Headers", req.headers["access-control-request-headers"] || "content-type, authorization, x-rp-anon-id, x-razorpay-signature");
     return res.status(204).end();
   }
   next();
@@ -128,8 +136,15 @@ function __mockAudit(url) {
 
 app.use(express.json());
 
+
+// Phase 4.2: Razorpay billing (stubs wired first, logic added next)
+
+// Razorpay routes live in api/billing.js
+
 import { createRequire } from "module";
 const require = createRequire(import.meta.url);
+const entStore = require("./api/entitlements-store.cjs");
+
 const projectsRouter = require("./api/projects.cjs");
 
 app.use("/api/projects", projectsRouter);
@@ -240,27 +255,6 @@ app.post(["/api/auth/register","/api/auth/login"], (req, res) => {
   res.json({ ok: true, token: "dev", user });
 });
 
-app.post("/api/page-report", pageReport);
-console.log("Registered POST /api/page-report");
-
-
-app.listen(process.env.PORT || 3000, "0.0.0.0", () => { console.log("SERVER LISTENING ON", process.env.PORT || 3000); });
-/* ==== END FORCE LISTENER ==== */
-
-// ==== SERVE FRONTEND (SPA) ====
-app.get("/auth", (req, res) => {
-  res.sendFile(process.cwd() + "/public/auth.html");
-});
-
-app.get(["/","/index.html"], (req, res) => {
-  res.sendFile(process.cwd() + "/public/index.html");
-});
-
-app.get("/api/auth/me", (req, res) => {
-  const auth = req.headers.authorization || "";
-  const cookie = req.headers.cookie || "";
-  res.json({ ok: true, hasAuthHeader: auth.startsWith("Bearer "), hasCookie: cookie.length > 0 });
-});
 app.get("/__routes__", (req, res) => {
   const out = [];
   for (const layer of (app._router?.stack || [])) {
@@ -270,4 +264,184 @@ app.get("/__routes__", (req, res) => {
     }
   }
   res.json(out);
+});
+
+
+app.post("/api/page-report", pageReport);
+
+registerUserState(app);
+registerBilling(app);
+registerAuditHistory(app);
+
+// ===== Entitlements Endpoint (Phase 4.2) =====
+app.get("/api/entitlements", (req, res) => {
+  try {
+    const anon_id = req.get("x-rp-anon-id") || null;
+    if (!anon_id) {
+      return res.status(400).json({
+        ok: false,
+        entitlements: null,
+        error: { code: "MISSING_ANON_ID", message: "Missing anon id.", retryable: false },
+      });
+    }
+    const entitlements = entStore.getEntitlements(anon_id);
+    return res.json({ ok: true, entitlements, error: null });
+  } catch (e) {
+    return res.status(500).json({
+      ok: false,
+      entitlements: null,
+      error: { code: "INTERNAL", message: "Could not load entitlements.", retryable: true },
+    });
+  }
+});
+console.log("Registered POST /api/page-report");
+console.log("Registered GET/POST /api/audit-history");
+console.log("Registered GET /api/entitlements");
+
+// ==== DIAGNOSTIC MIDDLEWARE (TEMPORARY) ====
+let diagnosticEnabled = true; // Set to false to disable after debugging
+if (diagnosticEnabled) {
+  app.use((req, res, next) => {
+    const originalSend = res.send;
+    const originalSendFile = res.sendFile;
+    let handlerType = "unknown";
+    
+    // Track which handler responds
+    res.send = function(...args) {
+      console.log(`[DIAG] ${req.method} ${req.path} -> ${handlerType} (send)`);
+      return originalSend.apply(this, args);
+    };
+    
+    res.sendFile = function(...args) {
+      console.log(`[DIAG] ${req.method} ${req.path} -> ${handlerType} (sendFile: ${args[0]})`);
+      return originalSendFile.apply(this, args);
+    };
+    
+    // Mark handler type based on path
+    if (req.path.startsWith("/api")) {
+      handlerType = "API";
+    } else if (req.path === "/audit" || req.path === "/improve" || req.path === "/pricing" || req.path === "/rank") {
+      handlerType = "EXPLICIT_ROUTE";
+    } else if (req.path.match(/\.(js|css|png|jpg|svg|woff|woff2|ttf|eot|ico|json)$/)) {
+      handlerType = "STATIC_ASSET";
+    } else {
+      handlerType = "CATCH_ALL";
+    }
+    
+    next();
+  });
+}
+
+// ==== SERVE FRONTEND (SPA) ====
+// Route handlers MUST come before static middleware
+app.get("/auth", (req, res) => {
+  res.sendFile(process.cwd() + "/public/auth.html");
+});
+
+// Serve specific route HTML files (SSG build) - must come before static middleware
+const routeHtmlMap = {
+  "/audit": "index.html", // Serve SPA entry for React Router
+  "/admin/audit": "index.html", // Serve SPA entry for React Router
+  "/admin": "index.html", // Admin defaults to SPA entry
+  "/rank": "rank.html",
+  "/improve": "improve.html",
+  "/pricing": "pricing.html",
+  "/app": "index.html", // App route serves index
+};
+
+for (const [route, htmlFile] of Object.entries(routeHtmlMap)) {
+  app.get(route, (req, res) => {
+    const filePath = path.join(FRONTEND_DIST, htmlFile);
+    const resolvedPath = path.resolve(filePath);
+    console.log(`[ROUTE] Serving ${route} -> ${resolvedPath}`);
+    
+    // Check if file exists
+    if (!fs.existsSync(resolvedPath)) {
+      console.error(`[ROUTE ERROR] ${route}: File not found at ${resolvedPath}, falling back to index.html`);
+      // Fallback to SPA entry point
+      const fallbackPath = path.join(FRONTEND_DIST, "index.html");
+      return res.sendFile(path.resolve(fallbackPath), (err) => {
+        if (err) {
+          console.error(`[ROUTE ERROR] ${route}: Fallback also failed:`, err.message);
+          res.status(404).send("File not found");
+        }
+      });
+    }
+    
+    res.sendFile(resolvedPath, (err) => {
+      if (err) {
+        console.error(`[ROUTE ERROR] ${route}:`, err.message);
+        // Fallback to index.html on error
+        const fallbackPath = path.join(FRONTEND_DIST, "index.html");
+        res.sendFile(path.resolve(fallbackPath), (fallbackErr) => {
+          if (fallbackErr) {
+            res.status(404).send("File not found");
+          }
+        });
+      }
+    });
+  });
+}
+
+// Serve static files from dist (assets, etc.) - AFTER route handlers
+// Exclude route paths and API routes from static serving
+const staticMiddleware = express.static(FRONTEND_DIST, {
+  // Don't serve index files for directories - let route handlers handle routes
+  index: false
+});
+
+app.use((req, res, next) => {
+  // Skip static serving for known route paths
+  if (routeHtmlMap.hasOwnProperty(req.path)) {
+    return next();
+  }
+  // Skip static serving for API routes
+  if (req.path.startsWith("/api")) {
+    return next();
+  }
+  // Skip static serving for auth route
+  if (req.path === "/auth") {
+    return next();
+  }
+  if (req.path === "/__routes__" || req.path === "/__ping__") return next();
+  staticMiddleware(req, res, next);
+});
+
+// Also serve public folder for other static assets
+app.use(express.static(process.cwd() + "/public"));
+
+// Catch-all: serve index.html for all other non-API routes
+app.get("*", (req, res, next) => {
+  // Skip API routes
+  if (req.path.startsWith("/api")) return next();
+  // Serve the SPA index.html
+  res.sendFile(path.join(FRONTEND_DIST, "index.html"), (err) => {
+    if (err) {
+      // Fallback to public/index.html if dist doesn't exist
+      res.sendFile(process.cwd() + "/public/index.html");
+    }
+  });
+
+
+
+});
+
+app.listen(process.env.PORT || 3000, "0.0.0.0", () => { console.log("SERVER LISTENING ON", process.env.PORT || 3000); });
+/* ==== END FORCE LISTENER ==== */
+
+app.get("/api/auth/me", (req, res) => {
+  const auth = req.headers.authorization || "";
+  const cookie = req.headers.cookie || "";
+  res.json({ ok: true, hasAuthHeader: auth.startsWith("Bearer "), hasCookie: cookie.length > 0 });
+});
+
+app.use((err, req, res, next) => {
+  try {
+    return res.status(500).json({
+      ok: false,
+      error: { code: "INTERNAL", message: "Unhandled server error", retryable: true },
+    });
+  } catch (e) {
+    res.status(500).end();
+  }
 });
