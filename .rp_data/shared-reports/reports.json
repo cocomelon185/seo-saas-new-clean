@@ -1,0 +1,22 @@
+{
+  "b2c7fcc7fef8844821e0b335b94a516a": {
+    "url": "https://example.com",
+    "score": 71,
+    "quick_wins": [
+      "Add a keyword-focused H1 above the fold.",
+      "Include internal links to 2-3 related pages.",
+      "Clarify the meta description with the primary topic."
+    ],
+    "issues": [
+      {
+        "label": "Missing meta description",
+        "priority": "high",
+        "why": "Search snippets are empty, reducing click-through rate.",
+        "fix": "Add a concise meta description with the primary keyword.",
+        "example": "Learn how to run a fast SEO audit and fix issues in under 30 minutes."
+      }
+    ],
+    "content_brief": "Summarize the value proposition in the first 100 words and add supporting proof points.",
+    "created_at": "2026-02-03T01:45:00.000Z"
+  }
+}

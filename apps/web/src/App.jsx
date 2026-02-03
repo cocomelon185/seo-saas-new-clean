@@ -14,9 +14,15 @@ import AccountSettingsPage from "./pages/AccountSettingsPage.jsx";
 import AccountDeletedPage from "./pages/AccountDeletedPage.jsx";
 import ChangelogPage from "./pages/ChangelogPage.jsx";
 import AboutPage from "./pages/AboutPage.jsx";
+import SharedReportPage from "./pages/SharedReportPage.jsx";
+import StartAuditPage from "./pages/StartAuditPage.jsx";
+import SaasLandingAuditPage from "./pages/SaasLandingAuditPage.jsx";
+import BlogAuditChecklistPage from "./pages/BlogAuditChecklistPage.jsx";
+import AgencyAuditWorkflowPage from "./pages/AgencyAuditWorkflowPage.jsx";
 
 const routes = [
   { path: "/", element: <Landing /> },
+  { path: "/start", element: <StartAuditPage /> },
   { path: "/audit", element: <AuditPage /> },
   { path: "/rank", element: <RankPage /> },
   { path: "/improve", element: <ImprovePage /> },
@@ -30,6 +36,10 @@ const routes = [
   { path: "/account/deleted", element: <AccountDeletedPage /> },
   { path: "/changelog", element: <ChangelogPage /> },
   { path: "/about", element: <AboutPage /> },
+  { path: "/use-cases/saas-landing-audit", element: <SaasLandingAuditPage /> },
+  { path: "/use-cases/blog-audit-checklist", element: <BlogAuditChecklistPage /> },
+  { path: "/use-cases/agency-audit-workflow", element: <AgencyAuditWorkflowPage /> },
+  { path: "/r/:reportId", element: <SharedReportPage /> },
   { path: "*", element: <Navigate to="/" replace /> }
 ];
 

@@ -10,8 +10,13 @@ import AuditImpactBanner from "../components/AuditImpactBanner.jsx";
 import AuditHistoryPanel from "../components/AuditHistoryPanel.jsx";
 import { pushAuditHistory } from "../lib/auditHistory.js";
 import ErrorBoundary from "../components/ErrorBoundary.jsx";
+import { track } from "../lib/eventsClient.js";
 
 function AuditPageInner() {
+  const __rp_markSkipAutoRun = () => {
+    try { __rpSkipAutoRunRef.current = true; } catch {}
+  };
+  const __rpSkipAutoRunRef = useRef(false);
   const navigate = useNavigate();
   const location = useLocation();
   const [pricingOpen, setPricingOpen] = useState(false);
@@ -21,19 +26,37 @@ function AuditPageInner() {
   const [status, setStatus] = useState("idle"); // idle | loading | success | error
   const [error, setError] = useState("");
   const [result, setResult] = useState(null);
+  const [hasResumeSnapshot, setHasResumeSnapshot] = useState(false);
   const [debug, setDebug] = useState("");
   const [debugExpanded, setDebugExpanded] = useState(false);
   const autoRunRef = useRef(false);
+  
+  // Conversion panel state
+  const [conversionEmail, setConversionEmail] = useState("");
+  const [conversionSubmitted, setConversionSubmitted] = useState(false);
+  const [conversionDismissed, setConversionDismissed] = useState(false);
 
   useEffect(() => {
     try {
       const params = new URLSearchParams(location.search || "");
       const u = (params.get("url") || "").trim();
-      if (u) setUrl(u);
+      if (u) {
+        setUrl(u);
+        return;
+      }
+    } catch {}
+
+    // If no query param, restore last audited URL (enables Resume after reload)
+    try {
+      const last = (localStorage.getItem("rp_last_audit_url") || "").trim();
+      if (last) setUrl(last);
     } catch {}
   }, [location.search]);
 
   useEffect(() => {
+    if (__rpSkipAutoRunRef.current) { __rpSkipAutoRunRef.current = false; return; }
+
+    if (hasResumeSnapshot) return;
     if (autoRunRef.current) return;
     if (status !== "idle") return;
     try {
@@ -43,10 +66,37 @@ function AuditPageInner() {
       return;
     }
     if (!url.trim()) return;
+
+    const snapshot = __rp_loadSnapshotForUrl(url);
+    if (snapshot) {
+      autoRunRef.current = true;
+      setResult(snapshot);
+      setStatus("success");
+      setHasResumeSnapshot(true);
+      return;
+    }
+
     autoRunRef.current = true;
     run();
   }, [url, status]);
-const canRun = useMemo(() => {
+
+  // Check if conversion panel was dismissed in this session
+  useEffect(() => {
+    try {
+      const dismissed = sessionStorage.getItem("post_audit_conversion_dismissed");
+      if (dismissed === "true") {
+        setConversionDismissed(true);
+      }
+    } catch {}
+  }, []);
+
+  // Show conversion panel when audit completes successfully
+  useEffect(() => {
+    if (status === "success" && result && !conversionDismissed && !conversionSubmitted) {
+      // Panel will be shown via conditional rendering
+    }
+  }, [status, result, conversionDismissed, conversionSubmitted]);
+  const canRun = useMemo(() => {
     try {
       const u = new URL(url.trim());
       return u.protocol === "http:" || u.protocol === "https:";
@@ -54,6 +104,40 @@ const canRun = useMemo(() => {
       return false;
     }
   }, [url]);
+
+  useEffect(() => {
+    if (!url.trim()) return;
+    const snap = __rp_loadSnapshotForUrl(url);
+    setHasResumeSnapshot(Boolean(snap));
+  }, [url]);
+
+  function __rp_loadSnapshotForUrl(snapshotUrl) {
+    if (!snapshotUrl) return null;
+    try {
+      const key = "rp_audit_snapshot::" + snapshotUrl.trim();
+      const raw = localStorage.getItem(key);
+      if (!raw) return null;
+      const data = JSON.parse(raw);
+      return data && typeof data === "object" ? data : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function __rp_resumeWithoutNetwork() {
+    try { __rpSkipAutoRunRef.current = true; } catch {}
+
+    const snap = __rp_loadSnapshotForUrl(url);
+    if (!snap) return false;
+    try {
+      setResult(snap);
+      setStatus("success");
+      setHasResumeSnapshot(true);
+    } catch {}
+    return true;
+  }
+
+
 
   async function run() {
     setError("");
@@ -81,6 +165,11 @@ const canRun = useMemo(() => {
       const data = await res.json();
       try { setDebug(JSON.stringify(data, null, 2)); } catch {}
       setResult(data);
+      try {
+        const key = "rp_audit_snapshot::" + (url || "").trim();
+        localStorage.setItem(key, JSON.stringify(data));
+        try { localStorage.setItem("rp_last_audit_url", (url || "").trim()); } catch {}
+      } catch {}
       if (data?.warning) {
         setStatus("error");
         setError(String(data.warning));
@@ -90,9 +179,10 @@ try {
         pushAuditHistory({
           url: data?.url || url,
           score: data?.score,
-          issues_found: Array.isArray(data?.issues) ? data.issues.length : (data?.issues_found ?? data?.issuesFound),
-          created_at: new Date().toISOString()
+          issuesCount: Array.isArray(data?.issues) ? data.issues.length : (data?.issues_found ?? data?.issuesFound ?? 0),
+          ranAt: Date.now()
         });
+
       } catch {}
 
       setStatus("success");
@@ -102,21 +192,61 @@ try {
     }
   }
 
+  function handleConversionSubmit(e) {
+    e.preventDefault();
+    
+    // Basic email format validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (conversionEmail.trim() && !emailRegex.test(conversionEmail.trim())) {
+      return; // Silently ignore invalid email
+    }
+
+    // Store email in localStorage
+    try {
+      if (conversionEmail.trim()) {
+        localStorage.setItem("post_audit_email", conversionEmail.trim());
+      }
+    } catch {}
+
+    // Track event
+    track("post_audit_email_opt_in", {
+      meta: { source: "audit_page" }
+    });
+
+    // Show success state
+    setConversionSubmitted(true);
+  }
+
+  function handleConversionDismiss() {
+    // Store dismissal in sessionStorage
+    try {
+      sessionStorage.setItem("post_audit_conversion_dismissed", "true");
+    } catch {}
+
+    // Track event
+    track("post_audit_email_dismissed", {
+      meta: { source: "audit_page" }
+    });
+
+    // Hide panel
+    setConversionDismissed(true);
+  }
+
   const issues = Array.isArray(result?.issues) ? result.issues : [];
   const quickWins = Array.isArray(result?.quick_wins) ? result.quick_wins : [];
   const brief = typeof result?.content_brief === "string" ? result.content_brief : "";
 
   return (
-
-<AppShell
+<AppShell data-testid="audit-page"
       title="SEO Page Audit"
       subtitle="Paste a URL and get a score, quick wins, and a prioritized list of issues. Fast, clear, and usable."
     >
+
       <div className="flex flex-col gap-4">
         <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
           <div>
             <label className="mb-2 block text-sm font-medium text-white/80">Page URL</label>
-            <input
+            <input aria-label="Page URL"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               placeholder="https://example.com/pricing"
@@ -138,6 +268,38 @@ try {
           >
             {status === "loading" ? "Running…" : "Run SEO Audit"}
           </button>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          {status !== "loading" && hasResumeSnapshot && (
+            <button
+              onClick={() => {
+                try {
+                  const raw = localStorage.getItem("rp_audit_snapshot::" + (url || "").trim());
+                  if (!raw) return;
+                  const snap = JSON.parse(raw);
+                  setError("");
+                  setResult(snap);
+                  setStatus("success");
+                } catch {}
+              }}
+              className="rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-2 text-sm font-semibold text-white/80 transition hover:bg-white/[0.10]"
+            >
+              Resume audit
+            </button>
+          )}
+
+          {status === "success" && (
+            <button
+              onClick={() => {
+                __rp_markSkipAutoRun();
+                run();
+              }}
+              className="rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-2 text-sm font-semibold text-white/80 transition hover:bg-white/[0.10]"
+            >
+              Re-run audit
+            </button>
+          )}
         </div>
 
         {status === "idle" && (
@@ -164,7 +326,7 @@ try {
           </div>
         )}
 
-{status === "success" && (
+        {status === "success" && (
           <div className="grid gap-4 md:grid-cols-3">
             <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
               <div className="text-sm font-semibold text-white/80">SEO Score</div>
@@ -196,8 +358,50 @@ try {
           </div>
         )}
 
-        {status === "success" && result && (
+        {/* Conversion Panel - Show after audit completes, only once per session */}
+        {status === "success" && result && !conversionDismissed && !conversionSubmitted && (
           <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+            <div className="text-sm font-semibold text-white/80 mb-2">Save your audit & track improvements</div>
+            <div className="text-sm text-white/70 mb-4">Get notified when your SEO score changes or new issues appear.</div>
+            <form onSubmit={handleConversionSubmit} className="flex flex-col gap-3 sm:flex-row sm:items-end">
+              <div className="flex-1">
+                <input
+                  type="email"
+                  value={conversionEmail}
+                  onChange={(e) => setConversionEmail(e.target.value)}
+                  placeholder="Email address"
+                  className="w-full rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3 text-sm text-white placeholder:text-white/40 outline-none transition focus:border-white/20"
+                />
+                <div className="mt-1 text-xs text-white/50">Optional</div>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  type="submit"
+                  className="rounded-2xl bg-gradient-to-r from-indigo-500 to-fuchsia-500 px-5 py-3 text-sm font-semibold text-white transition hover:opacity-95"
+                >
+                  Email me updates
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConversionDismiss}
+                  className="rounded-2xl border border-white/10 bg-white/[0.06] px-5 py-3 text-sm font-semibold text-white/80 transition hover:bg-white/[0.10]"
+                >
+                  Not now
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {/* Success state after email submission */}
+        {status === "success" && result && conversionSubmitted && (
+          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+            <div className="text-sm text-white/80">You're all set. We'll notify you when things change.</div>
+          </div>
+        )}
+
+        {status === "success" && result && (
+          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5" data-testid="observed-data">
             <div className="text-sm font-semibold text-white/80 mb-4">Evidence</div>
             <div className="grid gap-4 md:grid-cols-2">
               <div>
@@ -327,10 +531,12 @@ try {
         }}
       />
           <AuditImpactBanner score={result?.score} issues={issues} />
-            <IssuesPanel
+            <div data-testid="key-issues">
+              <IssuesPanel
               issues={issues}
               finalUrl={String(result?.debug?.final_url || result?.final_url || "")}
             />
+            </div>
       {import.meta.env.DEV && debug && (
         <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
           <button
@@ -350,9 +556,5 @@ try {
 }
 
 export default function AuditPage() {
-  return (
-    <ErrorBoundary>
-      <AuditPageInner />
-    </ErrorBoundary>
-  );
+  return <AuditPageInner />;
 }
