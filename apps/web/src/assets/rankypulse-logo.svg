@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="RankyPulse">
+  <defs>
+    <linearGradient id="rp-ring" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#22d3ee"/>
+      <stop offset="100%" stop-color="#34d399"/>
+    </linearGradient>
+    <linearGradient id="rp-pulse" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#facc15"/>
+      <stop offset="100%" stop-color="#22d3ee"/>
+    </linearGradient>
+  </defs>
+  <circle cx="60" cy="60" r="46" fill="none" stroke="url(#rp-ring)" stroke-width="10"/>
+  <circle cx="60" cy="60" r="6" fill="#22d3ee"/>
+  <path d="M18 64h20l8-20 10 40 8-24h30" fill="none" stroke="url(#rp-pulse)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

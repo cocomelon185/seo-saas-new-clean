@@ -1,196 +1,236 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { IconArrowRight } from "./Icons.jsx";
+import { track } from "../lib/eventsClient.js";
+import { getAuthUser } from "../lib/authClient.js";
+import { startSubscriptionCheckout } from "../lib/billingClient.js";
 
 export default function PricingModal({ open, onClose, onSelectPlan }) {
-  const [billing, setBilling] = useState("yearly");
+  const [billing, setBilling] = useState("monthly");
+  const navigate = useNavigate();
+  const [activePlan, setActivePlan] = useState("");
+  const [checkoutError, setCheckoutError] = useState("");
+  const formatInr = (value) =>
+    new Intl.NumberFormat("en-IN", {
+      style: "currency",
+      currency: "INR",
+      maximumFractionDigits: 0,
+    }).format(value);
 
   const plans = useMemo(() => {
     const common = {
       starter: {
         key: "starter",
         name: "Starter",
-        badge: "Try RankyPulse on real pages",
-        monthly: 9.99,
-        yearly: 99,
+        badge: "For new growth teams",
+        monthly: 999,
+        yearly: 8990,
         bullets: [
-          "5 page audits / month",
-          "SEO score",
-          "High-priority issues only",
-          "Limited explanations",
+          "AI audit + fix priorities",
+          "Visual proof snapshots",
+          "Quick wins summary",
+          "5 websites tracked",
         ],
-        locked: ["Content briefs", "Example fixes", "Audit history"],
+        badges: ["Diagnosis"],
+        locked: [
+          "AI fixes + one-click apply",
+          "AI content briefs + intent",
+          "Weekly tracking reports",
+          "Competitor comparison",
+          "White‑label PDF exports"
+        ],
         emphasis: "quiet",
-        cta: "Try Starter",
+        cta: "Start 7-day trial",
       },
       solo: {
-        key: "solo",
-        name: "Solo",
+        key: "pro",
+        name: "Pro",
         badge: "Most Popular",
-        monthly: 29,
-        yearly: 290,
+        monthly: 2449,
+        yearly: 22490,
         bullets: [
-          "30 page audits / month",
-          "Full priority fix plans",
-          "Content briefs",
-          "Example fixes",
-          "Audit history",
-          "Re-run audits",
-          "Client-safe reports",
+          "Everything in Starter",
+          "AI fixes + push to CMS",
+          "AI content briefs + intent",
+          "Weekly tracking reports",
+          "Audit history + re-runs",
+          "15 websites tracked",
         ],
+        badges: ["Solution"],
         locked: [],
         emphasis: "primary",
-        cta: "Unlock Full Fix Plan",
+        cta: "Start 7-day trial",
       },
       agency: {
-        key: "agency",
-        name: "Agency",
-        badge: "For consultants & small teams",
-        monthly: 59,
-        yearly: 590,
+        key: "teams",
+        name: "Teams",
+        badge: "For growing teams",
+        monthly: 4999,
+        yearly: 44990,
         bullets: [
-          "150 page audits / month",
-          "Everything in Solo",
+          "Everything in Pro",
           "Multiple projects",
-          "Shareable reports",
+          "Agency-ready reporting",
+          "Team collaboration",
           "Priority processing",
+          "40 websites tracked",
         ],
+        badges: ["Solution"],
         locked: [],
         emphasis: "quiet",
-        cta: "Start Agency Plan",
+        cta: "Start 7-day trial",
       },
     };
     return [common.starter, common.solo, common.agency];
   }, []);
 
+  const authUser = getAuthUser();
+  const isAdmin = authUser?.role === "admin";
+  useEffect(() => {
+    try { track("pricing_modal_open", {}); } catch {}
+  }, []);
   if (!open) return null;
 
   const price = (p) => (billing === "yearly" ? p.yearly : p.monthly);
-  const suffix = billing === "yearly" ? "/ year" : "/ month";
-  const saveLabel = billing === "yearly" ? "Save 2 months" : "";
+  const suffix = billing === "yearly" ? "/ mo billed annually" : "/ month";
+  const saveLabel = billing === "yearly" ? "25% Off" : "";
 
   return (
     <div
       role="dialog"
       aria-modal="true"
-      style={{
-        position: "fixed",
-        inset: 0,
-        background: "rgba(0,0,0,0.45)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 16,
-        zIndex: 9999,
-      }}
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 px-4 py-6 backdrop-blur-sm"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose?.();
       }}
     >
       <div
-        style={{
-          width: "min(980px, 100%)",
-          background: "#fff",
-          borderRadius: 16,
-          boxShadow: "0 20px 60px rgba(0,0,0,0.25)",
-          overflow: "hidden",
-        }}
+        className="rp-card w-full max-w-5xl overflow-hidden"
       >
-        <div style={{ padding: "22px 22px 14px", borderBottom: "1px solid rgba(0,0,0,0.08)" }}>
-          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
+        <div className="border-b border-[var(--rp-border)] px-6 py-5">
+          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div>
-              <div style={{ fontSize: 20, fontWeight: 700 }}>Unlock the Full Fix Plan</div>
-              <div style={{ marginTop: 6, fontSize: 14, lineHeight: 1.6, opacity: 0.85 }}>
+              <div className="text-xl font-semibold text-[var(--rp-text-900)]">Unlock the Full Fix Plan</div>
+              <div className="mt-2 text-sm text-[var(--rp-text-600)]">
                 Get prioritized SEO fixes, examples, and content guidance you can act on immediately.
               </div>
             </div>
 
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <div style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 13, opacity: 0.9 }}>
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex gap-2 text-xs text-[var(--rp-text-500)]">
                 <button
                   type="button"
                   onClick={() => setBilling("monthly")}
-                  style={{
-                    padding: "8px 10px",
-                    borderRadius: 10,
-                    border: "1px solid rgba(0,0,0,0.15)",
-                    background: billing === "monthly" ? "rgba(0,0,0,0.06)" : "#fff",
-                    cursor: "pointer",
-                  }}
+                  className={[
+                    "rounded-full border px-4 py-1.5 text-xs font-semibold transition",
+                    billing === "monthly"
+                      ? "border-[var(--rp-indigo-700)] bg-[var(--rp-indigo-700)] text-white shadow-sm"
+                      : "border-[var(--rp-border)] bg-white text-[var(--rp-text-600)] hover:border-[var(--rp-indigo-700)]/40"
+                  ].join(" ")}
                 >
                   Monthly
                 </button>
                 <button
                   type="button"
                   onClick={() => setBilling("yearly")}
-                  style={{
-                    padding: "8px 10px",
-                    borderRadius: 10,
-                    border: "1px solid rgba(0,0,0,0.15)",
-                    background: billing === "yearly" ? "rgba(0,0,0,0.06)" : "#fff",
-                    cursor: "pointer",
-                  }}
+                  className={[
+                    "rounded-full border px-4 py-1.5 text-xs font-semibold transition",
+                    billing === "yearly"
+                      ? "border-[var(--rp-indigo-700)] bg-[var(--rp-indigo-700)] text-white shadow-sm"
+                      : "border-[var(--rp-border)] bg-white text-[var(--rp-text-600)] hover:border-[var(--rp-indigo-700)]/40"
+                  ].join(" ")}
                 >
-                  Yearly
+                  Annual
                 </button>
               </div>
-              <div style={{ fontSize: 12, opacity: 0.75, minWidth: 84, textAlign: "right" }}>{saveLabel}</div>
+              {saveLabel ? (
+                <div className="rounded-full bg-[#FFE7A8] px-3 py-1 text-[11px] font-semibold text-[#5A3A00]">
+                  {saveLabel}
+                </div>
+              ) : null}
               <button
                 type="button"
                 onClick={onClose}
-                style={{
-                  marginLeft: 6,
-                  padding: "6px 10px",
-                  borderRadius: 10,
-                  border: "1px solid rgba(0,0,0,0.15)",
-                  background: "#fff",
-                  cursor: "pointer",
-                }}
+                className="rounded-full border border-[var(--rp-border)] px-3 py-1 text-xs font-semibold text-[var(--rp-text-500)] hover:text-[var(--rp-text-700)]"
                 aria-label="Close"
               >
-                ✕
+                x
               </button>
             </div>
           </div>
         </div>
 
-        <div style={{ padding: 18 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 14 }}>
+        <div className="px-6 py-6">
+          <div className="grid gap-4 md:grid-cols-3">
             {plans.map((p) => {
               const isPrimary = p.emphasis === "primary";
               return (
                 <div
                   key={p.key}
-                  style={{
-                    borderRadius: 16,
-                    border: isPrimary ? "2px solid rgba(0,0,0,0.35)" : "1px solid rgba(0,0,0,0.12)",
-                    padding: 16,
-                    background: isPrimary ? "rgba(0,0,0,0.02)" : "#fff",
-                  }}
+                  className={[
+                    "rounded-2xl border p-5",
+                    isPrimary
+                      ? "border-[var(--rp-orange-500)]/40 bg-[rgba(255,100,45,0.08)] shadow-[0_20px_40px_rgba(255,100,45,0.16)]"
+                      : "border-[var(--rp-border)] bg-white"
+                  ].join(" ")}
                 >
-                  <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
-                    <div style={{ fontSize: 16, fontWeight: 700 }}>{p.name}</div>
-                    <div style={{ fontSize: 12, opacity: 0.8 }}>{p.badge}</div>
+                <div className="flex items-baseline justify-between gap-3">
+                  <div className="text-base font-semibold text-[var(--rp-text-900)]">{p.name}</div>
+                  <div className="text-xs text-[var(--rp-text-500)]">{p.badge}</div>
+                </div>
+                {Array.isArray(p.badges) && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {p.badges.map((b) => (
+                      <span
+                        key={b}
+                        className={[
+                          "inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold",
+                          b === "Solution"
+                            ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                            : "border-amber-200 bg-amber-50 text-amber-700"
+                        ].join(" ")}
+                      >
+                        {b}
+                      </span>
+                    ))}
                   </div>
+                )}
 
-                  <div style={{ marginTop: 10, display: "flex", alignItems: "baseline", gap: 8 }}>
-                    <div style={{ fontSize: 28, fontWeight: 800 }}>${price(p)}</div>
-                    <div style={{ fontSize: 13, opacity: 0.75 }}>{suffix}</div>
+                  <div className="mt-3 flex items-baseline gap-2">
+                    <div className="text-3xl font-semibold text-[var(--rp-text-900)]">{formatInr(price(p))}</div>
+                    <div className="text-xs text-[var(--rp-text-500)]">{suffix}</div>
                   </div>
+                  {billing === "yearly" ? (
+                    <div className="mt-1 text-xs text-[var(--rp-text-500)]">
+                      <span className="line-through opacity-60">{formatInr(p.monthly)}</span> monthly
+                    </div>
+                  ) : null}
 
-                  <div style={{ marginTop: 12, fontSize: 13, lineHeight: 1.9 }}>
-                    <div style={{ fontWeight: 700, opacity: 0.9 }}>Includes</div>
-                    <ul style={{ margin: "6px 0 0", paddingLeft: 18 }}>
+                  <div className="mt-4 text-xs text-[var(--rp-text-600)]">
+                    <div className="font-semibold text-[var(--rp-text-700)]">Includes</div>
+                    <ul className="mt-2 list-disc space-y-1 pl-5">
                       {p.bullets.map((b) => (
                         <li key={b}>{b}</li>
                       ))}
                     </ul>
                   </div>
+                  {isAdmin && p.key !== "starter" && (
+                    <div className="mt-3 text-xs text-[var(--rp-text-500)]">
+                      <div className="font-semibold text-[var(--rp-text-600)]">Team benefits</div>
+                      <ul className="mt-2 list-disc space-y-1 pl-5">
+                        <li>Admin controls for verification + audits</li>
+                        <li>Invite teammates with roles</li>
+                        <li>Centralized upgrade management</li>
+                      </ul>
+                    </div>
+                  )}
 
                   {p.locked?.length ? (
-                    <div style={{ marginTop: 10, fontSize: 13, lineHeight: 1.9, opacity: 0.9 }}>
-                      <div style={{ fontWeight: 700, opacity: 0.9 }}>Locked</div>
-                      <ul style={{ margin: "6px 0 0", paddingLeft: 18 }}>
+                    <div className="mt-3 text-xs text-[var(--rp-text-500)]">
+                      <div className="font-semibold text-[var(--rp-text-600)]">Locked</div>
+                      <ul className="mt-2 list-disc space-y-1 pl-5">
                         {p.locked.map((b) => (
-                          <li key={b}>✕ {b}</li>
+                          <li key={b}>x {b}</li>
                         ))}
                       </ul>
                     </div>
@@ -198,31 +238,60 @@ export default function PricingModal({ open, onClose, onSelectPlan }) {
 
                   <button
                     type="button"
-                    onClick={() => onSelectPlan?.({ plan: p.key, billing })}
-                    style={{
-                      marginTop: 14,
-                      width: "100%",
-                      padding: "12px 12px",
-                      borderRadius: 12,
-                      border: "1px solid rgba(0,0,0,0.15)",
-                      background: isPrimary ? "rgba(0,0,0,0.10)" : "#fff",
-                      cursor: "pointer",
-                      fontWeight: 700,
+                    onClick={async () => {
+                      setCheckoutError("");
+                      try { track("pricing_plan_select", { plan: p.key, billing }); } catch {}
+                      if (!authUser?.email) {
+                        navigate(`/auth/signup?next=${encodeURIComponent("/pricing")}&plan=${p.key}`);
+                        return;
+                      }
+                      setActivePlan(p.key);
+                      await startSubscriptionCheckout({
+                        planId: p.key,
+                        billingPeriod: billing,
+                        source: "pricing_modal",
+                        onSuccess: () => navigate("/upgrade/success"),
+                        onError: (err) => {
+                          if (String(err?.message || "").toLowerCase().includes("closed")) return;
+                          setCheckoutError(String(err?.message || "Checkout failed."));
+                          navigate("/upgrade/failure");
+                        }
+                      });
+                      setActivePlan("");
+                      onSelectPlan?.({ plan: p.key, billing });
                     }}
+                    className={[
+                      "mt-4 w-full text-sm",
+                      isPrimary ? "rp-btn-primary" : "rp-btn-secondary"
+                    ].join(" ")}
+                    disabled={activePlan === p.key}
                   >
-                    {p.cta}
+                    <IconArrowRight size={14} />
+                    {activePlan === p.key ? "Starting..." : p.cta}
                   </button>
 
-                  {p.key === "solo" ? (
-                    <div style={{ marginTop: 8, fontSize: 12, opacity: 0.75, textAlign: "center" }}>Cancel anytime</div>
+                  {p.key === "starter" ? (
+                    <div className="mt-2 text-center text-xs text-[var(--rp-text-500)]">
+                      Upgrade to unlock fixes, briefs, and tracking
+                    </div>
+                  ) : null}
+                  {p.key === "pro" ? (
+                    <div className="mt-2 text-center text-xs text-[var(--rp-text-500)]">
+                      Best for solo operators. Cancel anytime.
+                    </div>
                   ) : null}
                 </div>
               );
             })}
           </div>
 
-          <div style={{ marginTop: 14, fontSize: 12, lineHeight: 1.6, opacity: 0.75 }}>
-            RankyPulse focuses on execution and clarity — not keyword databases or SEO bloat. Upgrade, downgrade, or cancel anytime.
+          {checkoutError && (
+            <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs text-rose-700">
+              {checkoutError}
+            </div>
+          )}
+          <div className="mt-4 text-xs text-[var(--rp-text-500)]">
+            RankyPulse focuses on execution and clarity - not keyword databases or SEO bloat. Upgrade, downgrade, or cancel anytime.
           </div>
         </div>
       </div>

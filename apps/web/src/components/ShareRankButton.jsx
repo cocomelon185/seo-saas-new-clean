@@ -38,8 +38,10 @@ export default function ShareRankButton({ result }) {
       onClick={copy}
       disabled={!canShare}
       className={
-        "h-9 rounded-lg border border-white/10 px-3 text-sm font-semibold " +
-        (canShare ? "text-white/80 hover:bg-white/[0.04]" : "cursor-not-allowed text-white/35")
+        "h-9 rounded-lg border border-[var(--rp-border)] px-3 text-sm font-semibold " +
+        (canShare
+          ? "text-[var(--rp-text-600)] hover:border-[var(--rp-orange-500)]/40 hover:text-[var(--rp-indigo-900)]"
+          : "cursor-not-allowed text-[var(--rp-text-500)]/70")
       }
       title={canShare ? "Copy a shareable read-only link" : "Run a check first"}
     >

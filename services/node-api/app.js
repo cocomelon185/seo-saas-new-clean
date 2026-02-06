@@ -21,9 +21,14 @@ import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import path from "path";
 import fs from "fs";
-const SPA_DIST_LEGACY = path.join(process.cwd(), "services", "node-api", "frontend", "dist");
-const SPA_INDEX_LEGACY = path.join(SPA_DIST_LEGACY, "index.html");
-const HAS_SPA_LEGACY = fs.existsSync(SPA_INDEX_LEGACY);
+const SPA_DIST_CANDIDATES = [
+  path.join(process.cwd(), "apps", "web", "dist"),
+  path.join(process.cwd(), "services", "node-api", "frontend", "dist"),
+  path.join(process.cwd(), "services", "node-api", "dist"),
+  path.join(process.cwd(), "frontend", "dist")
+];
+const SPA_DIST = SPA_DIST_CANDIDATES.find((dir) => fs.existsSync(path.join(dir, "index.html")));
+const HAS_SPA_DIST = Boolean(SPA_DIST);
 import { fileURLToPath } from "url";
 import { Worker } from "worker_threads";
 
@@ -175,7 +180,7 @@ function getUserById(id) {
 
 
 // ===== Config =====
-const FRONTEND_DIST = path.join(__dirname, "frontend", "dist");
+const FRONTEND_DIST = SPA_DIST;
 
 // Demo rate limit (per IP)
 const demoLimiter = new RateLimiter({ windowMs: 10 * 60 * 1000, max: 3 }); // 3 audits / 10 min
@@ -454,10 +459,10 @@ app.get("/api/audits/:id", requireAuth, (req, res) => {
 });
 
 // ===== Static frontend (single-port) =====
-if (HAS_SPA_LEGACY) app.use(express.static(FRONTEND_DIST));
+if (HAS_SPA_DIST && FRONTEND_DIST) app.use(express.static(FRONTEND_DIST));
 app.get("*", (req, res, next) => {
   if (req.path && req.path.startsWith("/api")) return next();
-  if (!HAS_SPA_LEGACY) return res.status(404).send("SPA dist missing");
+  if (!HAS_SPA_DIST || !FRONTEND_DIST) return res.status(404).send("SPA dist missing");
   return res.sendFile(path.join(FRONTEND_DIST, "index.html"));
 });
 const port = process.env.PORT || 3000;

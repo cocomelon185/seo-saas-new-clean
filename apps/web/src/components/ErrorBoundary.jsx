@@ -23,11 +23,11 @@ export default class ErrorBoundary extends React.Component {
       const comp = this.state.info?.componentStack || "";
       return (
         <div className="mx-auto max-w-4xl p-6">
-          <div className="rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-red-100">
+          <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-red-700">
             <div className="text-sm font-semibold">UI crashed while rendering this page</div>
             <div className="mt-2 text-sm opacity-90">{msg}</div>
           </div>
-          <pre className="mt-4 whitespace-pre-wrap break-words rounded-2xl border border-white/10 bg-black/40 p-4 text-xs text-white/80">
+          <pre className="mt-4 whitespace-pre-wrap break-words rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-4 text-xs text-[var(--rp-text-600)]">
 {stack || comp || "No stack available."}
           </pre>
         </div>

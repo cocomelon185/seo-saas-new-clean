@@ -1,3 +1,5 @@
+import { IconLink } from "./Icons.jsx";
+
 export default function ShareAuditButton({ result }) {
   if (!result?.url) return null;
 
@@ -12,8 +14,9 @@ export default function ShareAuditButton({ result }) {
   return (
     <button
       onClick={share}
-      className="h-9 rounded-lg border border-white/10 px-3 text-sm font-semibold text-white/80 hover:bg-white/[0.04]"
+      className="rp-btn-secondary text-xs h-9 px-3"
     >
+      <IconLink size={12} />
       Share
     </button>
   );

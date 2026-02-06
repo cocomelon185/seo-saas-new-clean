@@ -199,8 +199,6 @@ const visibleIssues = React.useMemo(() => {
     }
 
     const normalized = normalizeAudit(r.data);
-    console.log("AUDIT_PAYLOAD_KEYS", Object.keys(r.data || {}));
-    console.log("AUDIT_NORMALIZED", { hasPages: !!(normalized.pages && normalized.pages.length), hasHttps: !!normalized.https, hasCwv: !!normalized.cwv });
     setAudit(normalized);
     setLoading(false);
     setTab("issues");

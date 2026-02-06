@@ -59,6 +59,47 @@ function getRazorpayConfig() {
   return { ok: true, keyId, keySecret, webhookSecret };
 }
 
+function getTrialDays() {
+  const raw = process.env.RAZORPAY_TRIAL_DAYS || process.env.APP_TRIAL_DAYS || "7";
+  const num = Number(raw);
+  if (!Number.isFinite(num) || num < 0) return 0;
+  return Math.min(30, Math.floor(num));
+}
+
+function getPlanId(planId, billingPeriod) {
+  const period = billingPeriod === "yearly" ? "yearly" : "monthly";
+  const map = {
+    starter: {
+      monthly: process.env.RAZORPAY_PLAN_STARTER_MONTHLY,
+      yearly: process.env.RAZORPAY_PLAN_STARTER_YEARLY
+    },
+    pro: {
+      monthly: process.env.RAZORPAY_PLAN_PRO_MONTHLY,
+      yearly: process.env.RAZORPAY_PLAN_PRO_YEARLY
+    },
+    teams: {
+      monthly: process.env.RAZORPAY_PLAN_TEAMS_MONTHLY,
+      yearly: process.env.RAZORPAY_PLAN_TEAMS_YEARLY
+    }
+  };
+  return map[planId]?.[period] || null;
+}
+
+function resolvePlanKeyFromRazorpay(planId) {
+  const pairs = [
+    ["starter", process.env.RAZORPAY_PLAN_STARTER_MONTHLY],
+    ["starter", process.env.RAZORPAY_PLAN_STARTER_YEARLY],
+    ["pro", process.env.RAZORPAY_PLAN_PRO_MONTHLY],
+    ["pro", process.env.RAZORPAY_PLAN_PRO_YEARLY],
+    ["teams", process.env.RAZORPAY_PLAN_TEAMS_MONTHLY],
+    ["teams", process.env.RAZORPAY_PLAN_TEAMS_YEARLY]
+  ];
+  for (const [key, val] of pairs) {
+    if (val && planId === val) return key;
+  }
+  return "pro";
+}
+
 /**
  * Create Razorpay Order
  */
@@ -108,6 +149,67 @@ async function fetchRazorpayOrder(keyId, keySecret, orderId) {
   return await response.json();
 }
 
+async function createRazorpaySubscription(keyId, keySecret, payload) {
+  const auth = Buffer.from(`${keyId}:${keySecret}`).toString("base64");
+  const response = await fetch("https://api.razorpay.com/v1/subscriptions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Basic ${auth}`,
+    },
+    body: JSON.stringify(payload)
+  });
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Razorpay API error: ${response.status} ${errorText}`);
+  }
+  return await response.json();
+}
+
+async function fetchRazorpaySubscription(keyId, keySecret, subscriptionId) {
+  const auth = Buffer.from(`${keyId}:${keySecret}`).toString("base64");
+  const response = await fetch(`https://api.razorpay.com/v1/subscriptions/${subscriptionId}`, {
+    method: "GET",
+    headers: { "Authorization": `Basic ${auth}` }
+  });
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Razorpay API error: ${response.status} ${errorText}`);
+  }
+  return await response.json();
+}
+
+async function cancelRazorpaySubscription(keyId, keySecret, subscriptionId, atPeriodEnd) {
+  const auth = Buffer.from(`${keyId}:${keySecret}`).toString("base64");
+  const response = await fetch(`https://api.razorpay.com/v1/subscriptions/${subscriptionId}/cancel`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Basic ${auth}`,
+    },
+    body: JSON.stringify({ cancel_at_cycle_end: atPeriodEnd ? 1 : 0 })
+  });
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Razorpay API error: ${response.status} ${errorText}`);
+  }
+  return await response.json();
+}
+
+async function fetchRazorpayInvoices(keyId, keySecret, subscriptionId) {
+  const auth = Buffer.from(`${keyId}:${keySecret}`).toString("base64");
+  const url = `https://api.razorpay.com/v1/invoices?subscription_id=${encodeURIComponent(subscriptionId)}`;
+  const response = await fetch(url, {
+    method: "GET",
+    headers: { "Authorization": `Basic ${auth}` }
+  });
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Razorpay API error: ${response.status} ${errorText}`);
+  }
+  return await response.json();
+}
+
 /**
  * Verify Razorpay payment signature
  */
@@ -126,6 +228,23 @@ function verifyRazorpaySignature(orderId, paymentId, signature, keySecret) {
     return false;
   }
   
+  return crypto.timingSafeEqual(providedBuffer, expectedBuffer);
+}
+
+function verifyRazorpaySubscriptionSignature(subscriptionId, paymentId, signature, keySecret) {
+  const payload = `${subscriptionId}|${paymentId}`;
+  const expectedSignature = crypto
+    .createHmac("sha256", keySecret)
+    .update(payload)
+    .digest("hex");
+
+  const providedBuffer = Buffer.from(signature, "utf8");
+  const expectedBuffer = Buffer.from(expectedSignature, "utf8");
+
+  if (providedBuffer.length !== expectedBuffer.length) {
+    return false;
+  }
+
   return crypto.timingSafeEqual(providedBuffer, expectedBuffer);
 }
 
@@ -161,13 +280,17 @@ function verifyRazorpayWebhookSignature(webhookSecret, payload, signature) {
 function getPlanAmount(planId, billingPeriod = "monthly") {
   // Pricing in paise (INR)
   const pricing = {
-    pro: {
-      monthly: 199900, // 1999 INR
-      yearly: 1999000, // 19990 INR (10 months equivalent, ~17% discount)
-    },
     starter: {
-      monthly: 99900, // 999 INR
-      yearly: 999000, // 9990 INR
+      monthly: 999, // 9.99 INR equivalent (placeholder)
+      yearly: 9990,
+    },
+    pro: {
+      monthly: 2900,
+      yearly: 29000,
+    },
+    teams: {
+      monthly: 5900,
+      yearly: 59000,
     }
   };
   
@@ -183,10 +306,358 @@ function getPlanAmount(planId, billingPeriod = "monthly") {
  * Register billing routes
  */
 export default function registerBilling(app) {
+  app.get("/api/billing/status", (req, res) => {
+    const anonId = getAnonId(req);
+    if (!anonId) {
+      return res.status(400).json({
+        ok: false,
+        entitlements: null,
+        error: { code: "MISSING_ANON_ID", message: "Missing x-rp-anon-id header", retryable: false }
+      });
+    }
+    const entitlements = getEntitlements(anonId);
+    return res.json({ ok: true, entitlements, error: null });
+  });
+
   // POST /api/billing/razorpay/create-order (Phase 4.2)
   app.get("/api/billing/config", (req, res) => {
     const c = getRazorpayConfig();
-    return res.json({ ok: true, razorpay_configured: !!c.ok });
+    return res.json({
+      ok: true,
+      razorpay_configured: !!c.ok,
+      trial_days: getTrialDays()
+    });
+  });
+
+  app.post("/api/billing/razorpay/create-subscription", async (req, res) => {
+    const anonId = getAnonId(req);
+    if (!anonId) {
+      return res.status(400).json({
+        ok: false,
+        subscription: null,
+        key_id: null,
+        error: { code: "MISSING_ANON_ID", message: "Missing x-rp-anon-id header", retryable: false }
+      });
+    }
+
+    const { plan_id, billing_period, email, name } = req.body || {};
+    if (!plan_id || typeof plan_id !== "string") {
+      return res.status(400).json({
+        ok: false,
+        subscription: null,
+        key_id: null,
+        error: { code: "INVALID_PLAN_ID", message: "Missing or invalid plan_id", retryable: false }
+      });
+    }
+
+    if (!["starter", "pro", "teams"].includes(plan_id)) {
+      return res.status(400).json({
+        ok: false,
+        subscription: null,
+        key_id: null,
+        error: { code: "INVALID_PLAN_ID", message: 'plan_id must be "starter", "pro", or "teams"', retryable: false }
+      });
+    }
+
+    const period = billing_period === "yearly" ? "yearly" : "monthly";
+    const config = getRazorpayConfig();
+    if (!config.ok) {
+      return res.status(500).json({
+        ok: false,
+        subscription: null,
+        key_id: null,
+        error: { code: "RAZORPAY_NOT_CONFIGURED", message: "Razorpay not configured", retryable: false }
+      });
+    }
+
+    const razorpayPlanId = getPlanId(plan_id, period);
+    if (!razorpayPlanId) {
+      return res.status(400).json({
+        ok: false,
+        subscription: null,
+        key_id: null,
+        error: { code: "MISSING_PLAN_ID", message: "Razorpay plan ID not configured", retryable: false }
+      });
+    }
+
+    const trialDays = getTrialDays();
+    const startAt = trialDays > 0 ? Math.floor(Date.now() / 1000) + trialDays * 86400 : undefined;
+    const totalCount = period === "yearly" ? 10 : 120;
+    const payload = {
+      plan_id: razorpayPlanId,
+      total_count: totalCount,
+      customer_notify: 1,
+      quantity: 1,
+      notes: {
+        anon_id: anonId,
+        plan_id,
+        billing_period: period
+      }
+    };
+    if (email) {
+      payload.notify_info = { email, name: name || email };
+    }
+    if (startAt) payload.start_at = startAt;
+
+    try {
+      const subscription = await createRazorpaySubscription(
+        config.keyId,
+        config.keySecret,
+        payload
+      );
+
+      const trialEndsAt = startAt ? new Date(startAt * 1000).toISOString() : null;
+      setEntitlements(anonId, {
+        plan_id,
+        status: trialDays > 0 ? "trialing" : "pending",
+        billing_period: period,
+        subscription_id: subscription.id,
+        trial_ends_at: trialEndsAt,
+        cancel_at_period_end: false
+      });
+
+      await logEvent(anonId, "billing_subscription_created", "", {
+        plan_id,
+        billing_period: period,
+        subscription_id: subscription.id,
+        trial_days: trialDays
+      });
+
+      return res.json({
+        ok: true,
+        subscription: {
+          id: subscription.id,
+          status: subscription.status,
+          start_at: subscription.start_at,
+          short_url: subscription.short_url || null,
+          notes: subscription.notes || payload.notes
+        },
+        key_id: config.keyId,
+        trial_days: trialDays,
+        error: null
+      });
+    } catch (err) {
+      console.error("Failed to create Razorpay subscription:", err);
+      return res.status(500).json({
+        ok: false,
+        subscription: null,
+        key_id: null,
+        error: { code: "SUBSCRIPTION_CREATION_FAILED", message: String(err?.message || err), retryable: true }
+      });
+    }
+  });
+
+  app.post("/api/billing/razorpay/verify-subscription", async (req, res) => {
+    const anonId = getAnonId(req);
+    if (!anonId) {
+      return res.status(400).json({
+        ok: false,
+        entitlements: null,
+        error: { code: "MISSING_ANON_ID", message: "Missing x-rp-anon-id header", retryable: false }
+      });
+    }
+
+    const { razorpay_payment_id, razorpay_subscription_id, razorpay_signature } = req.body || {};
+    if (!razorpay_payment_id || typeof razorpay_payment_id !== "string") {
+      return res.status(400).json({
+        ok: false,
+        entitlements: null,
+        error: { code: "INVALID_INPUT", message: "Missing or invalid razorpay_payment_id", retryable: false }
+      });
+    }
+    if (!razorpay_subscription_id || typeof razorpay_subscription_id !== "string") {
+      return res.status(400).json({
+        ok: false,
+        entitlements: null,
+        error: { code: "INVALID_INPUT", message: "Missing or invalid razorpay_subscription_id", retryable: false }
+      });
+    }
+    if (!razorpay_signature || typeof razorpay_signature !== "string") {
+      return res.status(400).json({
+        ok: false,
+        entitlements: null,
+        error: { code: "INVALID_INPUT", message: "Missing or invalid razorpay_signature", retryable: false }
+      });
+    }
+
+    const config = getRazorpayConfig();
+    if (!config.ok) {
+      return res.status(500).json({
+        ok: false,
+        entitlements: null,
+        error: { code: "RAZORPAY_NOT_CONFIGURED", message: "Razorpay not configured", retryable: false }
+      });
+    }
+
+    const existingPayment = getProcessedPayment(razorpay_payment_id);
+    if (existingPayment) {
+      const entitlements = getEntitlements(anonId);
+      return res.json({
+        ok: true,
+        entitlements,
+        error: null
+      });
+    }
+
+    const isValid = verifyRazorpaySubscriptionSignature(
+      razorpay_subscription_id,
+      razorpay_payment_id,
+      razorpay_signature,
+      config.keySecret
+    );
+
+    if (!isValid) {
+      await logEvent(anonId, "billing_payment_failed_verification", "", {
+        subscriptionId: razorpay_subscription_id,
+        paymentId: razorpay_payment_id
+      });
+      return res.status(400).json({
+        ok: false,
+        entitlements: null,
+        error: { code: "INVALID_SIGNATURE", message: "Payment signature verification failed", retryable: false }
+      });
+    }
+
+    try {
+      let planId = "pro";
+      let billingPeriod = "monthly";
+      const subscription = await fetchRazorpaySubscription(config.keyId, config.keySecret, razorpay_subscription_id);
+      if (subscription.notes) {
+        planId = subscription.notes.plan_id || planId;
+        billingPeriod = subscription.notes.billing_period || billingPeriod;
+      } else if (subscription.plan_id) {
+        planId = resolvePlanKeyFromRazorpay(subscription.plan_id);
+      }
+
+      markPaymentProcessed(razorpay_payment_id, razorpay_subscription_id, anonId, planId);
+
+      const now = new Date();
+      const periodEnd = new Date(now);
+      if (billingPeriod === "yearly") {
+        periodEnd.setFullYear(periodEnd.getFullYear() + 1);
+      } else {
+        periodEnd.setMonth(periodEnd.getMonth() + 1);
+      }
+
+      const updated = setEntitlements(anonId, {
+        plan_id: planId,
+        status: "paid",
+        billing_period: billingPeriod,
+        current_period_end: periodEnd.toISOString(),
+        subscription_id: razorpay_subscription_id,
+        cancel_at_period_end: false
+      });
+
+      setUserPlan(anonId, planId);
+
+      await logEvent(anonId, "billing_subscription_verified", "", {
+        plan_id: planId,
+        billing_period: billingPeriod,
+        subscription_id: razorpay_subscription_id,
+        paymentId: razorpay_payment_id
+      });
+
+      return res.json({
+        ok: true,
+        entitlements: updated.entitlements,
+        error: null
+      });
+    } catch (err) {
+      console.error("Failed to verify subscription:", err);
+      return res.status(500).json({
+        ok: false,
+        entitlements: null,
+        error: { code: "SUBSCRIPTION_VERIFY_FAILED", message: "Failed to verify subscription", retryable: true }
+      });
+    }
+  });
+
+  app.post("/api/billing/razorpay/cancel-subscription", async (req, res) => {
+    const anonId = getAnonId(req);
+    if (!anonId) {
+      return res.status(400).json({
+        ok: false,
+        error: { code: "MISSING_ANON_ID", message: "Missing x-rp-anon-id header", retryable: false }
+      });
+    }
+
+    const { subscription_id, cancel_at_period_end } = req.body || {};
+    const entitlements = getEntitlements(anonId);
+    const subId = subscription_id || entitlements.subscription_id;
+    if (!subId) {
+      return res.status(400).json({
+        ok: false,
+        error: { code: "MISSING_SUBSCRIPTION", message: "No subscription found", retryable: false }
+      });
+    }
+
+    const config = getRazorpayConfig();
+    if (!config.ok) {
+      return res.status(500).json({
+        ok: false,
+        error: { code: "RAZORPAY_NOT_CONFIGURED", message: "Razorpay not configured", retryable: false }
+      });
+    }
+
+    try {
+      const canceled = await cancelRazorpaySubscription(
+        config.keyId,
+        config.keySecret,
+        subId,
+        cancel_at_period_end !== false
+      );
+      const status = cancel_at_period_end !== false ? "canceling" : "canceled";
+      const updated = setEntitlements(anonId, {
+        status,
+        subscription_id: subId,
+        cancel_at_period_end: cancel_at_period_end !== false
+      });
+      await logEvent(anonId, "billing_subscription_canceled", "", {
+        subscription_id: subId,
+        at_period_end: cancel_at_period_end !== false
+      });
+      return res.json({ ok: true, entitlements: updated.entitlements, subscription: canceled, error: null });
+    } catch (err) {
+      console.error("Failed to cancel subscription:", err);
+      return res.status(500).json({
+        ok: false,
+        error: { code: "CANCEL_FAILED", message: String(err?.message || err), retryable: true }
+      });
+    }
+  });
+
+  app.get("/api/billing/razorpay/invoices", async (req, res) => {
+    const anonId = getAnonId(req);
+    if (!anonId) {
+      return res.status(400).json({
+        ok: false,
+        invoices: [],
+        error: { code: "MISSING_ANON_ID", message: "Missing x-rp-anon-id header", retryable: false }
+      });
+    }
+    const entitlements = getEntitlements(anonId);
+    if (!entitlements.subscription_id) {
+      return res.json({ ok: true, invoices: [], error: null });
+    }
+    const config = getRazorpayConfig();
+    if (!config.ok) {
+      return res.status(500).json({
+        ok: false,
+        invoices: [],
+        error: { code: "RAZORPAY_NOT_CONFIGURED", message: "Razorpay not configured", retryable: false }
+      });
+    }
+    try {
+      const result = await fetchRazorpayInvoices(config.keyId, config.keySecret, entitlements.subscription_id);
+      return res.json({ ok: true, invoices: result.items || [], error: null });
+    } catch (err) {
+      console.error("Failed to fetch invoices:", err);
+      return res.status(500).json({
+        ok: false,
+        invoices: [],
+        error: { code: "INVOICE_FETCH_FAILED", message: String(err?.message || err), retryable: true }
+      });
+    }
   });
 
   app.post("/api/billing/razorpay/create-order", async (req, res) => {
@@ -213,12 +684,12 @@ export default function registerBilling(app) {
       });
     }
     
-    if (plan_id !== "pro" && plan_id !== "starter") {
+    if (!["starter", "pro", "teams"].includes(plan_id)) {
       return res.status(400).json({
         ok: false,
         order: null,
         key_id: null,
-        error: { code: "INVALID_PLAN_ID", message: 'plan_id must be "starter" or "pro"', retryable: false }
+        error: { code: "INVALID_PLAN_ID", message: 'plan_id must be "starter", "pro", or "teams"', retryable: false }
       });
     }
     
@@ -487,8 +958,8 @@ export default function registerBilling(app) {
       return jsonError(res, 400, "INVALID_INPUT", "Missing or invalid razorpay_signature");
     }
     
-    if (plan !== "pro") {
-      return jsonError(res, 400, "INVALID_PLAN", 'Only "pro" plan is supported');
+    if (!["starter", "pro", "teams"].includes(plan)) {
+      return jsonError(res, 400, "INVALID_PLAN", 'plan must be "starter", "pro", or "teams"');
     }
     
     const config = getRazorpayConfig();

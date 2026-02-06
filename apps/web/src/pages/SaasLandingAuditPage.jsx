@@ -1,5 +1,6 @@
 import AppShell from "../components/AppShell.jsx";
 import { Link } from "react-router-dom";
+import { IconCompass, IconShield, IconBolt, IconArrowRight } from "../components/Icons.jsx";
 
 export default function SaasLandingAuditPage() {
   return (
@@ -7,27 +8,42 @@ export default function SaasLandingAuditPage() {
       title="SaaS Landing Page Audit"
       subtitle="Use this audit to validate clarity, proof, and conversion signals before you scale traffic."
     >
-      <div className="space-y-8 text-white/80">
+      <div className="space-y-8 text-[var(--rp-text-600)]">
         <section>
-          <h2 className="text-lg font-semibold text-white">What this audit solves</h2>
-          <p className="mt-3">
+          <h2 className="rp-section-title flex items-center gap-2">
+            <span className="inline-flex h-7 w-7 items-center justify-center rounded-xl bg-cyan-100 text-cyan-700">
+              <IconCompass size={16} />
+            </span>
+            What this audit solves
+          </h2>
+          <p className="mt-3 rp-body-small">
             SaaS landing pages fail when the message is vague or when proof is missing. This checklist ties
             the audit to the exact fixes that keep visitors reading and converting.
           </p>
         </section>
 
         <section className="grid gap-4 md:grid-cols-2">
-          <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-5">
-            <h3 className="text-base font-semibold text-white">Above-the-fold clarity</h3>
-            <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-white/70">
+          <div className="rp-card p-5">
+            <h3 className="text-base font-semibold text-[var(--rp-text-900)] flex items-center gap-2">
+              <span className="inline-flex h-6 w-6 items-center justify-center rounded-lg bg-amber-100 text-amber-700">
+                <IconBolt size={14} />
+              </span>
+              Above-the-fold clarity
+            </h3>
+            <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-[var(--rp-text-600)]">
               <li>Headline states the outcome, not the feature.</li>
-              <li>Subhead clarifies who it’s for and the primary use case.</li>
-              <li>CTA copy matches the audit step (e.g. “Run a free audit”).</li>
+              <li>Subhead clarifies who it's for and the primary use case.</li>
+              <li>CTA copy matches the audit step (e.g. "Run a free audit").</li>
             </ul>
           </div>
-          <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-5">
-            <h3 className="text-base font-semibold text-white">Proof and credibility</h3>
-            <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-white/70">
+          <div className="rp-card p-5">
+            <h3 className="text-base font-semibold text-[var(--rp-text-900)] flex items-center gap-2">
+              <span className="inline-flex h-6 w-6 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700">
+                <IconShield size={14} />
+              </span>
+              Proof and credibility
+            </h3>
+            <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-[var(--rp-text-600)]">
               <li>Add screenshots or before/after metrics near the CTA.</li>
               <li>Use client logos or quotes that mention outcomes.</li>
               <li>Link to a shareable report to show real audit output.</li>
@@ -36,21 +52,28 @@ export default function SaasLandingAuditPage() {
         </section>
 
         <section>
-          <h2 className="text-lg font-semibold text-white">Run the audit</h2>
-          <p className="mt-3 text-sm text-white/70">
+          <h2 className="rp-section-title flex items-center gap-2">
+            <span className="inline-flex h-7 w-7 items-center justify-center rounded-xl bg-cyan-100 text-cyan-700">
+              <IconBolt size={16} />
+            </span>
+            Run the audit
+          </h2>
+          <p className="mt-3 rp-body-small">
             Start with a real landing page and capture the first 3 fixes that unlock immediate clarity.
           </p>
           <div className="mt-4 flex flex-wrap gap-3">
             <Link
               to="/start"
-              className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-slate-900 hover:bg-slate-200"
+              className="rp-btn-primary text-sm"
             >
+              <IconArrowRight size={14} />
               Run Free Audit
             </Link>
             <Link
               to="/pricing"
-              className="rounded-xl border border-white/20 px-4 py-2 text-sm font-semibold text-white/80 hover:text-white"
+              className="rp-btn-secondary text-sm"
             >
+              <IconArrowRight size={14} />
               See paid plan examples
             </Link>
           </div>

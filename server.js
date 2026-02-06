@@ -1,11 +1,26 @@
 import "dotenv/config";
 import express from "express"
 import pageReport from "./api/page-report.js";
+import aiFix from "./api/ai-fix.js";
+import { subscribeWeeklyReport } from "./api/weekly-report.js";
+import { wpAuthStart, wpAuthCallback, wpStatus, wpDisconnect, wpPushFix } from "./api/wp.js";
+import { shopifyAuthStart, shopifyAuthCallback, shopifyStatus, shopifyDisconnect, shopifyPushFix } from "./api/shopify.js";
+import events from "./api/events.js";
+import migrateAnon from "./api/migrate-anon.js";
+import resetPasswordConfirm from "./api/reset-password-confirm.js";
+import accountSettings from "./api/account-settings.js";
+import { teamMembers, teamInvites, inviteInfo, acceptInviteExisting } from "./api/team.js";
+import requestUpgrade from "./api/request-upgrade.js";
+import { gscAuthStart, gscAuthCallback, gscStatus, gscSummary, gscDisconnect } from "./api/gsc.js";
+import embedLead, { listEmbedLeads, getEmbedLead, updateEmbedLead, testEmbedWebhook, listWebhookHistory, retryWebhookNow, processWebhookQueue, getWebhookMetrics } from "./api/embed-lead.js";
+import googleAuth from "./api/auth-google.js";
+import sharedReports from "./api/shared-reports.js";
 import fs from "fs";
 
 import registerUserState from "./api/user-state.js";
 import registerBilling from "./api/billing.js";
 import registerAuditHistory from "./api/audit-history.js";
+import registerAnalytics from "./api/analytics.js";
 import { getEntitlements } from "./services/node-api/lib/entitlementsStore.js";
 import { getUserPlan } from "./services/node-api/lib/planStore.js";
 import helmet from "helmet";
@@ -268,10 +283,55 @@ app.get("/__routes__", (req, res) => {
 
 
 app.post("/api/page-report", pageReport);
+app.post("/api/ai-fix", aiFix);
+app.post("/api/weekly-report/subscribe", subscribeWeeklyReport);
+app.post("/api/events", events);
+app.post("/api/migrate-anon", migrateAnon);
+app.post("/api/reset-password/confirm", resetPasswordConfirm);
+app.get("/api/account-settings", accountSettings);
+app.post("/api/account-settings", accountSettings);
+app.get("/api/team/members", teamMembers);
+app.post("/api/team/members", teamMembers);
+app.get("/api/team/invites", teamInvites);
+app.post("/api/team/invites", teamInvites);
+app.get("/api/team/invite", inviteInfo);
+app.post("/api/accept-invite", acceptInviteExisting);
+app.post("/api/request-upgrade", requestUpgrade);
+app.get("/api/wp/auth/start", wpAuthStart);
+app.get("/api/wp/auth/callback", wpAuthCallback);
+app.get("/api/wp/status", wpStatus);
+app.post("/api/wp/disconnect", wpDisconnect);
+app.post("/api/wp/push-fix", wpPushFix);
+app.get("/api/shopify/auth/start", shopifyAuthStart);
+app.get("/api/shopify/auth/callback", shopifyAuthCallback);
+app.get("/api/shopify/status", shopifyStatus);
+app.post("/api/shopify/disconnect", shopifyDisconnect);
+app.post("/api/shopify/push-fix", shopifyPushFix);
+app.post("/api/gsc/summary", gscSummary);
+app.get("/api/gsc/auth/start", gscAuthStart);
+app.get("/api/gsc/auth/callback", gscAuthCallback);
+app.get("/api/gsc/status", gscStatus);
+app.post("/api/gsc/disconnect", gscDisconnect);
+app.post("/api/embed/lead", embedLead);
+app.get("/api/embed/leads", listEmbedLeads);
+app.get("/api/embed/leads/:id", getEmbedLead);
+app.post("/api/embed/leads/:id", updateEmbedLead);
+app.post("/api/embed/test-webhook", testEmbedWebhook);
+app.get("/api/embed/webhook-history", listWebhookHistory);
+app.get("/api/embed/webhook-metrics", getWebhookMetrics);
+app.post("/api/embed/webhook-history/:id/retry", retryWebhookNow);
+app.post("/api/auth/google", googleAuth);
+app.get("/api/shared-reports/:reportId", sharedReports);
+
+// Lightweight webhook retry worker
+setInterval(() => {
+  processWebhookQueue().catch(() => {});
+}, 60 * 1000);
 
 registerUserState(app);
 registerBilling(app);
 registerAuditHistory(app);
+registerAnalytics(app);
 
 // ===== Entitlements Endpoint (Phase 4.2) =====
 app.get("/api/entitlements", (req, res) => {
@@ -426,7 +486,11 @@ app.get("*", (req, res, next) => {
 
 });
 
-app.listen(process.env.PORT || 3000, "0.0.0.0", () => { console.log("SERVER LISTENING ON", process.env.PORT || 3000); });
+const PORT = process.env.PORT || 3000;
+const HOST = process.env.HOST || "0.0.0.0";
+app.listen(PORT, HOST, () => {
+  console.log("SERVER LISTENING ON", `${HOST}:${PORT}`);
+});
 /* ==== END FORCE LISTENER ==== */
 
 app.get("/api/auth/me", (req, res) => {

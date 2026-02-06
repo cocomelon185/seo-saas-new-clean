@@ -1,4 +1,6 @@
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
+const { getUserByEmail } = require('./auth-store');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-12345';
 
@@ -16,8 +18,14 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const token = jwt.sign({ email, name: email.split('@')[0] }, JWT_SECRET, { expiresIn: '30d' });
-    res.status(200).json({ success: true, token, user: { email, name: email.split('@')[0] } });
+    const user = getUserByEmail(email);
+    if (!user) return res.status(401).json({ error: 'Invalid credentials' });
+    if (user.active === 0) return res.status(403).json({ error: 'Account inactive' });
+    const ok = await bcrypt.compare(password, user.password_hash || '');
+    if (!ok) return res.status(401).json({ error: 'Invalid credentials' });
+    if (!user.verified) return res.status(403).json({ error: 'Email not verified' });
+    const token = jwt.sign({ email, name: user.name, verified: true, role: user.role, team_id: user.team_id }, JWT_SECRET, { expiresIn: '30d' });
+    res.status(200).json({ success: true, token, user: { email, name: user.name, verified: true, role: user.role, team_id: user.team_id, active: user.active !== 0 } });
   } catch (error) {
     res.status(500).json({ error: 'Failed to sign in' });
   }

@@ -27,6 +27,11 @@ function fileWrite(items) {
   } catch {}
 }
 
+function fileList(limit = 10) {
+  const items = fileRead();
+  return items.slice(0, limit);
+}
+
 async function ensureTable() {
   await query(`
     CREATE TABLE IF NOT EXISTS audit_history (
@@ -76,4 +81,19 @@ async function add(item, limit = 10) {
   return deduped;
 }
 
-module.exports = { add };
+async function list(limit = 10) {
+  if (process.env.DATABASE_URL) {
+    await ensureTable();
+    const { rows } = await query(
+      `SELECT url, score, title, created_at AS date
+       FROM audit_history
+       ORDER BY created_at DESC
+       LIMIT $1`,
+      [limit]
+    );
+    return rows.map(r => ({ url: r.url, score: r.score, title: r.title, date: new Date(r.date).toISOString() }));
+  }
+  return fileList(limit);
+}
+
+module.exports = { add, list };

@@ -35,6 +35,9 @@ export function auditErrorResponse(err, url, extra = {}) {
     priorities: [],
     saas_page_type: null,
     saas_page_advice: null,
+    page_type: null,
+    page_type_advice: [],
+    rewrite_examples: [],
     warning: friendly,
     error: {
       code,

@@ -62,6 +62,7 @@ database.db-wal
 
 # Logs / analytics
 analytics.jsonl
+data/*.jsonl
 playwright-report/
 test-results/
 
