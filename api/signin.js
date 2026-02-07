@@ -21,7 +21,10 @@ export default async function signIn(req, res) {
     const user = await getUserByEmail(email);
     if (!user) return res.status(401).json({ error: "Invalid credentials" });
     if (user.active === 0) return res.status(403).json({ error: "Account inactive" });
-    const ok = await bcrypt.compare(password, user.password_hash || "");
+    if (!user.password_hash) {
+      return res.status(401).json({ error: "Invalid credentials" });
+    }
+    const ok = await bcrypt.compare(password, user.password_hash);
     if (!ok) return res.status(401).json({ error: "Invalid credentials" });
     if (!user.verified) return res.status(403).json({ error: "Email not verified" });
     const token = jwt.sign(
@@ -42,6 +45,7 @@ export default async function signIn(req, res) {
       }
     });
   } catch (error) {
+    console.error("signin_error", error);
     return res.status(500).json({ error: "Failed to sign in" });
   }
 }
