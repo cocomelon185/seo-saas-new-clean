@@ -18,7 +18,7 @@ export default async function signIn(req, res) {
   }
 
   try {
-    const user = getUserByEmail(email);
+    const user = await getUserByEmail(email);
     if (!user) return res.status(401).json({ error: "Invalid credentials" });
     if (user.active === 0) return res.status(403).json({ error: "Account inactive" });
     const ok = await bcrypt.compare(password, user.password_hash || "");
