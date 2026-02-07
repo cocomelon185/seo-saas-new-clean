@@ -51,7 +51,7 @@ export default function Landing() {
               Sign in
             </Link>
             <Link to="/auth/signup" className="rounded-xl bg-violet-500 px-4 py-2 text-xs font-semibold text-white shadow-[0_18px_40px_rgba(124,58,237,0.35)] hover:bg-violet-400">
-              Sign up
+              Create account
             </Link>
           </div>
         </div>
