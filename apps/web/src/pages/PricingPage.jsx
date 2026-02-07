@@ -209,6 +209,13 @@ export default function PricingPage() {
                   <IconArrowRight size={14} />
                   {activePlan === plan.key ? "Starting..." : plan.cta}
                 </button>
+                <div className="mt-2 text-center text-xs text-[var(--rp-text-500)]">
+                  {plan.key === "starter"
+                    ? "Instant access to fix plans, proof snapshots, and quick wins after checkout."
+                    : plan.key === "pro"
+                    ? "Instant access to AI fixes, briefs, and weekly tracking after checkout."
+                    : "Instant access to team reporting, collaboration, and priority processing after checkout."}
+                </div>
                 <button
                   className="mt-3 w-full text-xs font-semibold text-[var(--rp-indigo-700)] underline"
                   onClick={() => setOpen(true)}

@@ -1,5 +1,6 @@
 const Database = require("better-sqlite3");
 const path = require("path");
+const crypto = require("crypto");
 
 let _db = null;
 function getDb() {
@@ -55,11 +56,35 @@ function ensureTeamSettings(team_id) {
   }
 }
 
+const PUBLIC_EMAIL_DOMAINS = new Set([
+  "gmail.com",
+  "googlemail.com",
+  "yahoo.com",
+  "yahoo.co.in",
+  "outlook.com",
+  "hotmail.com",
+  "live.com",
+  "icloud.com",
+  "me.com",
+  "aol.com",
+  "protonmail.com",
+  "proton.me",
+  "zoho.com"
+]);
+
+function getDefaultTeamId(email) {
+  const domain = String(email || "").split("@")[1] || "default";
+  if (PUBLIC_EMAIL_DOMAINS.has(domain)) {
+    return `team_${crypto.randomUUID().slice(0, 8)}`;
+  }
+  return domain;
+}
+
 function createUser({ email, name, password_hash, team_id: incomingTeam, role: incomingRole }) {
   const db = getDb();
   ensureUserColumns();
   const now = new Date().toISOString();
-  const team_id = incomingTeam || (String(email || "").split("@")[1] || "default");
+  const team_id = incomingTeam || getDefaultTeamId(email);
   const existingTeamUser = db.prepare("SELECT id FROM users WHERE team_id = ? LIMIT 1").get(team_id);
   const role = incomingRole || (existingTeamUser ? "member" : "admin");
   db.prepare(

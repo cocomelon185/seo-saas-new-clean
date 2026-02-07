@@ -155,13 +155,18 @@ export default function SharedReportPage() {
                       >
                         Export PDF
                       </button>
-                      <button
-                        onClick={handleUpgradeClick}
-                        className="rp-btn-secondary text-sm"
-                      >
-                        <IconArrowRight size={14} />
-                      Upgrade to Pro
-                    </button>
+                      <div className="flex flex-col">
+                        <button
+                          onClick={handleUpgradeClick}
+                          className="rp-btn-secondary text-sm"
+                        >
+                          <IconArrowRight size={14} />
+                          Upgrade to Pro
+                        </button>
+                        <div className="mt-1 rp-body-xsmall text-center">
+                          Unlock fix plans, exports, and tracking immediately after checkout.
+                        </div>
+                      </div>
                   </div>
                 </div>
               </div>
@@ -228,12 +233,17 @@ export default function SharedReportPage() {
                   >
                     Export PDF
                   </button>
-                  <button
-                    onClick={handleUpgradeClick}
-                    className="rp-btn-secondary text-sm"
-                  >
-                    Upgrade to Pro
-                  </button>
+                  <div className="flex flex-col">
+                    <button
+                      onClick={handleUpgradeClick}
+                      className="rp-btn-secondary text-sm"
+                    >
+                      Upgrade to Pro
+                    </button>
+                    <div className="mt-1 rp-body-xsmall text-center text-[var(--rp-text-500)]">
+                      Unlock fix plans, exports, and tracking immediately after checkout.
+                    </div>
+                  </div>
                 </div>
               </div>
             </>

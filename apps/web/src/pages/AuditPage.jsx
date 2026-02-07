@@ -2478,10 +2478,15 @@ try {
               Built for teams who want done-for-you clarity and recurring performance wins.
             </div>
               </div>
-              <button className="rp-btn-primary text-sm">
-                <IconArrowRight size={14} />
-                Upgrade to Pro
-              </button>
+              <div className="flex flex-col items-end">
+                <button className="rp-btn-primary text-sm">
+                  <IconArrowRight size={14} />
+                  Upgrade to Pro
+                </button>
+                <div className="mt-1 text-xs text-[var(--rp-text-500)]">
+                  Instant access to fix plans, reports, and weekly tracking after checkout.
+                </div>
+              </div>
             </div>
             <div className="mt-4 grid gap-4 md:grid-cols-4">
               {[

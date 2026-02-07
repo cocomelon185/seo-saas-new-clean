@@ -270,16 +270,13 @@ export default function PricingModal({ open, onClose, onSelectPlan }) {
                     {activePlan === p.key ? "Starting..." : p.cta}
                   </button>
 
-                  {p.key === "starter" ? (
-                    <div className="mt-2 text-center text-xs text-[var(--rp-text-500)]">
-                      Upgrade to unlock fixes, briefs, and tracking
-                    </div>
-                  ) : null}
-                  {p.key === "pro" ? (
-                    <div className="mt-2 text-center text-xs text-[var(--rp-text-500)]">
-                      Best for solo operators. Cancel anytime.
-                    </div>
-                  ) : null}
+                  <div className="mt-2 text-center text-xs text-[var(--rp-text-500)]">
+                    {p.key === "starter"
+                      ? "Instant access to full fix plans, proof snapshots, and quick wins after checkout."
+                      : p.key === "pro"
+                      ? "Instant access to AI fixes, briefs, and weekly tracking after checkout."
+                      : "Instant access to team reporting, collaboration, and priority processing after checkout."}
+                  </div>
                 </div>
               );
             })}

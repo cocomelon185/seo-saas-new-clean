@@ -172,10 +172,21 @@ export default function SignUpPage() {
   }, [googleClientId, inviteToken, provider]);
 
   return (
-    <AppShell title="Create account" subtitle="Start with a free audit and unlock fixes when you’re ready.">
+    <AppShell title="Create account" subtitle="Start with a free audit, then verify your email to unlock full access.">
       <div className="mx-auto max-w-md rp-auth-shell">
         <form onSubmit={submit} className="rp-card rp-auth-card p-6">
           <div className="rp-auth-title text-sm font-semibold text-[var(--rp-text-700)]">Create your RankyPulse account</div>
+          <div className="mt-3 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-3 text-xs text-[var(--rp-text-600)]">
+            <div className="text-[10px] font-semibold uppercase tracking-[0.3em] text-[var(--rp-text-500)]">Email verification</div>
+            <p className="mt-2">
+              We’ll send a verification link after sign up. Verification unlocks audits, reports, and billing.
+            </p>
+            <ul className="mt-2 list-disc space-y-1 pl-4 text-[11px] text-[var(--rp-text-500)]">
+              <li>Check your inbox from onboarding@rankypulse.com</li>
+              <li>Click the link to activate full access</li>
+              <li>You can browse, but audits require verification</li>
+            </ul>
+          </div>
           <div className="mt-4 rp-google-shell">
             {googleClientId ? (
               <div ref={googleButtonRef} className="flex justify-center" />
@@ -247,9 +258,12 @@ export default function SignUpPage() {
           >
             {status === "loading" ? "Creating..." : "Create account"}
           </button>
+          <div className="mt-2 text-center text-xs text-[var(--rp-text-500)]">
+            We’ll email a verification link to unlock full access.
+          </div>
           {verifyToken && (
             <div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-700">
-              Verification email sent. Check your inbox.
+              Verification email sent. Check your inbox to unlock audits.
             </div>
           )}
           <div className="mt-4 text-xs text-[var(--rp-text-500)]">

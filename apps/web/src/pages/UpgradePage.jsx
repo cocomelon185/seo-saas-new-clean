@@ -106,6 +106,9 @@ export default function UpgradePage() {
               <IconArrowRight size={14} />
               {checkoutLoading ? "Starting..." : "Start 7-day trial"}
             </button>
+            <div className="mt-2 text-center text-xs text-[var(--rp-text-500)]">
+              Instant access to AI fixes, shareable reports, and weekly tracking after checkout.
+            </div>
             {checkoutError && (
               <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
                 {checkoutError}

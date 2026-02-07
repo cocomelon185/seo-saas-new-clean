@@ -8,6 +8,10 @@ import { shopifyAuthStart, shopifyAuthCallback, shopifyStatus, shopifyDisconnect
 import events from "./api/events.js";
 import migrateAnon from "./api/migrate-anon.js";
 import resetPasswordConfirm from "./api/reset-password-confirm.js";
+import resetPassword from "./api/reset-password.js";
+import verifyEmail from "./api/verify-email.js";
+import signUp from "./api/signup.js";
+import signIn from "./api/signin.js";
 import accountSettings from "./api/account-settings.js";
 import { teamMembers, teamInvites, inviteInfo, acceptInviteExisting } from "./api/team.js";
 import requestUpgrade from "./api/request-upgrade.js";
@@ -159,6 +163,8 @@ app.use(express.json());
 import { createRequire } from "module";
 const require = createRequire(import.meta.url);
 const entStore = require("./api/entitlements-store.cjs");
+const authStore = require("./api/auth-store.cjs");
+const { createUser: authCreateUser, getUserByEmail: authGetUserByEmail, setVerified: authSetVerified } = authStore;
 
 const projectsRouter = require("./api/projects.cjs");
 
@@ -177,6 +183,29 @@ const db = new Database(path.join(__dirname, "database.db"));
 db.pragma("journal_mode = WAL");
 
 const JWT_SECRET = process.env.JWT_SECRET || "dev_secret_change_me";
+
+function seedTesterAccount() {
+  const email = process.env.TESTER_EMAIL || "";
+  const password = process.env.TESTER_PASSWORD || "";
+  if (!email || !password) return;
+  const name = process.env.TESTER_NAME || "RankyPulse Tester";
+  const teamId = process.env.TESTER_TEAM_ID || "testers";
+  const role = process.env.TESTER_ROLE || "admin";
+  const autoVerify = String(process.env.TESTER_AUTO_VERIFY || "true").toLowerCase() !== "false";
+  try {
+    const existing = authGetUserByEmail(email);
+    if (!existing) {
+      const password_hash = bcrypt.hashSync(password, 10);
+      authCreateUser({ email, name, password_hash, team_id: teamId, role });
+    }
+    if (autoVerify) authSetVerified(email);
+    console.log(`[tester] ready ${email} team=${teamId} verified=${autoVerify}`);
+  } catch (e) {
+    console.log("[tester] seed failed:", String(e?.message || e));
+  }
+}
+
+seedTesterAccount();
 
 function signToken(user) {
   return jwt.sign({ uid: user.id, email: user.email, plan: user.plan }, JWT_SECRET, { expiresIn: "30d" });
@@ -287,7 +316,11 @@ app.post("/api/ai-fix", aiFix);
 app.post("/api/weekly-report/subscribe", subscribeWeeklyReport);
 app.post("/api/events", events);
 app.post("/api/migrate-anon", migrateAnon);
+app.post("/api/signup", signUp);
+app.post("/api/signin", signIn);
+app.post("/api/reset-password", resetPassword);
 app.post("/api/reset-password/confirm", resetPasswordConfirm);
+app.post("/api/verify-email", verifyEmail);
 app.get("/api/account-settings", accountSettings);
 app.post("/api/account-settings", accountSettings);
 app.get("/api/team/members", teamMembers);
