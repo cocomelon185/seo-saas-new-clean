@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import AppShell from "../components/AppShell.jsx";
 import { safeJson } from "../lib/safeJson.js";
+import { apiUrl } from "../lib/api.js";
 import { getAuthUser } from "../lib/authClient.js";
 
 export default function VerifyEmailPage() {
@@ -36,7 +37,7 @@ export default function VerifyEmailPage() {
     setStatus("loading");
     setMessage("");
     try {
-      const res = await fetch("/api/verify-email", {
+      const res = await fetch(apiUrl("/api/verify-email"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token })
@@ -64,7 +65,7 @@ export default function VerifyEmailPage() {
     setResendMessage("");
     try {
       if (!email) throw new Error("Enter your email first.");
-      const res = await fetch("/api/reset-password", {
+      const res = await fetch(apiUrl("/api/reset-password"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, verifyOnly: true })

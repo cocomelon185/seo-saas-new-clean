@@ -4,6 +4,7 @@ import AppShell from "../components/AppShell.jsx";
 import { setAuthSession } from "../lib/authClient.js";
 import { track } from "../lib/eventsClient.js";
 import { safeJson } from "../lib/safeJson.js";
+import { apiUrl } from "../lib/api.js";
 
 export default function SignUpPage() {
   const navigate = useNavigate();
@@ -25,7 +26,7 @@ export default function SignUpPage() {
     setStatus("loading");
     setError("");
     try {
-      const res = await fetch("/api/signup", {
+      const res = await fetch(apiUrl("/api/signup"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, email, password, invite_token: inviteToken })
@@ -39,7 +40,7 @@ export default function SignUpPage() {
       try {
         const anon = localStorage.getItem("rp_anon_id") || "";
         if (anon && data?.user?.email) {
-          await fetch("/api/migrate-anon", {
+          await fetch(apiUrl("/api/migrate-anon"), {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -67,7 +68,7 @@ export default function SignUpPage() {
     setStatus("loading");
     setError("");
     try {
-      const res = await fetch("/api/auth/google", {
+      const res = await fetch(apiUrl("/api/auth/google"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ credential, invite_token: inviteToken })
@@ -80,7 +81,7 @@ export default function SignUpPage() {
       try {
         const anon = localStorage.getItem("rp_anon_id") || "";
         if (anon && data?.user?.email) {
-          await fetch("/api/migrate-anon", {
+          await fetch(apiUrl("/api/migrate-anon"), {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -94,7 +95,7 @@ export default function SignUpPage() {
         track("signup", { method: "google", plan: planParam || null });
       } catch {}
       if (inviteToken) {
-        await fetch("/api/accept-invite", {
+        await fetch(apiUrl("/api/accept-invite"), {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

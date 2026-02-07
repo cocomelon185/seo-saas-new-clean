@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import AppShell from "../components/AppShell.jsx";
 import { safeJson } from "../lib/safeJson.js";
+import { apiUrl } from "../lib/api.js";
 
 export default function ResetPasswordPage() {
   const [email, setEmail] = useState("");
@@ -23,7 +24,7 @@ export default function ResetPasswordPage() {
     setError("");
     try {
       if (!token) {
-        const res = await fetch("/api/reset-password", {
+        const res = await fetch(apiUrl("/api/reset-password"), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email })
@@ -36,7 +37,7 @@ export default function ResetPasswordPage() {
         return;
       }
 
-      const res = await fetch("/api/reset-password/confirm", {
+      const res = await fetch(apiUrl("/api/reset-password/confirm"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token, password: newPassword })

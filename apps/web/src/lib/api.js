@@ -1,10 +1,14 @@
-const BASE =
+export const API_BASE =
   (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_API_BASE) ||
   (typeof process !== "undefined" && process.env && process.env.REACT_APP_API_BASE) ||
-  "";
+  "https://api.rankypulse.com";
+
+export function apiUrl(path) {
+  return path.startsWith("http") ? path : `${API_BASE}${path}`;
+}
 
 export async function api(path, { method = "GET", headers = {}, body } = {}) {
-  const url = path.startsWith("http") ? path : `${BASE}${path}`;
+  const url = apiUrl(path);
 
   const res = await fetch(url, {
     method,

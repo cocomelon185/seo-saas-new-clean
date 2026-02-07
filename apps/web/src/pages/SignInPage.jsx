@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import AppShell from "../components/AppShell.jsx";
 import { setAuthSession } from "../lib/authClient.js";
 import { safeJson } from "../lib/safeJson.js";
+import { apiUrl } from "../lib/api.js";
 
 export default function SignInPage() {
   const navigate = useNavigate();
@@ -69,7 +70,7 @@ export default function SignInPage() {
     setStatus("loading");
     setError("");
     try {
-      const res = await fetch("/api/signin", {
+      const res = await fetch(apiUrl("/api/signin"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password })
@@ -89,7 +90,7 @@ export default function SignInPage() {
     setStatus("loading");
     setError("");
     try {
-      const res = await fetch("/api/auth/google", {
+      const res = await fetch(apiUrl("/api/auth/google"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ credential, invite_token: inviteToken })
