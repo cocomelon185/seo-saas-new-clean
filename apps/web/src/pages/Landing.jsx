@@ -40,7 +40,7 @@ export default function Landing() {
           <nav className="hidden items-center gap-6 text-sm text-white/70 md:flex">
             <a href="#how-it-works" className="hover:text-white">How it works</a>
             <a href="#features" className="hover:text-white">Features</a>
-            <a href="#pricing" className="hover:text-white">Pricing</a>
+            <Link to="/pricing" className="hover:text-white">Pricing</Link>
             <Link to="/about" className="hover:text-white">Resources</Link>
           </nav>
           <div className="flex items-center gap-2">
