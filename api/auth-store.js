@@ -12,5 +12,6 @@ export const setVerified = store.setVerified;
 export const createUser = store.createUser;
 export const getUserByEmail = store.getUserByEmail;
 export const verifyUserPassword = store.verifyUserPassword;
+export const acceptInvite = store.acceptInvite;
 
 export default store;

@@ -1,7 +1,7 @@
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import { createUser, getUserByEmail, acceptInvite } from "./auth-store.js";
-import { sendVerifyEmail, sendFirstAuditNudge } from "../lib/emailService.js";
+import { sendVerifyEmail } from "../lib/emailService.js";
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key-12345";
 
@@ -55,10 +55,6 @@ export default async function signUp(req, res) {
     try {
       await sendVerifyEmail(email, { name, verifyUrl });
     } catch {}
-    try {
-      await sendFirstAuditNudge(email);
-    } catch {}
-
     return res.status(201).json({
       success: true,
       token,
