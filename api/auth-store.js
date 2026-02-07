@@ -1,28 +1,31 @@
-import pg from "pg";
-
-const { Pool } = pg;
-
 let _pool = null;
-function pool() {
+
+async function pool() {
   if (_pool) return _pool;
+
   const url = process.env.DATABASE_URL || "";
   if (!url) return null;
+
+  const pg = await import("pg");
+  const { Pool } = pg.default || pg;
+
   _pool = new Pool({
     connectionString: url,
-    ssl: process.env.PGSSLMODE === "disable" ? false : { rejectUnauthorized: false },
+    ssl: process.env.PGSSLMODE === "disable" ? false : { rejectUnauthorized: false }
   });
+
   return _pool;
 }
 
 async function qOne(sql, params) {
-  const p = pool();
+  const p = await pool();
   if (!p) throw new Error("DATABASE_URL not set");
   const r = await p.query(sql, params);
   return r.rows[0] || null;
 }
 
 async function q(sql, params) {
-  const p = pool();
+  const p = await pool();
   if (!p) throw new Error("DATABASE_URL not set");
   return await p.query(sql, params);
 }
@@ -168,5 +171,5 @@ export default {
   createUser,
   getUserByEmail,
   verifyUserPassword,
-  acceptInvite,
+  acceptInvite
 };
