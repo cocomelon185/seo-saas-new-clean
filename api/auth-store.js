@@ -1,6 +1,33 @@
-let _pool = null;
+import crypto from "crypto";
 
-async function pool() {
+let _pool = null;
+let _schemaReady = false;
+
+const PUBLIC_EMAIL_DOMAINS = new Set([
+  "gmail.com",
+  "googlemail.com",
+  "yahoo.com",
+  "yahoo.co.in",
+  "outlook.com",
+  "hotmail.com",
+  "live.com",
+  "icloud.com",
+  "me.com",
+  "aol.com",
+  "protonmail.com",
+  "proton.me",
+  "zoho.com"
+]);
+
+function getDefaultTeamId(email) {
+  const domain = String(email || "").split("@")[1] || "default";
+  if (PUBLIC_EMAIL_DOMAINS.has(domain)) {
+    return `team_${crypto.randomUUID().slice(0, 8)}`;
+  }
+  return domain;
+}
+
+async function poolRaw() {
   if (_pool) return _pool;
 
   const url = process.env.DATABASE_URL || "";
@@ -15,6 +42,51 @@ async function pool() {
   });
 
   return _pool;
+}
+
+async function ensureSchema() {
+  if (_schemaReady) return;
+  const p = await poolRaw();
+  if (!p) throw new Error("DATABASE_URL not set");
+
+  await p.query(`
+    CREATE TABLE IF NOT EXISTS users (
+      email TEXT PRIMARY KEY,
+      name TEXT,
+      role TEXT,
+      team_id TEXT,
+      verified BOOLEAN DEFAULT FALSE,
+      active INTEGER DEFAULT 1,
+      password_hash TEXT
+    )
+  `);
+
+  await p.query(`
+    CREATE TABLE IF NOT EXISTS account_settings (
+      email TEXT PRIMARY KEY,
+      require_verified BOOLEAN DEFAULT TRUE,
+      tool_access TEXT DEFAULT 'all'
+    )
+  `);
+
+  await p.query(`
+    CREATE TABLE IF NOT EXISTS team_invites (
+      token TEXT PRIMARY KEY,
+      team_id TEXT,
+      role TEXT,
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      accepted_at TIMESTAMPTZ,
+      accepted_email TEXT
+    )
+  `);
+
+  _schemaReady = true;
+}
+
+async function pool() {
+  const p = await poolRaw();
+  await ensureSchema();
+  return p;
 }
 
 async function qOne(sql, params) {
@@ -57,8 +129,12 @@ export async function verifyUserPassword(email, passwordPlain) {
 export async function createUser(user) {
   const email = user.email;
   const name = user.name || "";
-  const role = user.role || "user";
-  const team_id = user.team_id || null;
+  const team_id = user.team_id || getDefaultTeamId(email);
+  const existingTeamUser = await qOne(
+    `select email from users where team_id = $1 limit 1`,
+    [team_id]
+  );
+  const role = user.role || (existingTeamUser ? "member" : "admin");
   const verified = user.verified ? true : false;
   const active = user.active === 0 ? 0 : 1;
   const password_hash = user.password_hash || "";
@@ -154,7 +230,7 @@ export async function acceptInvite(invite_token, email) {
     update team_invites
     set accepted_at = now(), accepted_email = lower($2)
     where token = $1 and accepted_at is null
-    returning token
+    returning token, team_id, role
     `,
     [invite_token, email]
   );

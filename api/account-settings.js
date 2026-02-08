@@ -1,8 +1,5 @@
 import jwt from "jsonwebtoken";
-import { createRequire } from "module";
-
-const require = createRequire(import.meta.url);
-const { getAccountSettings, updateRequireVerified, updateToolAccess } = require("./auth-store.js");
+import { getAccountSettings, updateRequireVerified, updateToolAccess } from "./auth-store.js";
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key-12345";
 

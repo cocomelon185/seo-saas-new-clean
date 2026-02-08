@@ -45,7 +45,8 @@ export default async function signIn(req, res) {
       }
     });
   } catch (error) {
-    console.error("signin_error", error);
-    return res.status(500).json({ error: "Failed to sign in" });
+    const detail = String(error?.message || error);
+    console.error("signin_error", detail, { email });
+    return res.status(500).json({ error: "Failed to sign in", detail });
   }
 }

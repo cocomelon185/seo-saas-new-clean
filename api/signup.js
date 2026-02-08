@@ -28,7 +28,7 @@ export default async function signUp(req, res) {
   }
 
   try {
-    const exists = getUserByEmail(email);
+    const exists = await getUserByEmail(email);
     if (exists) {
       return res.status(409).json({ error: "Account already exists" });
     }
@@ -36,13 +36,13 @@ export default async function signUp(req, res) {
     let team_id;
     let role;
     if (invite_token) {
-      const invite = acceptInvite(invite_token, email);
+      const invite = await acceptInvite(invite_token, email);
       if (invite?.error) return res.status(400).json({ error: invite.error });
       if (!invite) return res.status(400).json({ error: "Invalid invite" });
       team_id = invite.team_id;
       role = invite.role;
     }
-    const created = createUser({ email, name, password_hash, team_id, role });
+    const created = await createUser({ email, name, password_hash, team_id, role });
     const verifyToken = jwt.sign({ email, name }, JWT_SECRET, { expiresIn: "2d" });
     const token = jwt.sign(
       { email, name, verified: false, role: created.role, team_id: created.team_id },

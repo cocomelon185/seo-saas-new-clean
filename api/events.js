@@ -7,8 +7,15 @@ export default async function events(req, res) {
   }
   try {
     const body = req.body || {};
-    const dir = path.join(process.cwd(), "data");
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    const primaryDir = process.env.EVENTS_DIR || path.join(process.cwd(), "data");
+    let dir = primaryDir;
+    try {
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+      fs.accessSync(dir, fs.constants.W_OK);
+    } catch {
+      dir = path.join(process.env.TMPDIR || "/tmp", "rankypulse-events");
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    }
     const file = path.join(dir, "events.jsonl");
     const line = JSON.stringify({
       event: body.event,
@@ -17,9 +24,13 @@ export default async function events(req, res) {
       url: body.url || "",
       ua: body.ua || ""
     }) + "\n";
-    fs.appendFileSync(file, line, "utf8");
+    try {
+      fs.appendFileSync(file, line, "utf8");
+    } catch (e) {
+      console.warn("[events] write_failed", String(e?.message || e));
+    }
     return res.json({ ok: true });
   } catch (e) {
-    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+    return res.json({ ok: true, warn: String(e?.message || e) });
   }
 }
