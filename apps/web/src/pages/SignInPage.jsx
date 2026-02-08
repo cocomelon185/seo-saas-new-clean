@@ -168,27 +168,27 @@ export default function SignInPage() {
   return (
     <AppShell>
       <div className="mx-auto w-full max-w-md px-4 py-10">
-        <div className="rounded-2xl border border-white/10 bg-black/30 p-6 shadow-xl">
-          <h1 className="text-2xl font-semibold text-white">Welcome back</h1>
-          <p className="mt-2 text-sm text-white/70">
+        <div className="rounded-2xl border border-[var(--rp-gray-200)] bg-white p-6 shadow-xl">
+          <h1 className="text-2xl font-semibold text-[var(--rp-text-900)]">Welcome back</h1>
+          <p className="mt-2 text-sm text-[var(--rp-text-500)]">
             Sign in to access your audits, saved fixes, and monitoring.
           </p>
 
           <div className="mt-6 flex flex-col items-center">
             <div ref={googleButtonRef} className="w-full flex justify-center" />
-            <div className="mt-4 text-xs text-white/40">OR</div>
+            <div className="mt-4 text-xs text-[var(--rp-text-400)]">OR</div>
           </div>
 
           <form className="mt-4 space-y-3" onSubmit={submit}>
             <input
-              className="w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-white outline-none"
+              className="w-full rounded-xl border border-[var(--rp-gray-200)] bg-white px-3 py-2 text-[var(--rp-text-900)] outline-none placeholder:text-[var(--rp-text-400)]"
               placeholder="Email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               autoComplete="email"
             />
             <input
-              className="w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-white outline-none"
+              className="w-full rounded-xl border border-[var(--rp-gray-200)] bg-white px-3 py-2 text-[var(--rp-text-900)] outline-none placeholder:text-[var(--rp-text-400)]"
               placeholder="Password"
               type="password"
               value={password}
@@ -212,8 +212,8 @@ export default function SignInPage() {
           </form>
 
           <div className="mt-4 flex items-center justify-between text-sm">
-            <Link className="text-white/70 hover:text-white" to="/reset-password">Forgot password?</Link>
-            <Link className="text-white/70 hover:text-white" to="/signup">Create account</Link>
+            <Link className="text-[var(--rp-text-500)] hover:text-[var(--rp-text-900)]" to="/reset-password">Forgot password?</Link>
+            <Link className="text-[var(--rp-text-500)] hover:text-[var(--rp-text-900)]" to="/signup">Create account</Link>
           </div>
         </div>
       </div>
