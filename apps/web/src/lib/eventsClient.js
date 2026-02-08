@@ -1,42 +1,28 @@
-export function track(event, payload = {}) {
+import { apiUrl } from "./api.js";
+
+export function trackEvent(name, props = {}) {
   try {
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    if (window.__RP_DISABLE_TRACKING__) {
-      return;
-    }
-    try {
-      const consent = window.localStorage.getItem("rp_cookie_consent");
-      if (consent !== "granted") {
-        return;
-      }
-    } catch {
-      return;
-    }
-
-    const body = {
-      event,
-      payload,
-      ts: Date.now(),
-      url: window.location.href,
-      ua: window.navigator ? window.navigator.userAgent : ""
+    const payload = {
+      event: String(name || "event"),
+      ts: new Date().toISOString(),
+      props: props && typeof props === "object" ? props : {}
     };
 
-    if (window.navigator && typeof window.navigator.sendBeacon === "function") {
-      const blob = new Blob([JSON.stringify(body)], { type: "application/json" });
-      window.navigator.sendBeacon("/api/events", blob);
-      return;
+    const json = JSON.stringify(payload);
+
+    if (typeof window !== "undefined" && window.navigator && window.navigator.sendBeacon) {
+      const blob = new Blob([json], { type: "application/json" });
+      const ok = window.navigator.sendBeacon(apiUrl("/api/events"), blob);
+      if (ok) return;
     }
 
-    window.fetch("/api/events", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-      keepalive: true
-    }).catch(() => {});
-  } catch (err) {
-    return;
-  }
+    if (typeof window !== "undefined" && window.fetch) {
+      window.fetch(apiUrl("/api/events"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: json,
+        keepalive: true
+      }).catch(() => {});
+    }
+  } catch (_) {}
 }

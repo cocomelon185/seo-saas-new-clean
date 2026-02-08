@@ -4,6 +4,7 @@ import { IconPlay, IconSearch, IconUser, IconCompass, IconChart } from "./Icons.
 import { clearAuthSession, getAuthToken, getAuthUser } from "../lib/authClient.js";
 import { useEffect, useState } from "react";
 import { safeJson } from "../lib/safeJson.js";
+import { apiUrl } from "../lib/api.js";
 import CookieConsent from "./CookieConsent.jsx";
 
 function NavItem({ to, label }) {
@@ -55,7 +56,7 @@ export default function AppShell({ title, subtitle, children }) {
   useEffect(() => {
     const token = getAuthToken();
     if (!token) return;
-    fetch("/api/account-settings", { headers: { Authorization: `Bearer ${token}` } })
+    fetch(apiUrl("/api/account-settings"), { headers: { Authorization: `Bearer ${token}` } })
       .then((r) => safeJson(r))
       .then((data) => {
         if (data?.ok && data?.settings) {

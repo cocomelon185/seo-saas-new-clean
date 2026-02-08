@@ -3,6 +3,7 @@ import AppShell from "../components/AppShell.jsx";
 import { getAuthToken, getAuthUser } from "../lib/authClient.js";
 import { IconBolt, IconDoc, IconReport, IconCompass } from "../components/Icons.jsx";
 import { safeJson } from "../lib/safeJson.js";
+import { apiUrl } from "../lib/api.js";
 
 export default function ImprovePage() {
   const [url, setUrl] = useState("");
@@ -26,7 +27,7 @@ export default function ImprovePage() {
   useEffect(() => {
     const token = getAuthToken();
     if (!token) return;
-    fetch("/api/account-settings", { headers: { Authorization: `Bearer ${token}` } })
+    fetch(apiUrl("/api/account-settings"), { headers: { Authorization: `Bearer ${token}` } })
       .then((r) => safeJson(r))
       .then((data) => {
         if (data?.ok && data?.settings) setAllowImprove(data.settings.allow_improve !== false);
@@ -52,7 +53,7 @@ export default function ImprovePage() {
 
     setStatus("loading");
     try {
-      const res = await fetch("/api/page-report", {
+      const res = await fetch(apiUrl("/api/page-report"), {
         method: "POST",
         headers: { "Content-Type": "application/json",
         ...(includeAi && import.meta.env.VITE_INTERNAL_AI_TOKEN ? { "x-internal-ai": import.meta.env.VITE_INTERNAL_AI_TOKEN } : {}),
@@ -122,7 +123,7 @@ export default function ImprovePage() {
               onClick={async () => {
                 try {
                   const token = getAuthToken();
-                  await fetch("/api/request-upgrade", {
+                  await fetch(apiUrl("/api/request-upgrade"), {
                     method: "POST",
                     headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }
                   });

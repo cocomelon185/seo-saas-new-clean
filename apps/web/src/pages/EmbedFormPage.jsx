@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { IconPlay, IconMail, IconLink } from "../components/Icons.jsx";
 import { safeJson } from "../lib/safeJson.js";
+import { apiUrl } from "../lib/api.js";
 
 function readParam(name) {
   if (typeof window === "undefined") return "";
@@ -40,7 +41,7 @@ export default function EmbedFormPage() {
     setStatus("loading");
     setError("");
     try {
-      const res = await fetch("/api/embed/lead", {
+      const res = await fetch(apiUrl("/api/embed/lead"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

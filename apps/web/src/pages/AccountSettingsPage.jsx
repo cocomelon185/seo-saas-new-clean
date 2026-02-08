@@ -5,6 +5,7 @@ import { IconArrowRight, IconSettings, IconTrash } from "../components/Icons.jsx
 import { getAnonId } from "../utils/anonId.js";
 import { getAuthToken, getAuthUser } from "../lib/authClient.js";
 import { safeJson } from "../lib/safeJson.js";
+import { apiUrl } from "../lib/api.js";
 
 export default function AccountSettingsPage() {
   const [gscStatus, setGscStatus] = useState("idle");
@@ -31,8 +32,8 @@ export default function AccountSettingsPage() {
     setBillingStatus("loading");
     setBillingError("");
     Promise.all([
-      fetch("/api/billing/status", { headers: { "x-rp-anon-id": anonId } }).then((r) => safeJson(r)),
-      fetch("/api/billing/razorpay/invoices", { headers: { "x-rp-anon-id": anonId } }).then((r) => safeJson(r))
+      fetch(apiUrl("/api/billing/status"), { headers: { "x-rp-anon-id": anonId } }).then((r) => safeJson(r)),
+      fetch(apiUrl("/api/billing/razorpay/invoices"), { headers: { "x-rp-anon-id": anonId } }).then((r) => safeJson(r))
     ])
       .then(([statusData, invoiceData]) => {
         if (statusData?.ok) {
@@ -54,7 +55,7 @@ export default function AccountSettingsPage() {
 
   function refreshGscStatus() {
     setGscStatus("loading");
-    fetch("/api/gsc/status", {
+    fetch(apiUrl("/api/gsc/status"), {
       headers: anonId ? { "x-rp-anon-id": anonId } : {}
     })
       .then((r) => safeJson(r))
@@ -73,7 +74,7 @@ export default function AccountSettingsPage() {
   useEffect(() => {
     let cancelled = false;
     setGscStatus("loading");
-    fetch("/api/gsc/status", {
+    fetch(apiUrl("/api/gsc/status"), {
       headers: anonId ? { "x-rp-anon-id": anonId } : {}
     })
       .then((r) => safeJson(r))
@@ -119,12 +120,12 @@ export default function AccountSettingsPage() {
       setVerifyStatus("unverified");
     }
     if (authUser?.name) setFullName(authUser.name);
-    try {
-      const token = getAuthToken();
-      if (token) {
-        fetch("/api/account-settings", {
-          headers: { Authorization: `Bearer ${token}` }
-        })
+      try {
+        const token = getAuthToken();
+        if (token) {
+          fetch(apiUrl("/api/account-settings"), {
+            headers: { Authorization: `Bearer ${token}` }
+          })
           .then((r) => safeJson(r))
           .then((data) => {
             if (data?.ok && data?.settings) {
@@ -165,7 +166,7 @@ export default function AccountSettingsPage() {
                 type="button"
                 className="rp-btn-primary"
                 onClick={async () => {
-                  await fetch("/api/gsc/disconnect", {
+                  await fetch(apiUrl("/api/gsc/disconnect"), {
                     method: "POST",
                     headers: anonId ? { "x-rp-anon-id": anonId } : {}
                   });
@@ -212,7 +213,7 @@ export default function AccountSettingsPage() {
                     nextUser.verified = false;
                     setVerifyStatus("unverified");
                     setVerifyEmail(workEmail);
-                    await fetch("/api/reset-password", {
+                    await fetch(apiUrl("/api/reset-password"), {
                       method: "POST",
                       headers: { "Content-Type": "application/json" },
                       body: JSON.stringify({ email: workEmail, verifyOnly: true })
@@ -280,7 +281,7 @@ export default function AccountSettingsPage() {
                   if (!entitlements?.subscription_id) return;
                   setCanceling(true);
                   try {
-                    await fetch("/api/billing/razorpay/cancel-subscription", {
+                    await fetch(apiUrl("/api/billing/razorpay/cancel-subscription"), {
                       method: "POST",
                       headers: {
                         "Content-Type": "application/json",
@@ -339,7 +340,7 @@ export default function AccountSettingsPage() {
                 className="rp-btn-primary"
                 onClick={async () => {
                   if (!verifyEmail) return;
-                  const res = await fetch("/api/reset-password", {
+                  const res = await fetch(apiUrl("/api/reset-password"), {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ email: verifyEmail, verifyOnly: true })
@@ -375,7 +376,7 @@ export default function AccountSettingsPage() {
                       try {
                         const token = getAuthToken();
                         if (token) {
-                          await fetch("/api/account-settings", {
+                          await fetch(apiUrl("/api/account-settings"), {
                             method: "POST",
                             headers: {
                               "Content-Type": "application/json",
@@ -413,7 +414,7 @@ export default function AccountSettingsPage() {
               )}
             </div>
             <div className="mt-4 flex flex-wrap gap-3">
-              <a href={`/api/gsc/auth/start?state=${encodeURIComponent(anonId)}`} className="rp-btn-primary"><IconArrowRight size={14} />Connect GSC</a>
+              <a href={apiUrl(`/api/gsc/auth/start?state=${encodeURIComponent(anonId)}`)} className="rp-btn-primary"><IconArrowRight size={14} />Connect GSC</a>
               {gscConnected && (
                 <button
                   type="button"

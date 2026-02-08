@@ -3,6 +3,7 @@ import AppShell from "../components/AppShell.jsx";
 import { getAnonId } from "../utils/anonId.js";
 import { Link } from "react-router-dom";
 import { safeJson } from "../lib/safeJson.js";
+import { apiUrl } from "../lib/api.js";
 
 export default function LeadsPage() {
   const anonId = getAnonId();
@@ -40,7 +41,7 @@ export default function LeadsPage() {
   useEffect(() => {
     let cancelled = false;
     setStatus("loading");
-    fetch("/api/embed/leads", {
+    fetch(apiUrl("/api/embed/leads"), {
       headers: anonId ? { "x-rp-anon-id": anonId } : {}
     })
       .then((r) => safeJson(r))

@@ -2,6 +2,7 @@ import { getAnonId } from "../utils/anonId.js";
 import { getAuthUser } from "./authClient.js";
 import { safeJson } from "./safeJson.js";
 import { track } from "./eventsClient.js";
+import { apiUrl } from "./api.js";
 
 let razorpayLoader = null;
 
@@ -33,7 +34,7 @@ export async function startSubscriptionCheckout({ planId, billingPeriod, source 
   } catch {}
 
   try {
-    const res = await fetch("/api/billing/razorpay/create-subscription", {
+    const res = await fetch(apiUrl("/api/billing/razorpay/create-subscription"), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -63,7 +64,7 @@ export async function startSubscriptionCheckout({ planId, billingPeriod, source 
       theme: { color: "#7C3AED" },
       handler: async (response) => {
         try {
-          const verifyRes = await fetch("/api/billing/razorpay/verify-subscription", {
+          const verifyRes = await fetch(apiUrl("/api/billing/razorpay/verify-subscription"), {
             method: "POST",
             headers: {
               "Content-Type": "application/json",

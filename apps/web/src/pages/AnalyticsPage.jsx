@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import AppShell from "../components/AppShell.jsx";
 import { safeJson } from "../lib/safeJson.js";
+import { apiUrl } from "../lib/api.js";
 
 export default function AnalyticsPage() {
   const [status, setStatus] = useState("loading");
@@ -9,7 +10,7 @@ export default function AnalyticsPage() {
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/analytics/funnel?days=30")
+    fetch(apiUrl("/api/analytics/funnel?days=30"))
       .then((r) => safeJson(r))
       .then((data) => {
         if (cancelled) return;

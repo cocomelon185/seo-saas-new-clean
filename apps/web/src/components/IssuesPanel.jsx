@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { IconBolt, IconReport, IconShield, IconCompass, IconArrowRight, IconClock, IconPlay } from "./Icons.jsx";
 import { safeJson } from "../lib/safeJson.js";
+import { apiUrl } from "../lib/api.js";
 
   function bucketLabel(p) {
     if (p === "fix_now") return "Fix now";
@@ -313,7 +314,7 @@ export default function IssuesPanel({ issues: rawIssues = [], advanced = false, 
   async function generateFix(issue, key) {
     setAiStatus((prev) => ({ ...prev, [key]: "loading" }));
     try {
-      const res = await fetch("/api/ai-fix", {
+      const res = await fetch(apiUrl("/api/ai-fix"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -730,7 +731,7 @@ export default function IssuesPanel({ issues: rawIssues = [], advanced = false, 
                                 const text = aiFixes[(issue.issue_id || issue.title || idx)];
                                 if (!text || !wpWebhookUrl || !finalUrl) return;
                                 try {
-                                  const resp = await fetch("/api/wp/push-fix", {
+                                  const resp = await fetch(apiUrl("/api/wp/push-fix"), {
                                     method: "POST",
                                     headers: {
                                       "Content-Type": "application/json",
@@ -767,7 +768,7 @@ export default function IssuesPanel({ issues: rawIssues = [], advanced = false, 
                                 const text = aiFixes[(issue.issue_id || issue.title || idx)];
                                 if (!text || !shopifyWebhookUrl || !finalUrl) return;
                                 try {
-                                  const resp = await fetch("/api/shopify/push-fix", {
+                                  const resp = await fetch(apiUrl("/api/shopify/push-fix"), {
                                     method: "POST",
                                     headers: {
                                       "Content-Type": "application/json",

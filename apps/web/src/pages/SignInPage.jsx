@@ -23,8 +23,9 @@ export default function SignInPage() {
 
   async function handleAuthSuccess(data) {
     setAuthSession({ token: data.token, user: data.user });
+
     if (inviteToken) {
-      await fetch("/api/accept-invite", {
+      await fetch(apiUrl("/api/accept-invite"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -32,8 +33,9 @@ export default function SignInPage() {
         },
         body: JSON.stringify({ token: inviteToken })
       });
+
       try {
-        const settingsRes = await fetch("/api/account-settings", {
+        const settingsRes = await fetch(apiUrl("/api/account-settings"), {
           headers: { Authorization: `Bearer ${data.token}` }
         });
         const settingsData = await safeJson(settingsRes);
@@ -49,10 +51,11 @@ export default function SignInPage() {
         }
       } catch {}
     }
+
     try {
       const anon = localStorage.getItem("rp_anon_id") || "";
       if (anon && data?.user?.email) {
-        await fetch("/api/migrate-anon", {
+        await fetch(apiUrl("/api/migrate-anon"), {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -62,6 +65,7 @@ export default function SignInPage() {
         });
       }
     } catch {}
+
     navigate(next);
   }
 
@@ -110,6 +114,7 @@ export default function SignInPage() {
     if (!googleClientId) return;
     const target = googleButtonRef.current;
     if (!target) return;
+
     function initGoogle() {
       if (!window.google?.accounts?.id) return;
       window.google.accounts.id.initialize({
@@ -133,62 +138,84 @@ export default function SignInPage() {
         window.google.accounts.id.prompt();
       }
     }
+
     const existing = document.querySelector('script[data-google-identity="true"]');
     if (existing) {
       if (window.google?.accounts?.id) {
         initGoogle();
       } else {
-        existing.addEventListener("load", initGoogle, { once: true });
+        const t = setInterval(() => {
+          if (window.google?.accounts?.id) {
+            clearInterval(t);
+            initGoogle();
+          }
+        }, 200);
+        return () => clearInterval(t);
       }
       return;
     }
+
     const script = document.createElement("script");
     script.src = "https://accounts.google.com/gsi/client";
     script.async = true;
     script.defer = true;
     script.dataset.googleIdentity = "true";
     script.onload = initGoogle;
-    document.head.appendChild(script);
+    document.body.appendChild(script);
+    return () => { script.remove(); };
   }, [googleClientId, inviteToken, provider]);
 
   return (
-    <AppShell title="Sign in" subtitle="Access your audits, saved fixes, and monitoring.">
-      <div className="mx-auto max-w-md rp-auth-shell">
-        <form onSubmit={submit} className="rp-card rp-auth-card p-6">
-          <div className="rp-auth-title text-sm font-semibold text-[var(--rp-text-700)]">Welcome back</div>
-          <div className="mt-4 rp-google-shell">
-            {googleClientId ? (
-              <div ref={googleButtonRef} className="flex justify-center" />
-            ) : (
-              <div className="rounded-full border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-4 py-2 text-center text-xs text-[var(--rp-text-500)]">
-                Google sign-in unavailable
+    <AppShell>
+      <div className="mx-auto w-full max-w-md px-4 py-10">
+        <div className="rounded-2xl border border-white/10 bg-black/30 p-6 shadow-xl">
+          <h1 className="text-2xl font-semibold text-white">Welcome back</h1>
+          <p className="mt-2 text-sm text-white/70">
+            Sign in to access your audits, saved fixes, and monitoring.
+          </p>
+
+          <div className="mt-6 flex flex-col items-center">
+            <div ref={googleButtonRef} className="w-full flex justify-center" />
+            <div className="mt-4 text-xs text-white/40">OR</div>
+          </div>
+
+          <form className="mt-4 space-y-3" onSubmit={submit}>
+            <input
+              className="w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-white outline-none"
+              placeholder="Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              autoComplete="email"
+            />
+            <input
+              className="w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-white outline-none"
+              placeholder="Password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="current-password"
+            />
+
+            {error ? (
+              <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+                {error}
               </div>
-            )}
+            ) : null}
+
+            <button
+              className="w-full rounded-xl bg-white px-3 py-2 text-sm font-semibold text-black disabled:opacity-60"
+              disabled={status === "loading"}
+              type="submit"
+            >
+              {status === "loading" ? "Signing in…" : "Sign in"}
+            </button>
+          </form>
+
+          <div className="mt-4 flex items-center justify-between text-sm">
+            <Link className="text-white/70 hover:text-white" to="/reset-password">Forgot password?</Link>
+            <Link className="text-white/70 hover:text-white" to="/signup">Create account</Link>
           </div>
-          <div className="my-4 flex items-center gap-3 text-[11px] uppercase tracking-[0.2em] text-[var(--rp-text-400)]">
-            <span className="h-px flex-1 bg-[var(--rp-border)]" />
-            or
-            <span className="h-px flex-1 bg-[var(--rp-border)]" />
-          </div>
-          <label className="mt-4 block text-xs text-[var(--rp-text-500)]">
-            Work email
-            <input className="rp-input mt-2" value={email} onChange={(e) => setEmail(e.target.value)} />
-          </label>
-          <label className="mt-4 block text-xs text-[var(--rp-text-500)]">
-            Password
-            <input className="rp-input mt-2" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
-          </label>
-          {error && <div className="mt-3 text-xs text-rose-600">{error}</div>}
-          <button className="rp-btn-primary mt-4 w-full text-sm" disabled={status === "loading"}>
-            {status === "loading" ? "Signing in..." : "Sign in"}
-          </button>
-          <div className="mt-4 text-xs text-[var(--rp-text-500)]">
-            New here? <Link className="font-semibold text-[var(--rp-indigo-700)]" to="/auth/signup">Create an account</Link>
-          </div>
-          <div className="mt-2 text-xs text-[var(--rp-text-500)]">
-            Forgot password? <Link className="font-semibold text-[var(--rp-indigo-700)]" to="/auth/reset">Reset it</Link>
-          </div>
-        </form>
+        </div>
       </div>
     </AppShell>
   );

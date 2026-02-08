@@ -13,6 +13,7 @@ import { listSnapshots } from "../utils/auditSnapshots.js";
 import { listRankChecks } from "../utils/rankHistory.js";
 import { getAuthToken, getAuthUser } from "../lib/authClient.js";
 import { safeJson } from "../lib/safeJson.js";
+import { apiUrl } from "../lib/api.js";
 
 function rankExplain(r) {
   if (!Number.isFinite(Number(r))) return "";
@@ -69,7 +70,7 @@ export default function RankPage() {
   useEffect(() => {
     const token = getAuthToken();
     if (!token) return;
-    fetch("/api/account-settings", { headers: { Authorization: `Bearer ${token}` } })
+    fetch(apiUrl("/api/account-settings"), { headers: { Authorization: `Bearer ${token}` } })
       .then((r) => safeJson(r))
       .then((data) => {
         if (data?.ok && data?.settings) setAllowRank(data.settings.allow_rank !== false);
@@ -122,7 +123,7 @@ export default function RankPage() {
 
     setStatus("loading");
     try {
-      const res = await fetch("/api/rank-check", {
+      const res = await fetch(apiUrl("/api/rank-check"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ keyword: keyword.trim(), domain: domainFromInput(domain) })
@@ -223,7 +224,7 @@ export default function RankPage() {
               onClick={async () => {
                 try {
                   const token = getAuthToken();
-                  await fetch("/api/request-upgrade", {
+                  await fetch(apiUrl("/api/request-upgrade"), {
                     method: "POST",
                     headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }
                   });

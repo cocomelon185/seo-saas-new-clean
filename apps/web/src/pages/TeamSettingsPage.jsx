@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import AppShell from "../components/AppShell.jsx";
 import { getAuthToken, getAuthUser } from "../lib/authClient.js";
 import { safeJson } from "../lib/safeJson.js";
+import { apiUrl } from "../lib/api.js";
 
 export default function TeamSettingsPage() {
   const [members, setMembers] = useState([]);
@@ -20,7 +21,7 @@ export default function TeamSettingsPage() {
 
   useEffect(() => {
     if (!token) return;
-    fetch("/api/team/members", { headers: { Authorization: `Bearer ${token}` } })
+    fetch(apiUrl("/api/team/members"), { headers: { Authorization: `Bearer ${token}` } })
       .then((r) => safeJson(r))
       .then((data) => {
         if (data?.ok) {
@@ -29,12 +30,12 @@ export default function TeamSettingsPage() {
           setTeamId(data.team_id || "");
         }
       });
-    fetch("/api/team/invites", { headers: { Authorization: `Bearer ${token}` } })
+    fetch(apiUrl("/api/team/invites"), { headers: { Authorization: `Bearer ${token}` } })
       .then((r) => safeJson(r))
       .then((data) => {
         if (data?.ok) setInvites(data.invites || []);
       });
-    fetch("/api/account-settings", { headers: { Authorization: `Bearer ${token}` } })
+    fetch(apiUrl("/api/account-settings"), { headers: { Authorization: `Bearer ${token}` } })
       .then((r) => safeJson(r))
       .then((data) => {
         if (data?.ok && data?.settings) {
@@ -93,7 +94,7 @@ export default function TeamSettingsPage() {
                           value={m.role || "member"}
                           onChange={async (e) => {
                             const next = e.target.value;
-                            await fetch("/api/team/members", {
+                            await fetch(apiUrl("/api/team/members"), {
                               method: "POST",
                               headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
                               body: JSON.stringify({ email: m.email, role: next })
@@ -116,7 +117,7 @@ export default function TeamSettingsPage() {
                             className="rp-btn-secondary rp-btn-sm h-7 px-2 text-[11px]"
                             onClick={async () => {
                               const action = m.active === 0 ? "activate" : "deactivate";
-                              await fetch("/api/team/members", {
+                              await fetch(apiUrl("/api/team/members"), {
                                 method: "POST",
                                 headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
                                 body: JSON.stringify({ email: m.email, action })
@@ -131,7 +132,7 @@ export default function TeamSettingsPage() {
                           <button
                             className="rp-btn-secondary rp-btn-sm h-7 px-2 text-[11px]"
                             onClick={async () => {
-                              await fetch("/api/team/members", {
+                              await fetch(apiUrl("/api/team/members"), {
                                 method: "POST",
                                 headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
                                 body: JSON.stringify({ email: m.email, action: "deactivate" })
@@ -170,7 +171,7 @@ export default function TeamSettingsPage() {
                 title={!isAdmin ? "Admins only" : "Send team invite"}
                 onClick={async () => {
                   if (!email) return;
-                  const res = await fetch("/api/team/invites", {
+                  const res = await fetch(apiUrl("/api/team/invites"), {
                     method: "POST",
                     headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
                     body: JSON.stringify({ email, role })
@@ -206,7 +207,7 @@ export default function TeamSettingsPage() {
                   onChange={async (e) => {
                     const next = e.target.checked;
                     setRequireVerified(next);
-                    await fetch("/api/account-settings", {
+                    await fetch(apiUrl("/api/account-settings"), {
                       method: "POST",
                       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
                       body: JSON.stringify({ require_verified: next })
@@ -226,7 +227,7 @@ export default function TeamSettingsPage() {
                   onChange={async (e) => {
                     const next = e.target.checked;
                     setAllowAudit(next);
-                    await fetch("/api/account-settings", {
+                    await fetch(apiUrl("/api/account-settings"), {
                       method: "POST",
                       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
                       body: JSON.stringify({ allow_audit: next })
@@ -243,7 +244,7 @@ export default function TeamSettingsPage() {
                   onChange={async (e) => {
                     const next = e.target.checked;
                     setAllowRank(next);
-                    await fetch("/api/account-settings", {
+                    await fetch(apiUrl("/api/account-settings"), {
                       method: "POST",
                       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
                       body: JSON.stringify({ allow_rank: next })
@@ -260,7 +261,7 @@ export default function TeamSettingsPage() {
                   onChange={async (e) => {
                     const next = e.target.checked;
                     setAllowImprove(next);
-                    await fetch("/api/account-settings", {
+                    await fetch(apiUrl("/api/account-settings"), {
                       method: "POST",
                       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
                       body: JSON.stringify({ allow_improve: next })
