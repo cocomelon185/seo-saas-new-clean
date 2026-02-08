@@ -1,6 +1,8 @@
 {
-  "cleanUrls": true,
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "https://api.rankypulse.com/api/$1" }
+    {
+      "source": "/api/:path*",
+      "destination": "https://api.rankypulse.com/api/:path*"
+    }
   ]
 }
