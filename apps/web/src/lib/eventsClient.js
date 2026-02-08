@@ -26,3 +26,5 @@ export function trackEvent(name, props = {}) {
     }
   } catch (_) {}
 }
+
+export const track = trackEvent;
