@@ -16,7 +16,7 @@ export default function InviteAcceptPage() {
         setStatus("error");
         return;
       }
-      fetch(`/api/team/invite?token=${encodeURIComponent(token)}`)
+      fetch(apiUrl(`/api/team/invite?token=${encodeURIComponent(token)}`))
         .then((r) => safeJson(r))
         .then((data) => {
           if (data?.ok) {

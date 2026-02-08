@@ -3,6 +3,7 @@ import AppShell from "../components/AppShell.jsx";
 import { IconArrowRight, IconLink } from "../components/Icons.jsx";
 import { getAnonId } from "../utils/anonId.js";
 import { safeJson } from "../lib/safeJson.js";
+import { apiUrl } from "../lib/api.js";
 
 export default function EmbedWidgetPage() {
   const anonId = getAnonId();
@@ -42,7 +43,7 @@ export default function EmbedWidgetPage() {
     let active = true;
     const loadMetrics = async () => {
       if (!anonId) return;
-      const res = await fetch("/api/embed/webhook-metrics", {
+      const res = await fetch(apiUrl("/api/embed/webhook-metrics"), {
         headers: { "x-rp-anon-id": anonId }
       });
       const data = await safeJson(res);
@@ -169,7 +170,7 @@ export default function EmbedWidgetPage() {
                   return;
                 }
                 setWebhookStatus("Sending test...");
-                const res = await fetch("/api/embed/test-webhook", {
+                const res = await fetch(apiUrl("/api/embed/test-webhook"), {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({ owner_id: anonId, webhook: webhook.trim() })
@@ -202,13 +203,13 @@ export default function EmbedWidgetPage() {
                 className="rp-btn-secondary rp-btn-sm h-8 px-3 text-xs"
                 onClick={async () => {
                   setHistoryStatus("loading");
-                  const res = await fetch("/api/embed/webhook-history", {
+                  const res = await fetch(apiUrl("/api/embed/webhook-history"), {
                     headers: anonId ? { "x-rp-anon-id": anonId } : {}
                   });
                   const data = await safeJson(res);
                   setHistory(Array.isArray(data?.history) ? data.history : []);
                   setHistoryStatus("success");
-                  const metricsRes = await fetch("/api/embed/webhook-metrics", {
+                  const metricsRes = await fetch(apiUrl("/api/embed/webhook-metrics"), {
                     headers: anonId ? { "x-rp-anon-id": anonId } : {}
                   });
                   const metricsData = await safeJson(metricsRes);
@@ -238,7 +239,7 @@ export default function EmbedWidgetPage() {
                       <button
                         className="rp-btn-secondary rp-btn-sm h-8 px-3 text-xs"
                         onClick={async () => {
-                          await fetch(`/api/embed/webhook-history/${h.id}/retry`, {
+                          await fetch(apiUrl(`/api/embed/webhook-history/${h.id}/retry`), {
                             method: "POST",
                             headers: anonId ? { "x-rp-anon-id": anonId } : {}
                           });

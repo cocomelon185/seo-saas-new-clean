@@ -16,6 +16,7 @@ import ErrorBoundary from "../components/ErrorBoundary.jsx";
 import { track } from "../lib/eventsClient.js";
 import { getAuthToken, getAuthUser } from "../lib/authClient.js";
 import { safeJson } from "../lib/safeJson.js";
+import { apiUrl } from "../lib/api.js";
 import {
   IconLink,
   IconCheck,
@@ -162,7 +163,7 @@ function AuditPageInner() {
     if (!authUser?.email) return;
     const token = getAuthToken();
     if (!token) return;
-    fetch("/api/account-settings", {
+    fetch(apiUrl("/api/account-settings"), {
       headers: { Authorization: `Bearer ${token}` }
     })
       .then((r) => safeJson(r))
@@ -211,7 +212,7 @@ function AuditPageInner() {
 
   useEffect(() => {
     if (!anonId) return;
-    fetch("/api/wp/status", { headers: { "x-rp-anon-id": anonId } })
+    fetch(apiUrl("/api/wp/status"), { headers: { "x-rp-anon-id": anonId } })
       .then((r) => safeJson(r))
       .then((data) => {
         if (data?.connected) {
@@ -222,7 +223,7 @@ function AuditPageInner() {
         }
       })
       .catch(() => setWpStatus("error"));
-    fetch("/api/shopify/status", { headers: { "x-rp-anon-id": anonId } })
+    fetch(apiUrl("/api/shopify/status"), { headers: { "x-rp-anon-id": anonId } })
       .then((r) => safeJson(r))
       .then((data) => {
         if (data?.connected) {
@@ -344,7 +345,7 @@ function AuditPageInner() {
     let cancelled = false;
     setGscStatus("loading");
     setGscData(null);
-    fetch("/api/gsc/summary", {
+    fetch(apiUrl("/api/gsc/summary"), {
       method: "POST",
       headers: { "Content-Type": "application/json", ...(anonId ? { "x-rp-anon-id": anonId } : {}) },
       body: JSON.stringify({ url: result.url })
@@ -492,7 +493,7 @@ function AuditPageInner() {
 
     setStatus("loading");
     try {
-      const res = await fetch("/api/page-report", {
+      const res = await fetch(apiUrl("/api/page-report"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -539,7 +540,7 @@ try {
       } catch {}
       try {
         if (anonId) {
-          await fetch("/api/user-state", {
+          await fetch(apiUrl("/api/user-state"), {
             method: "POST",
             headers: { "Content-Type": "application/json", "x-rp-anon-id": anonId },
             body: JSON.stringify({ first_audit_at: Date.now() })
@@ -1040,7 +1041,7 @@ try {
                 onClick={async () => {
                   try {
                     const token = getAuthToken();
-                    await fetch("/api/request-upgrade", {
+                    await fetch(apiUrl("/api/request-upgrade"), {
                       method: "POST",
                       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }
                     });
@@ -1071,7 +1072,7 @@ try {
                 className="rp-btn-primary rp-btn-sm h-9 px-3 text-xs"
                 onClick={async () => {
                   if (!authUser?.email) return;
-                  await fetch("/api/reset-password", {
+                  await fetch(apiUrl("/api/reset-password"), {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ email: authUser.email, verifyOnly: true })
@@ -1435,7 +1436,7 @@ try {
                 {(gscStatus === "empty" || gscStatus === "error") && (
                   <div className="mt-3 text-sm text-[var(--rp-text-500)]">
                     Connect Google Search Console to pull trusted ranking data.{" "}
-                    <a className="font-semibold text-[var(--rp-indigo-700)]" href={`/api/gsc/auth/start?state=${encodeURIComponent(anonId)}`}>Connect GSC</a>
+                    <a className="font-semibold text-[var(--rp-indigo-700)]" href={apiUrl(`/api/gsc/auth/start?state=${encodeURIComponent(anonId)}`)}>Connect GSC</a>
                   </div>
                 )}
               </div>
@@ -1502,7 +1503,7 @@ try {
                       className="rp-btn-secondary rp-btn-sm h-9 px-3 text-xs"
                       onClick={() => {
                         if (!wpSiteUrl || !anonId) return;
-                        const url = `/api/wp/auth/start?owner=${encodeURIComponent(anonId)}&site=${encodeURIComponent(wpSiteUrl)}`;
+                        const url = apiUrl(`/api/wp/auth/start?owner=${encodeURIComponent(anonId)}&site=${encodeURIComponent(wpSiteUrl)}`);
                         window.location.href = url;
                       }}
                     >
@@ -1512,7 +1513,7 @@ try {
                       className="rp-btn-secondary rp-btn-sm h-9 px-3 text-xs"
                       onClick={async () => {
                         if (!anonId) return;
-                        await fetch("/api/wp/disconnect", {
+                        await fetch(apiUrl("/api/wp/disconnect"), {
                           method: "POST",
                           headers: { "Content-Type": "application/json", "x-rp-anon-id": anonId }
                         });
@@ -1525,7 +1526,7 @@ try {
                       className="rp-btn-secondary rp-btn-sm h-9 px-3 text-xs"
                       onClick={() => {
                         if (!shopifyShop || !anonId) return;
-                        const url = `/api/shopify/auth/start?owner=${encodeURIComponent(anonId)}&shop=${encodeURIComponent(shopifyShop)}`;
+                        const url = apiUrl(`/api/shopify/auth/start?owner=${encodeURIComponent(anonId)}&shop=${encodeURIComponent(shopifyShop)}`);
                         window.location.href = url;
                       }}
                     >
@@ -1535,7 +1536,7 @@ try {
                       className="rp-btn-secondary rp-btn-sm h-9 px-3 text-xs"
                       onClick={async () => {
                         if (!anonId) return;
-                        await fetch("/api/shopify/disconnect", {
+                        await fetch(apiUrl("/api/shopify/disconnect"), {
                           method: "POST",
                           headers: { "Content-Type": "application/json", "x-rp-anon-id": anonId }
                         });
@@ -1580,7 +1581,7 @@ try {
                       onClick={async () => {
                         if (!weeklyEmail || !result?.url) return;
                         setWeeklyStatus("saving");
-                        const res = await fetch("/api/weekly-report/subscribe", {
+                        const res = await fetch(apiUrl("/api/weekly-report/subscribe"), {
                           method: "POST",
                           headers: { "Content-Type": "application/json" },
                           body: JSON.stringify({
@@ -2797,7 +2798,7 @@ try {
                     const results = [];
                     for (const u of list.slice(0, 3)) {
                       try {
-                        const res = await fetch("/api/page-report", {
+                        const res = await fetch(apiUrl("/api/page-report"), {
                           method: "POST",
                           headers: { "Content-Type": "application/json" },
                           body: JSON.stringify({ url: u.trim() })

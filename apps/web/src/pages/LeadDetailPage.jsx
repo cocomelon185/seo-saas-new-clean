@@ -18,7 +18,7 @@ export default function LeadDetailPage() {
   useEffect(() => {
     let cancelled = false;
     setStatus("loading");
-    fetch(`/api/embed/leads/${id}`, {
+    fetch(apiUrl(`/api/embed/leads/${id}`), {
       headers: anonId ? { "x-rp-anon-id": anonId } : {}
     })
       .then((r) => safeJson(r))
@@ -112,7 +112,7 @@ export default function LeadDetailPage() {
                 className="rp-btn-primary"
                 onClick={async () => {
                   setSaveStatus("saving");
-                  await fetch(`/api/embed/leads/${lead.id}`, {
+                  await fetch(apiUrl(`/api/embed/leads/${lead.id}`), {
                     method: "POST",
                     headers: {
                       "Content-Type": "application/json",

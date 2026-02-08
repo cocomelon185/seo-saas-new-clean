@@ -33,7 +33,7 @@ export default function SharedReportPage() {
 
       try {
         setLoading(true);
-        const res = await fetch(`/api/shared-reports/${reportId}`);
+        const res = await fetch(apiUrl(`/api/shared-reports/${reportId}`));
         
         if (!res.ok) {
           if (res.status === 404) {

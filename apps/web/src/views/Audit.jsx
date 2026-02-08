@@ -177,11 +177,11 @@ const visibleIssues = React.useMemo(() => {
     const q = encodeURIComponent(targetUrl.trim());
 
     const candidates = [
-      { url: `/api/audit/run`, init: { method: "POST", headers: { "Content-Type": "application/json", ...authHeaders() }, body: JSON.stringify({ url: targetUrl.trim() }) } },
-      { url: `/api/site-audit/run`, init: { method: "POST", headers: { "Content-Type": "application/json", ...authHeaders() }, body: JSON.stringify({ url: targetUrl.trim() }) } },
-      { url: `/api/audit?url=${q}`, init: { method: "GET", headers: { ...authHeaders() } } },
-      { url: `/api/site-audit?url=${q}`, init: { method: "GET", headers: { ...authHeaders() } } },
-      { url: `/api/audit`, init: { method: "POST", headers: { "Content-Type": "application/json", ...authHeaders() }, body: JSON.stringify({ url: targetUrl.trim() }) } },
+      { url: apiUrl(`/api/audit/run`), init: { method: "POST", headers: { "Content-Type": "application/json", ...authHeaders() }, body: JSON.stringify({ url: targetUrl.trim() }) } },
+      { url: apiUrl(`/api/site-audit/run`), init: { method: "POST", headers: { "Content-Type": "application/json", ...authHeaders() }, body: JSON.stringify({ url: targetUrl.trim() }) } },
+      { url: apiUrl(`/api/audit?url=${q}`), init: { method: "GET", headers: { ...authHeaders() } } },
+      { url: apiUrl(`/api/site-audit?url=${q}`), init: { method: "GET", headers: { ...authHeaders() } } },
+      { url: apiUrl(`/api/audit`), init: { method: "POST", headers: { "Content-Type": "application/json", ...authHeaders() }, body: JSON.stringify({ url: targetUrl.trim() }) } },
     ];
 
     const r = await tryRequest(candidates);
