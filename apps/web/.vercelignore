@@ -1,0 +1,21 @@
+# Ignore build outputs and deps
+/dist/
+/node_modules/
+
+# Ignore backups/archives
+**/*.bak*
+**/*.backup*
+**/*.save
+**/*.old
+
+# Ignore bulky backup folders
+/src.bak_*/
+/src.backup_*/
+/src.backup*/
+/src.bak*/
+
+# Ignore duplicate config variants
+/tailwind.config.cjs
+/tailwind.config.cjs.bak_*
+/vercel.json.bak*
+/vite.config.js.backup_*

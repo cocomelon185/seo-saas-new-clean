@@ -1,0 +1,26 @@
+**/node_modules
+**/dist
+**/playwright-report
+**/test-results
+**/.vercel
+
+# Backup and temp folders
+apps/web/src.bak_*
+apps/web/src.backup_*
+apps/web/src.backup_before_*
+apps/web/src.backup_before_import_rewrite
+apps/web/src.backup_before_jsxfix
+apps/web/src.backup_before_require_fix
+apps/web/src.backup_notus
+apps/web/src.bak_1768573223
+apps/web/src.bak_1768573284
+
+# Backup files
+**/*.bak
+**/*.bak_*
+**/*.backup_*
+**/*.save
+**/*.old
+
+# Duplicate Tailwind config (keep .cjs)
+apps/web/tailwind.config.js
