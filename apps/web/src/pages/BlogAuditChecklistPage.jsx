@@ -1,11 +1,10 @@
-import AppShell from "../components/AppShell.jsx";
+import MarketingShell from "../components/MarketingShell.jsx";
 import { Link } from "react-router-dom";
 import { IconDoc, IconBolt, IconReport, IconArrowRight } from "../components/Icons.jsx";
-import "../styles/marketing.css";
 
 export default function BlogAuditChecklistPage() {
   return (
-    <AppShell
+    <MarketingShell
       title="Blog Post Audit Checklist"
       subtitle="Use RankyPulse audits to catch thin content, weak structure, and missing search intent coverage."
     >
@@ -80,6 +79,6 @@ export default function BlogAuditChecklistPage() {
           </div>
         </section>
       </div>
-    </AppShell>
+    </MarketingShell>
   );
 }

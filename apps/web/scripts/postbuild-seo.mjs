@@ -164,6 +164,9 @@ async function main() {
   const files = await collectHtmlFiles(distDir);
   await Promise.all(files.map(async (file) => {
     const rel = path.relative(distDir, file);
+    if (rel === "app.html") {
+      return;
+    }
     const routePath = toRoute(rel);
     const html = await fs.readFile(file, "utf8");
     const updated = injectMeta(html, routePath);

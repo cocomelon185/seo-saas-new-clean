@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import AppShell from "../components/AppShell.jsx";
+import MarketingShell from "../components/MarketingShell.jsx";
 import IssuesPanel from "../components/IssuesPanel.jsx";
 import AuditImpactBanner from "../components/AuditImpactBanner.jsx";
 import { decodeSharePayload } from "../utils/shareCodec.js";
 import { IconReport } from "../components/Icons.jsx";
-import "../styles/marketing.css";
 
 export default function SharePage() {
   const [data, setData] = useState(null);
@@ -32,7 +31,7 @@ export default function SharePage() {
   }, [data]);
 
   return (
-    <AppShell title="Shared Audit" subtitle={subtitle}>
+    <MarketingShell title="Shared Audit" subtitle={subtitle}>
       <div className="flex flex-col gap-4">
         {err && (
           <div className="rounded-2xl border border-rose-300/60 bg-rose-100/70 p-5 text-rose-700">
@@ -86,6 +85,6 @@ export default function SharePage() {
           </>
         )}
       </div>
-    </AppShell>
+    </MarketingShell>
   );
 }

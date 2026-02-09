@@ -48,9 +48,9 @@ export default function ScreenshotGrid({ items, sizes = DEFAULT_SIZES }) {
           </picture>
           {(item.kicker || item.title) && (
             <figcaption className={item.hideMock ? "rp-shot-caption" : ""}>
-              {item.kicker && <span className="rp-kicker text-white/70">{item.kicker}</span>}
+              {item.kicker && <span className="rp-kicker text-white/85">{item.kicker}</span>}
               {item.title && <span className="mt-2 block text-lg font-semibold text-white">{item.title}</span>}
-              {item.caption && <span className="mt-2 block text-xs text-white/80">{item.caption}</span>}
+              {item.caption && <span className="mt-2 block text-xs text-white/90">{item.caption}</span>}
             </figcaption>
           )}
         </figure>

@@ -1,8 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import AppShell from "../components/AppShell.jsx";
+import MarketingShell from "../components/MarketingShell.jsx";
 import { IconClock, IconArrowRight } from "../components/Icons.jsx";
-import "../styles/marketing.css";
 
 const updates = [
   {
@@ -24,7 +23,7 @@ const updates = [
 
 export default function ChangelogPage() {
   return (
-    <AppShell
+    <MarketingShell
       title="Changelog"
       subtitle="Track product improvements, release notes, and platform updates."
     >
@@ -51,6 +50,6 @@ export default function ChangelogPage() {
           </div>
         </div>
       </div>
-    </AppShell>
+    </MarketingShell>
   );
 }

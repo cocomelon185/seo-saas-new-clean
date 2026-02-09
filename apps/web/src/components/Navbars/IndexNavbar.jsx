@@ -13,7 +13,7 @@ export default function IndexNavbar() {
           </Link>
         </div>
         <button
-          className="text-sm text-white/70 lg:hidden"
+          className="text-sm text-white/85 lg:hidden"
           type="button"
           onClick={() => setNavbarOpen(!navbarOpen)}
         >
@@ -21,13 +21,13 @@ export default function IndexNavbar() {
         </button>
         <div className={`flex-1 items-center justify-end gap-6 ${navbarOpen ? "flex" : "hidden"} lg:flex`}>
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
-            <Link to="/#features" className="text-sm text-white/70 hover:text-white">
+            <Link to="/#features" className="text-sm text-white/85 hover:text-white">
               Features
             </Link>
-            <Link to="/pricing" className="text-sm text-white/70 hover:text-white">
+            <Link to="/pricing" className="text-sm text-white/85 hover:text-white">
               Pricing
             </Link>
-            <Link to="/auth/signin" className="text-sm text-white/70 hover:text-white">
+            <Link to="/auth/signin" className="text-sm text-white/85 hover:text-white">
               Sign in
             </Link>
             <Link

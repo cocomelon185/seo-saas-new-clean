@@ -1,0 +1,39 @@
+import React from "react";
+import { Navigate } from "react-router-dom";
+
+const Landing = React.lazy(() => import("../pages/Landing.jsx"));
+const StartAuditPage = React.lazy(() => import("../pages/StartAuditPage.jsx"));
+const PricingPage = React.lazy(() => import("../pages/PricingPage.jsx"));
+const AboutPage = React.lazy(() => import("../pages/AboutPage.jsx"));
+const ChangelogPage = React.lazy(() => import("../pages/ChangelogPage.jsx"));
+const SharePage = React.lazy(() => import("../pages/SharePage.jsx"));
+const SaasLandingAuditPage = React.lazy(() => import("../pages/SaasLandingAuditPage.jsx"));
+const BlogAuditChecklistPage = React.lazy(() => import("../pages/BlogAuditChecklistPage.jsx"));
+const AgencyAuditWorkflowPage = React.lazy(() => import("../pages/AgencyAuditWorkflowPage.jsx"));
+
+const suspenseWrap = (element) => (
+  <React.Suspense
+    fallback={(
+      <div className="min-h-screen bg-[#120a24] text-white flex items-center justify-center text-sm">
+        Loading...
+      </div>
+    )}
+  >
+    {element}
+  </React.Suspense>
+);
+
+const routes = [
+  { path: "/", element: suspenseWrap(<Landing />) },
+  { path: "/start", element: suspenseWrap(<StartAuditPage />) },
+  { path: "/pricing", element: suspenseWrap(<PricingPage />) },
+  { path: "/about", element: suspenseWrap(<AboutPage />) },
+  { path: "/changelog", element: suspenseWrap(<ChangelogPage />) },
+  { path: "/shared", element: suspenseWrap(<SharePage />) },
+  { path: "/use-cases/saas-landing-audit", element: suspenseWrap(<SaasLandingAuditPage />) },
+  { path: "/use-cases/blog-audit-checklist", element: suspenseWrap(<BlogAuditChecklistPage />) },
+  { path: "/use-cases/agency-audit-workflow", element: suspenseWrap(<AgencyAuditWorkflowPage />) },
+  { path: "*", element: <Navigate to="/" replace /> }
+];
+
+export default routes;

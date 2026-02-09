@@ -1,12 +1,11 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import AppShell from "../components/AppShell.jsx";
+import MarketingShell from "../components/MarketingShell.jsx";
 import { IconArrowRight, IconShield } from "../components/Icons.jsx";
-import "../styles/marketing.css";
 
 export default function AboutPage() {
   return (
-    <AppShell
+    <MarketingShell
       title="About RankyPulse"
       subtitle="We help growth teams convert SEO insights into revenue-ready actions."
     >
@@ -43,6 +42,6 @@ export default function AboutPage() {
           </div>
         </div>
       </div>
-    </AppShell>
+    </MarketingShell>
   );
 }

@@ -1,11 +1,10 @@
 import React, { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import PricingModal from "../components/PricingModal.jsx";
-import AppShell from "../components/AppShell.jsx";
+import MarketingShell from "../components/MarketingShell.jsx";
 import { IconArrowRight } from "../components/Icons.jsx";
 import { getAuthUser } from "../lib/authClient.js";
 import { startSubscriptionCheckout } from "../lib/billingClient.js";
-import "../styles/marketing.css";
 
 export default function PricingPage() {
   const isServer = typeof window === "undefined";
@@ -104,7 +103,7 @@ export default function PricingPage() {
   };
 
   return (
-    <AppShell
+    <MarketingShell
       title="Pricing"
       subtitle="Simple pricing for clear SEO decisions. Unlock full fix plans, examples, content briefs, and audit history."
     >
@@ -291,6 +290,6 @@ export default function PricingPage() {
           }}
         />
       ) : null}
-    </AppShell>
+    </MarketingShell>
   );
 }

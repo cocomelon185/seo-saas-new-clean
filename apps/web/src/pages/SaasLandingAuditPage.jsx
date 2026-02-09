@@ -1,11 +1,10 @@
-import AppShell from "../components/AppShell.jsx";
+import MarketingShell from "../components/MarketingShell.jsx";
 import { Link } from "react-router-dom";
 import { IconCompass, IconShield, IconBolt, IconArrowRight } from "../components/Icons.jsx";
-import "../styles/marketing.css";
 
 export default function SaasLandingAuditPage() {
   return (
-    <AppShell
+    <MarketingShell
       title="SaaS Landing Page Audit"
       subtitle="Use this audit to validate clarity, proof, and conversion signals before you scale traffic."
     >
@@ -80,6 +79,6 @@ export default function SaasLandingAuditPage() {
           </div>
         </section>
       </div>
-    </AppShell>
+    </MarketingShell>
   );
 }

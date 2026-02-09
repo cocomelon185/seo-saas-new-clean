@@ -18,7 +18,7 @@ function NavItem({ to, label }) {
         "rp-sidebar-item group flex items-center justify-between rounded-lg border border-transparent px-3 py-2 text-sm font-medium transition",
         active
           ? "border-white/15 bg-white/10 text-white"
-          : "text-white/70 hover:text-white hover:bg-white/5"
+          : "text-white/85 hover:text-white hover:bg-white/5"
       ].join(" ")}
     >
       <span>{label}</span>
@@ -82,13 +82,13 @@ export default function AppShell({ title, subtitle, children }) {
             </div>
             <div className="leading-tight">
               <div className="text-sm font-semibold tracking-wide">RankyPulse</div>
-              <div className="text-xs text-white/70">Premium SEO clarity, fast.</div>
+              <div className="text-xs text-white/85">Premium SEO clarity, fast.</div>
             </div>
           </Link>
 
           <div className="flex flex-col gap-3">
             <div className="text-xs uppercase tracking-[0.3em] text-white/40">Overview</div>
-            <div className="rp-sidebar-card rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-white/70">
+            <div className="rp-sidebar-card rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-white/85">
               Workspace: <span className="font-semibold text-white">Project Overview</span>
               <div className="mt-2 flex items-center gap-2 text-white/60">
                 <IconCompass size={14} />
@@ -108,7 +108,7 @@ export default function AppShell({ title, subtitle, children }) {
               <NavItem to="/pricing" label="Pricing" />
               <Link
                 to="/account/settings"
-                className="rp-sidebar-item group flex items-center justify-between rounded-lg border border-transparent px-3 py-2 text-sm font-medium text-white/70 transition hover:bg-white/5 hover:text-white"
+                className="rp-sidebar-item group flex items-center justify-between rounded-lg border border-transparent px-3 py-2 text-sm font-medium text-white/85 transition hover:bg-white/5 hover:text-white"
               >
                 <span className="flex items-center gap-2">
                   <IconUser size={14} />
@@ -126,9 +126,9 @@ export default function AppShell({ title, subtitle, children }) {
           </div>
 
           {lockedTools.length > 0 && (
-            <div className="mt-auto rounded-xl border border-white/10 bg-white/5 p-4 text-xs text-white/70">
+            <div className="mt-auto rounded-xl border border-white/10 bg-white/5 p-4 text-xs text-white/85">
               <div className="text-[10px] uppercase tracking-[0.3em] text-white/40">Locked by admin</div>
-              <ul className="mt-3 space-y-1 text-xs text-white/75">
+              <ul className="mt-3 space-y-1 text-xs text-white/85">
                 {lockedTools.map((tool) => (
                   <li key={tool} className="flex items-center justify-between">
                     <span>{tool}</span>
@@ -141,12 +141,12 @@ export default function AppShell({ title, subtitle, children }) {
             </div>
           )}
 
-          <div className={["rp-sidebar-card rounded-xl border border-white/10 bg-white/5 p-4 text-xs text-white/70", lockedTools.length > 0 ? "" : "mt-auto"].join(" ")}>
+          <div className={["rp-sidebar-card rounded-xl border border-white/10 bg-white/5 p-4 text-xs text-white/85", lockedTools.length > 0 ? "" : "mt-auto"].join(" ")}>
             <div className="flex items-center gap-2 text-sm font-semibold text-white">
               <IconChart size={16} />
               Weekly snapshot
             </div>
-            <p className="mt-2 text-white/70">
+            <p className="mt-2 text-white/85">
               Visibility +6% this week. New issues detected on 2 pages.
             </p>
           </div>

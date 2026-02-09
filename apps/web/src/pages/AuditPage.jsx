@@ -1013,7 +1013,7 @@ try {
   }
 
   return (
-<AppShell data-testid="audit-page"
+    <AppShell data-testid="audit-page"
       title="SEO Page Audit"
       subtitle="SEO tools that feel instant. Paste a URL and get a score, quick wins, and a prioritized list of issues."
     >
@@ -1031,6 +1031,11 @@ try {
               <div className={`mt-2 text-2xl font-semibold ${item.tone}`}>{item.value}</div>
             </div>
           ))}
+        </div>
+        <div className="text-xs text-[var(--rp-text-500)]">
+          Want to see an example before running your own?
+          {" "}
+          <a className="text-[var(--rp-indigo-700)] hover:underline" href="/shared">View a sample results report</a>.
         </div>
         {authUser?.role === "member" && (
           <div className="rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-4 text-sm text-[var(--rp-text-600)]">
@@ -1090,16 +1095,16 @@ try {
         <div className="rp-hero rounded-2xl border border-white/10 p-6 text-white shadow-[0_30px_80px_rgba(66,25,131,0.25)] md:p-8">
           <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
             <div className="flex flex-col gap-4">
-              <div className="inline-flex w-fit items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-white/80">
+              <div className="inline-flex w-fit items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-white/90">
                 RankyPulse Audit
               </div>
               <h2 className="text-3xl font-semibold leading-tight md:text-4xl">
                 SEO clarity in one scan.
               </h2>
-              <p className="text-sm text-white/80 md:text-base">
+              <p className="text-sm text-white/90 md:text-base">
                 Paste a URL to generate a score, quick wins, and a prioritized fix plan in seconds.
               </p>
-              <div className="flex flex-wrap items-center gap-3 text-xs text-white/70">
+              <div className="flex flex-wrap items-center gap-3 text-xs text-white/85">
                 <span className="rounded-full border border-white/20 px-3 py-1">SEO basics + content depth</span>
                 <span className="rounded-full border border-white/20 px-3 py-1">Core Web Vitals when available</span>
                 <span className="rounded-full border border-white/20 px-3 py-1">Client‑ready report</span>

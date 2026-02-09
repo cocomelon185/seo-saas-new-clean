@@ -14,8 +14,48 @@
       "destination": "https://api.rankypulse.com/api/:path*"
     },
     {
+      "source": "/audit/:path*",
+      "destination": "/app.html"
+    },
+    {
+      "source": "/rank/:path*",
+      "destination": "/app.html"
+    },
+    {
+      "source": "/improve/:path*",
+      "destination": "/app.html"
+    },
+    {
+      "source": "/upgrade/:path*",
+      "destination": "/app.html"
+    },
+    {
+      "source": "/plan-change/:path*",
+      "destination": "/app.html"
+    },
+    {
+      "source": "/account/:path*",
+      "destination": "/app.html"
+    },
+    {
+      "source": "/admin/:path*",
+      "destination": "/app.html"
+    },
+    {
+      "source": "/auth/:path*",
+      "destination": "/app.html"
+    },
+    {
+      "source": "/embed/:path*",
+      "destination": "/app.html"
+    },
+    {
+      "source": "/leads/:path*",
+      "destination": "/app.html"
+    },
+    {
       "source": "/r/:path*",
-      "destination": "/index.html"
+      "destination": "/app.html"
     }
   ]
 }

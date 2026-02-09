@@ -1,11 +1,10 @@
-import AppShell from "../components/AppShell.jsx";
+import MarketingShell from "../components/MarketingShell.jsx";
 import { Link } from "react-router-dom";
 import { IconShield, IconReport, IconBolt, IconArrowRight } from "../components/Icons.jsx";
-import "../styles/marketing.css";
 
 export default function AgencyAuditWorkflowPage() {
   return (
-    <AppShell
+    <MarketingShell
       title="Agency Client Audit Workflow"
       subtitle="Deliver shareable audits, align stakeholders, and turn fixes into client-ready action plans."
     >
@@ -80,6 +79,6 @@ export default function AgencyAuditWorkflowPage() {
           </div>
         </section>
       </div>
-    </AppShell>
+    </MarketingShell>
   );
 }
