@@ -57,9 +57,5 @@
       "source": "/r/:path*",
       "destination": "/app.html"
     }
-  ],
-  "routes": [
-    { "handle": "filesystem" },
-    { "src": "/(audit|rank|improve|upgrade|plan-change|account|admin|auth|embed|leads|r)(/.*)?", "dest": "/app.html" }
   ]
 }
