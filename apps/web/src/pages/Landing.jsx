@@ -1,31 +1,9 @@
-import React, { useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import React from "react";
+import { Link } from "react-router-dom";
 import logo from "../assets/rankypulse-logo.svg";
 import CookieConsent from "../components/CookieConsent.jsx";
-import DeferredRender from "../components/DeferredRender.jsx";
 
 export default function Landing() {
-  const navigate = useNavigate();
-  const [auditUrl, setAuditUrl] = useState("");
-  const isValidAuditUrl = useMemo(() => {
-    const value = auditUrl.trim();
-    if (!value) return false;
-    try {
-      const normalized = /^https?:\/\//i.test(value) ? value : `https://${value}`;
-      const parsed = new URL(normalized);
-      return parsed.protocol === "https:" || parsed.protocol === "http:";
-    } catch {
-      return false;
-    }
-  }, [auditUrl]);
-
-  function handleAuditSubmit(e) {
-    e.preventDefault();
-    if (!isValidAuditUrl) return;
-    const value = auditUrl.trim();
-    const normalized = /^https?:\/\//i.test(value) ? value : `https://${value}`;
-    navigate(`/audit?url=${encodeURIComponent(normalized)}`);
-  }
   return (
     <main className="min-h-screen text-white bg-[#120a24] [background-image:radial-gradient(circle_at_top,rgba(124,58,237,0.28),transparent_40%),radial-gradient(circle_at_bottom,rgba(59,130,246,0.2),transparent_35%)]">
       <a href="#main" className="sr-only focus:not-sr-only">Skip to content</a>
@@ -81,31 +59,22 @@ export default function Landing() {
                   See a sample report
                 </Link>
               </div>
-              <form onSubmit={handleAuditSubmit} className="mt-6 flex flex-wrap items-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-3">
+              <form action="/audit" method="GET" className="mt-6 flex flex-wrap items-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-3">
                 <input
                   type="text"
+                  name="url"
                   placeholder="https://example.com"
-                  value={auditUrl}
-                  onChange={(e) => setAuditUrl(e.target.value)}
                   className="flex-1 bg-transparent px-3 py-2 text-sm text-white placeholder-white/50 focus:outline-none"
+                  required
                 />
                 <button
                   type="submit"
-                  disabled={!isValidAuditUrl}
-                  title={!isValidAuditUrl ? "Enter a valid URL to enable the audit button." : "Run a free audit"}
-                  className={[
-                    "rounded-xl bg-violet-500 px-4 py-2 text-sm font-semibold text-white transition",
-                    isValidAuditUrl ? "hover:bg-violet-400" : "opacity-50 cursor-not-allowed"
-                  ].join(" ")}
+                  title="Run a free audit"
+                  className="rounded-xl bg-violet-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-violet-500"
                 >
                   Run Free Audit
                 </button>
               </form>
-              {!isValidAuditUrl && (
-                <div className="mt-2 text-xs text-white/95">
-                  Enter a valid URL to enable the audit button.
-                </div>
-              )}
               <Link to="/start" className="mt-3 inline-flex text-xs font-semibold text-white/95 underline hover:text-white">
                 Run an Audit
               </Link>
@@ -183,7 +152,7 @@ export default function Landing() {
 
         
 
-        <DeferredRender>
+        
         <section className="pb-14">
           <div className="grid gap-10 lg:grid-cols-2">
             <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
@@ -665,7 +634,7 @@ export default function Landing() {
             </div>
           </div>
         </section>
-        </DeferredRender>
+        
       </div>
 
       <footer className="border-t border-white/10 py-10">

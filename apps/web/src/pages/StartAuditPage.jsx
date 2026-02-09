@@ -1,54 +1,7 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { track } from "../lib/eventsClient.js";
+import StartAuditExtras from "../components/StartAuditExtras.jsx";
 import { IconPlay } from "../components/Icons.jsx";
-import DeferredRender from "../components/DeferredRender.jsx";
-
-const StartAuditExtras = lazy(() => import("../components/StartAuditExtras.jsx"));
 
 export default function StartAuditPage() {
-  const navigate = useNavigate();
-  const [url, setUrl] = useState("");
-  const inputRef = useRef(null);
-
-  useEffect(() => {
-    if (inputRef.current) {
-      inputRef.current.focus();
-    }
-  }, []);
-
-  const isValidUrl = useMemo(() => {
-    if (!url.trim()) return false;
-    try {
-      let urlToCheck = url.trim();
-      if (!/^https?:\/\//i.test(urlToCheck)) {
-        urlToCheck = "https://" + urlToCheck;
-      }
-      const u = new URL(urlToCheck);
-      return u.protocol === "http:" || u.protocol === "https:";
-    } catch {
-      return false;
-    }
-  }, [url]);
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!isValidUrl) return;
-
-    let normalizedUrl = url.trim();
-    if (!/^https?:\/\//i.test(normalizedUrl)) {
-      normalizedUrl = "https://" + normalizedUrl;
-    }
-
-    track("landing_audit_started", {
-      scope: "",
-      meta: { source: "start_page" }
-    });
-
-    const encodedUrl = encodeURIComponent(normalizedUrl);
-    navigate(`/audit?url=${encodedUrl}`);
-  };
-
   return (
     <main className="rp-page rp-premium-bg flex items-center justify-center px-4" role="main">
       <div className="relative w-full max-w-2xl">
@@ -61,13 +14,11 @@ export default function StartAuditPage() {
             Get your score, quick wins, and a clear fix plan.
           </p>
 
-          <form onSubmit={handleSubmit} className="mt-6 space-y-3">
+          <form action="/audit" method="GET" className="mt-6 space-y-3">
             <div>
               <input
-                ref={inputRef}
                 type="text"
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
+                name="url"
                 placeholder="https://example.com"
                 required
                 className="rp-input"
@@ -76,21 +27,12 @@ export default function StartAuditPage() {
 
             <button
               type="submit"
-              disabled={!isValidUrl}
-              title={!isValidUrl ? "Enter a valid URL to enable the audit button." : "Run a free audit"}
-              className={[
-                "rp-btn-primary w-full",
-                !isValidUrl ? "opacity-50 cursor-not-allowed" : ""
-              ].join(" ")}
+              title="Run a free audit"
+              className="rp-btn-primary w-full"
             >
               <IconPlay size={16} />
               Run Free Audit
             </button>
-            {!isValidUrl && (
-              <div className="text-center text-xs text-[var(--rp-text-500)]">
-                Enter a valid URL to run the audit.
-              </div>
-            )}
 
             <p className="text-xs text-[var(--rp-text-500)] text-center">
               No signup required
@@ -102,11 +44,7 @@ export default function StartAuditPage() {
             </p>
           </form>
 
-          <DeferredRender>
-            <Suspense fallback={null}>
-              <StartAuditExtras />
-            </Suspense>
-          </DeferredRender>
+          <StartAuditExtras />
         </div>
       </div>
     </main>

@@ -19,7 +19,6 @@ module.exports = {
     "./src/components/Icons.jsx",
     "./src/components/ScreenshotGrid.jsx",
     "./src/components/Navbars/IndexNavbar.jsx",
-    "./src/index.css",
     "./src/styles/marketing.css"
   ],
   theme: { extend: {} },

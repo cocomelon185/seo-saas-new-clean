@@ -146,6 +146,16 @@ function injectMeta(html, routePath) {
   return output;
 }
 
+function stripHydrationScripts(html) {
+  let output = html;
+  output = output.replace(/<script\b[^>]*type=["']module["'][^>]*>[\s\S]*?<\/script>/gi, "");
+  output = output.replace(/<link\b[^>]*rel=["']modulepreload["'][^>]*>/gi, "");
+  output = output.replace(/<link\b[^>]*as=["']script["'][^>]*>/gi, "");
+  output = output.replace(/<script>\s*window\.__staticRouterHydrationData[^<]*<\/script>/gi, "");
+  output = output.replace(/<script>\s*window\.__VITE_REACT_SSG_HASH__[^<]*<\/script>/gi, "");
+  return output;
+}
+
 async function collectHtmlFiles(dir) {
   const entries = await fs.readdir(dir, { withFileTypes: true });
   const files = [];
@@ -169,7 +179,11 @@ async function main() {
     }
     const routePath = toRoute(rel);
     const html = await fs.readFile(file, "utf8");
-    const updated = injectMeta(html, routePath);
+    let updated = injectMeta(html, routePath);
+    const isAppRoute = noindexPrefixes.some((prefix) => routePath.startsWith(prefix));
+    if (!isAppRoute) {
+      updated = stripHydrationScripts(updated);
+    }
     if (updated !== html) {
       await fs.writeFile(file, updated, "utf8");
     }

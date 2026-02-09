@@ -6,7 +6,6 @@ import { useEffect, useState } from "react";
 import { safeJson } from "../lib/safeJson.js";
 import { apiUrl } from "../lib/api.js";
 import CookieConsent from "./CookieConsent.jsx";
-import "../styles/app.css";
 
 function NavItem({ to, label }) {
   const { pathname } = useLocation();
