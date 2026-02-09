@@ -218,6 +218,7 @@ export default function AppShell({ title, subtitle, children }) {
                           }
                         } catch {}
                         clearAuthSession();
+                        try { localStorage.setItem("rp_signed_out","1"); } catch (_) {}
                         try {
                           if (typeof window !== "undefined" && window.google && window.google.accounts && window.google.accounts.id) {
                             window.google.accounts.id.disableAutoSelect();

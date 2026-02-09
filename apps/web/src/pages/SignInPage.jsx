@@ -111,12 +111,26 @@ export default function SignInPage() {
   }
 
   useEffect(() => {
+  try {
+    if (typeof window !== "undefined" && window.localStorage && window.localStorage.getItem("rp_signed_out") === "1") {
+      window.localStorage.removeItem("rp_signed_out");
+      if (window.google && window.google.accounts && window.google.accounts.id) {
+        window.google.accounts.id.disableAutoSelect();
+        window.google.accounts.id.cancel();
+      }
+    }
+  } catch (_) {}
+
     if (!googleClientId) return;
     const target = googleButtonRef.current;
     if (!target) return;
 
     function initGoogle() {
       if (!window.google?.accounts?.id) return;
+      try {
+        window.google.accounts.id.disableAutoSelect();
+        window.google.accounts.id.cancel();
+      } catch {}
       window.google.accounts.id.initialize({
         client_id: googleClientId,
         callback: (response) => {
@@ -175,7 +189,13 @@ export default function SignInPage() {
           </p>
 
           <div className="mt-6 flex flex-col items-center">
-            <div ref={googleButtonRef} className="w-full flex justify-center" />
+            {googleClientId ? (
+              <div ref={googleButtonRef} className="w-full flex justify-center" />
+            ) : (
+              <div className="rounded-full border border-[var(--rp-gray-200)] bg-[var(--rp-gray-50)] px-4 py-2 text-center text-xs text-[var(--rp-text-500)]">
+                Google sign-in unavailable
+              </div>
+            )}
             <div className="mt-4 text-xs text-[var(--rp-text-400)]">OR</div>
           </div>
 
