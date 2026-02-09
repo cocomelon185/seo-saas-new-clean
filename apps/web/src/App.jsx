@@ -1,72 +1,85 @@
 import React from "react";
 import { Navigate } from "react-router-dom";
-import Landing from "./pages/Landing.jsx";
-import AuditPage from "./pages/AuditPage.jsx";
-import RankPage from "./pages/RankPage.jsx";
-import ImprovePage from "./pages/ImprovePage.jsx";
-import PricingPage from "./pages/PricingPage.jsx";
-import UpgradePage from "./pages/UpgradePage.jsx";
-import UpgradeSuccessPage from "./pages/UpgradeSuccessPage.jsx";
-import PaymentFailurePage from "./pages/PaymentFailurePage.jsx";
-import PlanChangePage from "./pages/PlanChangePage.jsx";
-import PlanChangeSuccessPage from "./pages/PlanChangeSuccessPage.jsx";
-import AccountSettingsPage from "./pages/AccountSettingsPage.jsx";
-import AccountDeletedPage from "./pages/AccountDeletedPage.jsx";
-import ChangelogPage from "./pages/ChangelogPage.jsx";
-import AboutPage from "./pages/AboutPage.jsx";
-import SharedReportPage from "./pages/SharedReportPage.jsx";
-import StartAuditPage from "./pages/StartAuditPage.jsx";
-import SaasLandingAuditPage from "./pages/SaasLandingAuditPage.jsx";
-import BlogAuditChecklistPage from "./pages/BlogAuditChecklistPage.jsx";
-import AgencyAuditWorkflowPage from "./pages/AgencyAuditWorkflowPage.jsx";
-import EmbedWidgetPage from "./pages/EmbedWidgetPage.jsx";
-import EmbedFormPage from "./pages/EmbedFormPage.jsx";
-import LeadsPage from "./pages/LeadsPage.jsx";
-import LeadDetailPage from "./pages/LeadDetailPage.jsx";
-import SignInPage from "./pages/SignInPage.jsx";
-import SignUpPage from "./pages/SignUpPage.jsx";
-import ResetPasswordPage from "./pages/ResetPasswordPage.jsx";
-import VerifyEmailPage from "./pages/VerifyEmailPage.jsx";
-import TeamSettingsPage from "./pages/TeamSettingsPage.jsx";
-import AnalyticsPage from "./pages/AnalyticsPage.jsx";
-import InviteAcceptPage from "./pages/InviteAcceptPage.jsx";
-import InviteAcceptedPage from "./pages/InviteAcceptedPage.jsx";
-import SharePage from "./pages/SharePage.jsx";
 import RequireAuth from "./routes/RequireAuth.jsx";
 
+const Landing = React.lazy(() => import("./pages/Landing.jsx"));
+const AuditPage = React.lazy(() => import("./pages/AuditPage.jsx"));
+const RankPage = React.lazy(() => import("./pages/RankPage.jsx"));
+const ImprovePage = React.lazy(() => import("./pages/ImprovePage.jsx"));
+const PricingPage = React.lazy(() => import("./pages/PricingPage.jsx"));
+const UpgradePage = React.lazy(() => import("./pages/UpgradePage.jsx"));
+const UpgradeSuccessPage = React.lazy(() => import("./pages/UpgradeSuccessPage.jsx"));
+const PaymentFailurePage = React.lazy(() => import("./pages/PaymentFailurePage.jsx"));
+const PlanChangePage = React.lazy(() => import("./pages/PlanChangePage.jsx"));
+const PlanChangeSuccessPage = React.lazy(() => import("./pages/PlanChangeSuccessPage.jsx"));
+const AccountSettingsPage = React.lazy(() => import("./pages/AccountSettingsPage.jsx"));
+const AccountDeletedPage = React.lazy(() => import("./pages/AccountDeletedPage.jsx"));
+const ChangelogPage = React.lazy(() => import("./pages/ChangelogPage.jsx"));
+const AboutPage = React.lazy(() => import("./pages/AboutPage.jsx"));
+const SharedReportPage = React.lazy(() => import("./pages/SharedReportPage.jsx"));
+const StartAuditPage = React.lazy(() => import("./pages/StartAuditPage.jsx"));
+const SaasLandingAuditPage = React.lazy(() => import("./pages/SaasLandingAuditPage.jsx"));
+const BlogAuditChecklistPage = React.lazy(() => import("./pages/BlogAuditChecklistPage.jsx"));
+const AgencyAuditWorkflowPage = React.lazy(() => import("./pages/AgencyAuditWorkflowPage.jsx"));
+const EmbedWidgetPage = React.lazy(() => import("./pages/EmbedWidgetPage.jsx"));
+const EmbedFormPage = React.lazy(() => import("./pages/EmbedFormPage.jsx"));
+const LeadsPage = React.lazy(() => import("./pages/LeadsPage.jsx"));
+const LeadDetailPage = React.lazy(() => import("./pages/LeadDetailPage.jsx"));
+const SignInPage = React.lazy(() => import("./pages/SignInPage.jsx"));
+const SignUpPage = React.lazy(() => import("./pages/SignUpPage.jsx"));
+const ResetPasswordPage = React.lazy(() => import("./pages/ResetPasswordPage.jsx"));
+const VerifyEmailPage = React.lazy(() => import("./pages/VerifyEmailPage.jsx"));
+const TeamSettingsPage = React.lazy(() => import("./pages/TeamSettingsPage.jsx"));
+const AnalyticsPage = React.lazy(() => import("./pages/AnalyticsPage.jsx"));
+const InviteAcceptPage = React.lazy(() => import("./pages/InviteAcceptPage.jsx"));
+const InviteAcceptedPage = React.lazy(() => import("./pages/InviteAcceptedPage.jsx"));
+const SharePage = React.lazy(() => import("./pages/SharePage.jsx"));
+
+const suspenseWrap = (element) => (
+  <React.Suspense
+    fallback={(
+      <div className="min-h-screen bg-[#120a24] text-white flex items-center justify-center text-sm">
+        Loading...
+      </div>
+    )}
+  >
+    {element}
+  </React.Suspense>
+);
+
 const routes = [
-  { path: "/", element: <Landing /> },
-  { path: "/start", element: <StartAuditPage /> },
-  { path: "/shared", element: <SharePage /> },
-  { path: "/audit", element: <AuditPage /> },
-  { path: "/rank", element: <RequireAuth role="member"><RankPage /></RequireAuth> },
-  { path: "/improve", element: <RequireAuth role="member"><ImprovePage /></RequireAuth> },
-  { path: "/pricing", element: <PricingPage /> },
-  { path: "/upgrade", element: <UpgradePage /> },
-  { path: "/upgrade/success", element: <UpgradeSuccessPage /> },
-  { path: "/upgrade/failure", element: <PaymentFailurePage /> },
-  { path: "/plan-change", element: <PlanChangePage /> },
-  { path: "/plan-change/success", element: <PlanChangeSuccessPage /> },
-  { path: "/account/settings", element: <RequireAuth><AccountSettingsPage /></RequireAuth> },
-  { path: "/account/deleted", element: <AccountDeletedPage /> },
-  { path: "/changelog", element: <ChangelogPage /> },
-  { path: "/about", element: <AboutPage /> },
-  { path: "/use-cases/saas-landing-audit", element: <SaasLandingAuditPage /> },
-  { path: "/use-cases/blog-audit-checklist", element: <BlogAuditChecklistPage /> },
-  { path: "/use-cases/agency-audit-workflow", element: <AgencyAuditWorkflowPage /> },
-  { path: "/embed", element: <RequireAuth role="admin"><EmbedWidgetPage /></RequireAuth> },
-  { path: "/embed/form", element: <EmbedFormPage /> },
-  { path: "/leads", element: <RequireAuth role="admin"><LeadsPage /></RequireAuth> },
-  { path: "/leads/:id", element: <RequireAuth role="admin"><LeadDetailPage /></RequireAuth> },
-  { path: "/auth/signin", element: <SignInPage /> },
-  { path: "/auth/signup", element: <SignUpPage /> },
-  { path: "/auth/reset", element: <ResetPasswordPage /> },
-  { path: "/auth/verify", element: <VerifyEmailPage /> },
-  { path: "/admin/team", element: <RequireAuth role="admin"><TeamSettingsPage /></RequireAuth> },
-  { path: "/admin/analytics", element: <RequireAuth role="admin"><AnalyticsPage /></RequireAuth> },
-  { path: "/auth/invite", element: <InviteAcceptPage /> },
-  { path: "/auth/invite-accepted", element: <InviteAcceptedPage /> },
-  { path: "/r/:reportId", element: <SharedReportPage /> },
+  { path: "/", element: suspenseWrap(<Landing />) },
+  { path: "/start", element: suspenseWrap(<StartAuditPage />) },
+  { path: "/shared", element: suspenseWrap(<SharePage />) },
+  { path: "/audit", element: suspenseWrap(<AuditPage />) },
+  { path: "/rank", element: <RequireAuth role="member">{suspenseWrap(<RankPage />)}</RequireAuth> },
+  { path: "/improve", element: <RequireAuth role="member">{suspenseWrap(<ImprovePage />)}</RequireAuth> },
+  { path: "/pricing", element: suspenseWrap(<PricingPage />) },
+  { path: "/upgrade", element: suspenseWrap(<UpgradePage />) },
+  { path: "/upgrade/success", element: suspenseWrap(<UpgradeSuccessPage />) },
+  { path: "/upgrade/failure", element: suspenseWrap(<PaymentFailurePage />) },
+  { path: "/plan-change", element: suspenseWrap(<PlanChangePage />) },
+  { path: "/plan-change/success", element: suspenseWrap(<PlanChangeSuccessPage />) },
+  { path: "/account/settings", element: <RequireAuth>{suspenseWrap(<AccountSettingsPage />)}</RequireAuth> },
+  { path: "/account/deleted", element: suspenseWrap(<AccountDeletedPage />) },
+  { path: "/changelog", element: suspenseWrap(<ChangelogPage />) },
+  { path: "/about", element: suspenseWrap(<AboutPage />) },
+  { path: "/use-cases/saas-landing-audit", element: suspenseWrap(<SaasLandingAuditPage />) },
+  { path: "/use-cases/blog-audit-checklist", element: suspenseWrap(<BlogAuditChecklistPage />) },
+  { path: "/use-cases/agency-audit-workflow", element: suspenseWrap(<AgencyAuditWorkflowPage />) },
+  { path: "/embed", element: <RequireAuth role="admin">{suspenseWrap(<EmbedWidgetPage />)}</RequireAuth> },
+  { path: "/embed/form", element: suspenseWrap(<EmbedFormPage />) },
+  { path: "/leads", element: <RequireAuth role="admin">{suspenseWrap(<LeadsPage />)}</RequireAuth> },
+  { path: "/leads/:id", element: <RequireAuth role="admin">{suspenseWrap(<LeadDetailPage />)}</RequireAuth> },
+  { path: "/auth/signin", element: suspenseWrap(<SignInPage />) },
+  { path: "/auth/signup", element: suspenseWrap(<SignUpPage />) },
+  { path: "/auth/reset", element: suspenseWrap(<ResetPasswordPage />) },
+  { path: "/auth/verify", element: suspenseWrap(<VerifyEmailPage />) },
+  { path: "/admin/team", element: <RequireAuth role="admin">{suspenseWrap(<TeamSettingsPage />)}</RequireAuth> },
+  { path: "/admin/analytics", element: <RequireAuth role="admin">{suspenseWrap(<AnalyticsPage />)}</RequireAuth> },
+  { path: "/auth/invite", element: suspenseWrap(<InviteAcceptPage />) },
+  { path: "/auth/invite-accepted", element: suspenseWrap(<InviteAcceptedPage />) },
+  { path: "/r/:reportId", element: suspenseWrap(<SharedReportPage />) },
   { path: "*", element: <Navigate to="/" replace /> }
 ];
 

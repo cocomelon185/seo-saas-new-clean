@@ -1,6 +1,7 @@
 import AppShell from "../components/AppShell.jsx";
 import { Link } from "react-router-dom";
 import { IconDoc, IconBolt, IconReport, IconArrowRight } from "../components/Icons.jsx";
+import "../styles/marketing.css";
 
 export default function BlogAuditChecklistPage() {
   return (

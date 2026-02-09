@@ -4,6 +4,7 @@ import IssuesPanel from "../components/IssuesPanel.jsx";
 import AuditImpactBanner from "../components/AuditImpactBanner.jsx";
 import { decodeSharePayload } from "../utils/shareCodec.js";
 import { IconReport } from "../components/Icons.jsx";
+import "../styles/marketing.css";
 
 export default function SharePage() {
   const [data, setData] = useState(null);

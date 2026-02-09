@@ -1,6 +1,7 @@
 import AppShell from "../components/AppShell.jsx";
 import { Link } from "react-router-dom";
 import { IconShield, IconReport, IconBolt, IconArrowRight } from "../components/Icons.jsx";
+import "../styles/marketing.css";
 
 export default function AgencyAuditWorkflowPage() {
   return (

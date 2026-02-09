@@ -5,6 +5,7 @@ import AppShell from "../components/AppShell.jsx";
 import { IconArrowRight } from "../components/Icons.jsx";
 import { getAuthUser } from "../lib/authClient.js";
 import { startSubscriptionCheckout } from "../lib/billingClient.js";
+import "../styles/marketing.css";
 
 export default function PricingPage() {
   const isServer = typeof window === "undefined";
