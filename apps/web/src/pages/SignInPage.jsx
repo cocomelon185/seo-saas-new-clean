@@ -138,13 +138,13 @@ export default function SignInPage() {
             handleGoogleCredential(response.credential);
           }
         }
-      });
+      auto_select: false,
+});
       target.innerHTML = "";
-      window.google.accounts.id.renderButton(target, {
-        theme: "outline",
+      window.google.accounts.id.renderButton(target, {text: "signin_with",
+      theme: "outline",
         size: "large",
         shape: "pill",
-        text: "continue_with",
         width: "320"
       });
       if (provider === "google" && !googlePromptedRef.current) {
