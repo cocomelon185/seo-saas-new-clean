@@ -209,7 +209,20 @@ export default function AppShell({ title, subtitle, children }) {
                     <button
                       className="rp-topbar-pill hidden items-center gap-2 rounded-full border border-[var(--rp-gray-200)] px-3 py-2 text-xs text-[var(--rp-text-500)] md:flex"
                       onClick={() => {
+                        try {
+                          if (window.google?.accounts?.id) {
+                            window.google.accounts.id.disableAutoSelect();
+                            if (authUser?.email) {
+                              window.google.accounts.id.revoke(authUser.email, () => {});
+                            }
+                          }
+                        } catch {}
                         clearAuthSession();
+                        try {
+                          if (typeof window !== "undefined" && window.google && window.google.accounts && window.google.accounts.id) {
+                            window.google.accounts.id.disableAutoSelect();
+                          }
+                        } catch (_) {}
                         setAuthed(false);
                         navigate("/auth/signin");
                       }}
@@ -218,14 +231,9 @@ export default function AppShell({ title, subtitle, children }) {
                     </button>
                   </>
                 ) : (
-                  <>
-                    <Link to="/auth/signin" className="rp-topbar-pill hidden rounded-full border border-[var(--rp-indigo-700)]/50 bg-[rgba(109,40,217,0.08)] px-3 py-2 text-xs font-semibold text-[var(--rp-indigo-700)] md:inline-flex">
-                      Sign in
-                    </Link>
-                    <Link to="/auth/signup" className="rp-topbar-pill hidden rounded-full border border-[var(--rp-indigo-700)] bg-[var(--rp-indigo-700)] px-3 py-2 text-xs font-semibold text-white md:inline-flex">
-                      Create account
-                    </Link>
-                  </>
+                  <Link to="/auth/signup" className="rp-topbar-pill hidden rounded-full border border-[var(--rp-indigo-700)] bg-[var(--rp-indigo-700)] px-3 py-2 text-xs font-semibold text-white md:inline-flex">
+                    Create account
+                  </Link>
                 )}
               </div>
             </div>
