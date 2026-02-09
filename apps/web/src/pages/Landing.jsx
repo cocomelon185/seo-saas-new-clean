@@ -452,7 +452,7 @@ export default function Landing() {
           <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
             <p className="text-xs uppercase tracking-[0.3em] text-white/60">Who it’s for</p>
             <h2 className="mt-3 text-2xl font-semibold">Built for the teams that need SEO wins now.</h2>
-            <p className="mt-3 text-sm text-white/70">
+            <p className="mt-3 text-sm text-white/85">
               Each audience gets a tailored workflow with clear proof, faster fixes, and measurable impact.
             </p>
             <div className="mt-6 rp-marquee">
@@ -504,13 +504,16 @@ export default function Landing() {
                         alt={`${item.title} workspace`}
                         className="h-full w-full object-cover"
                         loading="lazy"
+                        width="320"
+                        height="160"
+                        decoding="async"
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-[#0b0616]/50 via-transparent to-transparent" />
                     </div>
                     <div className="h-1/2 p-5">
                       <div className="text-[15px] font-semibold text-white">{item.title}</div>
-                      <p className="mt-2 text-[13px] leading-relaxed text-white/70">{item.body}</p>
-                      <div className="mt-3 inline-flex items-center rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[10px] uppercase tracking-[0.24em] text-white/60">
+                      <p className="mt-2 text-[13px] leading-relaxed text-white/85">{item.body}</p>
+                      <div className="mt-3 inline-flex items-center rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[10px] uppercase tracking-[0.24em] text-white/75">
                         {item.stat}
                       </div>
                     </div>
@@ -563,13 +566,16 @@ export default function Landing() {
                         alt={`${item.title} workspace`}
                         className="h-full w-full object-cover"
                         loading="lazy"
+                        width="320"
+                        height="160"
+                        decoding="async"
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-[#0b0616]/50 via-transparent to-transparent" />
                     </div>
                     <div className="h-1/2 p-5">
                       <div className="text-[15px] font-semibold text-white">{item.title}</div>
-                      <p className="mt-2 text-[13px] leading-relaxed text-white/70">{item.body}</p>
-                      <div className="mt-3 inline-flex items-center rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[10px] uppercase tracking-[0.24em] text-white/60">
+                      <p className="mt-2 text-[13px] leading-relaxed text-white/85">{item.body}</p>
+                      <div className="mt-3 inline-flex items-center rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[10px] uppercase tracking-[0.24em] text-white/75">
                         {item.stat}
                       </div>
                     </div>

@@ -1,5 +1,3 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@500;600;700;800&display=swap");
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -15,9 +13,9 @@
     --rp-text-900: #1A0F2E;
     --rp-text-800: #23163F;
     --rp-text-700: #2E1F52;
-    --rp-text-600: #3D2C6B;
-    --rp-text-400: #8C79B6;
-    --rp-text-500: #6E5A9F;
+    --rp-text-600: #34255C;
+    --rp-text-400: #7C68A8;
+    --rp-text-500: #5F4B8E;
     --rp-success: #45E0A8;
     --rp-danger: #FF788F;
     --rp-warning: #F6C453;
