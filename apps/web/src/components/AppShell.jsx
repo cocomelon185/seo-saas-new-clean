@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { safeJson } from "../lib/safeJson.js";
 import { apiUrl } from "../lib/api.js";
 import CookieConsent from "./CookieConsent.jsx";
+import "../styles/app.css";
 
 function NavItem({ to, label }) {
   const { pathname } = useLocation();
@@ -241,11 +242,13 @@ export default function AppShell({ title, subtitle, children }) {
           </header>
 
           <main id="main-content" className="mx-auto w-full max-w-7xl px-4 py-10">
-            <div className="mb-7">
-              <p className="rp-kicker">RankyPulse</p>
-              <h1 className="text-3xl font-semibold tracking-tight text-[var(--rp-text-900)] md:text-4xl">{title}</h1>
-              {subtitle ? <p className="mt-2 max-w-2xl text-[var(--rp-text-500)]">{subtitle}</p> : null}
-            </div>
+            {title ? (
+              <div className="mb-7">
+                <p className="rp-kicker">RankyPulse</p>
+                <h1 className="text-3xl font-semibold tracking-tight text-[var(--rp-text-900)] md:text-4xl">{title}</h1>
+                {subtitle ? <p className="mt-2 max-w-2xl text-[var(--rp-text-500)]">{subtitle}</p> : null}
+              </div>
+            ) : null}
 
             <div className="rp-surface p-6 md:p-8">
               {children}

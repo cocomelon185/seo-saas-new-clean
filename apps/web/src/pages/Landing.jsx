@@ -35,7 +35,7 @@ export default function Landing() {
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-5 py-4">
           <Link to="/" className="flex items-center gap-3 text-lg font-semibold tracking-wide">
             <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/10">
-              <img src={logo} alt="RankyPulse" className="h-6 w-6" />
+              <img src={logo} alt="" aria-hidden="true" className="h-6 w-6" />
             </span>
             RankyPulse
           </Link>
@@ -157,7 +157,7 @@ export default function Landing() {
                     { label: "Wins", value: "22" }
                   ].map((stat) => (
                     <div key={stat.label} className="rounded-xl border border-white/10 bg-white/5 p-3">
-                      <div className="text-[10px] uppercase tracking-[0.2em] text-white/50">{stat.label}</div>
+                      <div className="text-[10px] uppercase tracking-[0.2em] text-white/80">{stat.label}</div>
                       <div className="mt-2 text-lg font-semibold">{stat.value}</div>
                     </div>
                   ))}
@@ -333,7 +333,7 @@ export default function Landing() {
                   <div className="mt-4 grid gap-3">
                     {feature.visual === "score" && (
                       <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                        <div className="text-[11px] uppercase tracking-[0.2em] text-white/50">SEO score gauge</div>
+                        <div className="text-[11px] uppercase tracking-[0.2em] text-white/80">SEO score gauge</div>
                         <div className="mt-2 flex items-center gap-3">
                           <div className="h-16 w-16 rounded-full" style={{ background: "conic-gradient(#a855f7 0 72%, rgba(255,255,255,0.1) 72% 100%)" }} />
                           <div>
@@ -345,7 +345,7 @@ export default function Landing() {
                     )}
                     {feature.visual === "run" && (
                       <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                        <div className="text-[11px] uppercase tracking-[0.2em] text-white/50">Audit progress</div>
+                        <div className="text-[11px] uppercase tracking-[0.2em] text-white/80">Audit progress</div>
                         <div className="mt-2 h-1.5 w-full rounded-full bg-white/10">
                           <div className="h-1.5 w-4/5 rounded-full bg-violet-400" />
                         </div>
@@ -427,7 +427,7 @@ export default function Landing() {
                         <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
                           {["New", "Contacted", "Won"].map((stage) => (
                             <div key={stage} className="rounded-xl border border-white/10 bg-white/5 px-2 py-2 text-center">
-                              <div className="text-[10px] uppercase tracking-[0.2em] text-white/50">{stage}</div>
+                              <div className="text-[10px] uppercase tracking-[0.2em] text-white/80">{stage}</div>
                               <div className="mt-2 text-sm font-semibold">{stage === "New" ? "38" : stage === "Contacted" ? "19" : "7"}</div>
                             </div>
                           ))}
@@ -437,7 +437,7 @@ export default function Landing() {
                     <div className="grid grid-cols-3 gap-3">
                       {feature.stats.map((stat) => (
                         <div key={stat} className="rounded-xl border border-white/10 bg-white/5 p-3">
-                          <div className="text-[10px] uppercase tracking-[0.2em] text-white/50">Metric</div>
+                          <div className="text-[10px] uppercase tracking-[0.2em] text-white/80">Metric</div>
                           <div className="mt-2 text-sm font-semibold text-white">{stat}</div>
                         </div>
                       ))}
@@ -502,7 +502,8 @@ export default function Landing() {
                     <div className="relative h-1/2 w-full">
                       <img
                         src={item.image}
-                        alt={`${item.title} workspace`}
+                        alt=""
+                        aria-hidden="true"
                         className="h-full w-full object-cover"
                         loading="lazy"
                         width="320"
@@ -564,7 +565,8 @@ export default function Landing() {
                     <div className="relative h-1/2 w-full">
                       <img
                         src={item.image}
-                        alt={`${item.title} workspace`}
+                        alt=""
+                        aria-hidden="true"
                         className="h-full w-full object-cover"
                         loading="lazy"
                         width="320"
@@ -608,7 +610,7 @@ export default function Landing() {
                       {item.mono}
                     </div>
                     <div className="mt-3 text-sm font-semibold text-white">{item.name}</div>
-                    <div className="text-[10px] uppercase tracking-[0.2em] text-white/50">{item.note}</div>
+                    <div className="text-[10px] uppercase tracking-[0.2em] text-white/80">{item.note}</div>
                   </div>
                 ))}
               </div>
@@ -621,7 +623,7 @@ export default function Landing() {
                   <div key={stat.label} className="rounded-2xl border border-white/10 bg-white/5 p-4">
                     <div className="text-xs text-white/75">{stat.label}</div>
                     <div className="mt-2 text-xl font-semibold text-white">{stat.value}</div>
-                    <div className="mt-1 text-[11px] text-white/50">{stat.note}</div>
+                    <div className="mt-1 text-[11px] text-white/80">{stat.note}</div>
                   </div>
                 ))}
               </div>
