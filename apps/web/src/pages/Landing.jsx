@@ -45,13 +45,13 @@ export default function Landing() {
             <Link to="/about" className="hover:text-white">Resources</Link>
           </nav>
           <div className="flex items-center gap-2">
-            <Link to="/auth/signin?provider=google" className="rounded-xl border border-white/10 bg-white/10 px-4 py-2 text-[11px] font-semibold text-white/95 hover:border-white/30 hover:bg-white/20">
+            <Link to="/auth/signin?provider=google" className="rounded-xl border border-white/20 bg-white/20 px-4 py-2 text-[11px] font-semibold text-white hover:border-white/40 hover:bg-white/30">
               Sign in with Google
             </Link>
             <Link to="/auth/signin" className="rounded-xl border border-white/20 px-4 py-2 text-xs font-semibold text-white hover:border-white/40 hover:bg-white/5">
               Sign in
             </Link>
-            <Link to="/auth/signup" className="rounded-xl bg-violet-500 px-4 py-2 text-xs font-semibold text-white shadow-[0_18px_40px_rgba(124,58,237,0.35)] hover:bg-violet-400">
+            <Link to="/auth/signup" className="rounded-xl bg-violet-600 px-4 py-2 text-xs font-semibold text-white shadow-[0_18px_40px_rgba(109,40,217,0.45)] hover:bg-violet-500">
               Create account
             </Link>
           </div>
@@ -74,7 +74,7 @@ export default function Landing() {
                 teams ship improvements with confidence.
               </p>
               <div className="mt-6 flex flex-wrap items-center gap-4">
-                <Link to="/start" className="rounded-xl bg-violet-500 px-5 py-3 text-sm font-semibold text-white shadow-[0_18px_40px_rgba(124,58,237,0.35)] hover:bg-violet-400">
+                <Link to="/start" className="rounded-xl bg-violet-600 px-5 py-3 text-sm font-semibold text-white shadow-[0_18px_40px_rgba(109,40,217,0.45)] hover:bg-violet-500">
                   Run Free Audit
                 </Link>
                 <Link to="/shared" className="rounded-xl border border-white/20 px-5 py-3 text-sm font-semibold text-white hover:border-white/40 hover:bg-white/5">
@@ -645,7 +645,7 @@ export default function Landing() {
               <h2 className="mt-2 text-2xl font-semibold">Simple plans for growing teams.</h2>
               <p className="mt-2 text-sm text-white/95">Upgrade anytime. Cancel anytime.</p>
             </div>
-            <Link to="/pricing" className="mt-4 rounded-xl bg-violet-500 px-5 py-3 text-sm font-semibold text-white shadow-[0_18px_40px_rgba(124,58,237,0.35)] hover:bg-violet-400 md:mt-0">
+            <Link to="/pricing" className="mt-4 rounded-xl bg-violet-600 px-5 py-3 text-sm font-semibold text-white shadow-[0_18px_40px_rgba(109,40,217,0.45)] hover:bg-violet-500 md:mt-0">
               See pricing
             </Link>
           </div>
@@ -656,7 +656,7 @@ export default function Landing() {
             <h2 className="text-3xl font-semibold">Ready to find your biggest SEO wins?</h2>
             <p className="mt-3 text-sm text-white/95">No credit card required • Results in under 60 seconds</p>
             <div className="mt-6 flex flex-wrap justify-center gap-4">
-              <Link to="/start" className="rounded-xl bg-violet-500 px-5 py-3 text-sm font-semibold text-white shadow-[0_18px_40px_rgba(124,58,237,0.35)] hover:bg-violet-400">
+              <Link to="/start" className="rounded-xl bg-violet-600 px-5 py-3 text-sm font-semibold text-white shadow-[0_18px_40px_rgba(109,40,217,0.45)] hover:bg-violet-500">
                 Run Free Audit
               </Link>
               <Link to="/shared" className="rounded-xl border border-white/20 px-5 py-3 text-sm font-semibold text-white hover:border-white/40 hover:bg-white/5">
