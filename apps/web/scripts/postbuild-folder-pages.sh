@@ -17,3 +17,21 @@ for p in \
     cp -f "dist/$p.html" "dist/$p/index.html"
   fi
 done
+
+if [[ -f "dist/app.html" ]]; then
+  for p in \
+    audit \
+    rank \
+    improve \
+    upgrade \
+    plan-change \
+    account \
+    admin \
+    auth \
+    embed \
+    leads \
+    r; do
+    mkdir -p "dist/$p"
+    cp -f "dist/app.html" "dist/$p/index.html"
+  done
+fi
