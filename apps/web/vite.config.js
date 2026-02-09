@@ -1,36 +1,8 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
-function deferCss() {
-  return {
-    name: "defer-css",
-    enforce: "post",
-    transformIndexHtml(html) {
-      return html.replace(/<link\s+[^>]*rel=["']stylesheet["'][^>]*>/gi, (match) => {
-        const hrefMatch = match.match(/href=["']([^"']+)["']/i);
-        if (!hrefMatch) return match;
-        const href = hrefMatch[1];
-        const integrityMatch = match.match(/integrity=["']([^"']+)["']/i);
-        const crossoriginMatch = match.match(/crossorigin(?:=["']([^"']*)["'])?/i);
-        const referrerMatch = match.match(/referrerpolicy=["']([^"']+)["']/i);
-        const attrs = [
-          integrityMatch ? ` integrity="${integrityMatch[1]}"` : "",
-          crossoriginMatch ? (crossoriginMatch[1] ? ` crossorigin="${crossoriginMatch[1]}"` : " crossorigin") : "",
-          referrerMatch ? ` referrerpolicy="${referrerMatch[1]}"` : ""
-        ].join("");
-
-        return [
-          `<link rel="preload" as="style" href="${href}"${attrs}>`,
-          `<link rel="stylesheet" href="${href}"${attrs} media="print" data-rp-defer="style">`,
-          `<noscript><link rel="stylesheet" href="${href}"${attrs}></noscript>`
-        ].join("");
-      });
-    }
-  };
-}
-
 export default defineConfig({
-  plugins: [react(), deferCss()],
+  plugins: [react()],
   build: {
     modulePreload: false,
     rollupOptions: {
