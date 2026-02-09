@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "NODE_OPTIONS=--no-warnings npm run images:opt && NODE_OPTIONS=--no-warnings vite-react-ssg build && NODE_OPTIONS=--no-warnings vite build --mode app",
+    "build": "NODE_OPTIONS=--no-warnings npm run images:opt && NODE_OPTIONS=--no-warnings TAILWIND_CONFIG=./tailwind.marketing.config.cjs vite-react-ssg build && NODE_OPTIONS=--no-warnings TAILWIND_CONFIG=./tailwind.app.config.cjs vite build --mode app",
     "lint": "eslint .",
     "preview": "vite preview",
     "start": "vite preview --host 0.0.0.0 --port $PORT",

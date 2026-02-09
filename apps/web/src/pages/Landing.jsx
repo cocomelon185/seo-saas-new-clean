@@ -38,14 +38,14 @@ export default function Landing() {
             </span>
             RankyPulse
           </Link>
-          <nav className="hidden items-center gap-6 text-sm text-white/85 md:flex">
+          <nav className="hidden items-center gap-6 text-sm text-white/95 md:flex">
             <a href="#how-it-works" className="hover:text-white">How it works</a>
             <a href="#features" className="hover:text-white">Features</a>
             <Link to="/pricing" className="hover:text-white">Pricing</Link>
             <Link to="/about" className="hover:text-white">Resources</Link>
           </nav>
           <div className="flex items-center gap-2">
-            <Link to="/auth/signin?provider=google" className="rounded-xl border border-white/10 bg-white/10 px-4 py-2 text-[11px] font-semibold text-white/90 hover:border-white/30 hover:bg-white/20">
+            <Link to="/auth/signin?provider=google" className="rounded-xl border border-white/10 bg-white/10 px-4 py-2 text-[11px] font-semibold text-white/95 hover:border-white/30 hover:bg-white/20">
               Sign in with Google
             </Link>
             <Link to="/auth/signin" className="rounded-xl border border-white/20 px-4 py-2 text-xs font-semibold text-white hover:border-white/40 hover:bg-white/5">
@@ -62,14 +62,14 @@ export default function Landing() {
         <section className="pt-16 pb-14">
           <div className="grid items-center gap-12 lg:grid-cols-[1.05fr_0.95fr]">
             <div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-white/85">
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-white/95">
                 <span className="h-1.5 w-1.5 rounded-full bg-violet-400" />
                 Premium SEO audits
               </div>
               <h1 className="mt-5 text-4xl font-semibold leading-tight md:text-5xl">
                 The SEO audit command center built for fast wins.
               </h1>
-              <p className="mt-4 text-base leading-7 text-white/85">
+              <p className="mt-4 text-base leading-7 text-white/95">
                 RankyPulse turns any URL into a prioritized fix plan with clear evidence, visuals, and next steps so
                 teams ship improvements with confidence.
               </p>
@@ -102,14 +102,14 @@ export default function Landing() {
                 </button>
               </form>
               {!isValidAuditUrl && (
-                <div className="mt-2 text-xs text-white/90">
+                <div className="mt-2 text-xs text-white/95">
                   Enter a valid URL to enable the audit button.
                 </div>
               )}
-              <Link to="/start" className="mt-3 inline-flex text-xs font-semibold text-white/85 underline hover:text-white">
+              <Link to="/start" className="mt-3 inline-flex text-xs font-semibold text-white/95 underline hover:text-white">
                 Run an Audit
               </Link>
-              <p className="mt-4 text-xs text-white/90">No credit card required • Results in under 60 seconds</p>
+              <p className="mt-4 text-xs text-white/95">No credit card required • Results in under 60 seconds</p>
               <div className="mt-6 grid gap-3 sm:grid-cols-3">
                 {[
                   { label: "Audits run", value: "18,540" },
@@ -117,20 +117,20 @@ export default function Landing() {
                   { label: "Avg. lift", value: "+27%" }
                 ].map((item) => (
                   <div key={item.label} className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                    <div className="text-xs text-white/90">{item.label}</div>
+                    <div className="text-xs text-white/95">{item.label}</div>
                     <div className="mt-1 text-lg font-semibold text-white">{item.value}</div>
                   </div>
                 ))}
               </div>
             </div>
             <div className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-[0_30px_80px_rgba(0,0,0,0.45)]">
-              <div className="flex items-center justify-between text-xs text-white/90">
+              <div className="flex items-center justify-between text-xs text-white/95">
                 <span>Product preview</span>
                 <span className="rounded-full border border-white/10 px-2 py-1">Live</span>
               </div>
               <div className="mt-6 grid gap-4">
                 <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                  <div className="flex items-center justify-between text-xs text-white/90">
+                  <div className="flex items-center justify-between text-xs text-white/95">
                     <span>SEO Health Score</span>
                     <span className="rounded-full border border-white/10 px-2 py-1">92</span>
                   </div>
@@ -156,14 +156,14 @@ export default function Landing() {
                     { label: "Wins", value: "22" }
                   ].map((stat) => (
                     <div key={stat.label} className="rounded-xl border border-white/10 bg-white/5 p-3">
-                      <div className="text-[10px] uppercase tracking-[0.2em] text-white/90">{stat.label}</div>
+                      <div className="text-[10px] uppercase tracking-[0.2em] text-white/95">{stat.label}</div>
                       <div className="mt-2 text-lg font-semibold">{stat.value}</div>
                     </div>
                   ))}
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                  <div className="text-xs font-semibold uppercase tracking-[0.3em] text-white/90">Priority queue</div>
-                  <div className="mt-3 space-y-2 text-sm text-white/90">
+                  <div className="text-xs font-semibold uppercase tracking-[0.3em] text-white/95">Priority queue</div>
+                  <div className="mt-3 space-y-2 text-sm text-white/95">
                     {[
                       "Fix missing H1 on hero page",
                       "Compress large PNG assets",
@@ -187,18 +187,18 @@ export default function Landing() {
         <section className="pb-14">
           <div className="grid gap-10 lg:grid-cols-2">
             <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
-              <p className="text-xs uppercase tracking-[0.3em] text-white/90">The problem</p>
+              <p className="text-xs uppercase tracking-[0.3em] text-white/95">The problem</p>
               <h2 className="mt-3 text-2xl font-semibold">SEO teams drown in noisy audits.</h2>
-              <ul className="mt-4 space-y-3 text-sm text-white/85">
+              <ul className="mt-4 space-y-3 text-sm text-white/95">
                 <li>• Hundreds of issues, no prioritization.</li>
                 <li>• Stakeholders need proof, not guesswork.</li>
                 <li>• Fixes take too long to ship.</li>
               </ul>
             </div>
             <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
-              <p className="text-xs uppercase tracking-[0.3em] text-white/90">The solution</p>
+              <p className="text-xs uppercase tracking-[0.3em] text-white/95">The solution</p>
               <h2 className="mt-3 text-2xl font-semibold">RankyPulse turns audits into action.</h2>
-              <ul className="mt-4 space-y-3 text-sm text-white/85">
+              <ul className="mt-4 space-y-3 text-sm text-white/95">
                 <li>• Prioritized fix plans with evidence.</li>
                 <li>• Visual snapshots to align teams fast.</li>
                 <li>• Reports built for fast approvals.</li>
@@ -209,7 +209,7 @@ export default function Landing() {
 
         <section id="how-it-works" className="pb-14">
           <div className="flex flex-col gap-3">
-            <p className="text-xs uppercase tracking-[0.3em] text-white/90">How it works</p>
+            <p className="text-xs uppercase tracking-[0.3em] text-white/95">How it works</p>
             <h2 className="text-3xl font-semibold">From URL to fixes in minutes.</h2>
           </div>
           <div className="mt-8 grid gap-6 md:grid-cols-3">
@@ -220,7 +220,7 @@ export default function Landing() {
             ].map((step) => (
               <div key={step.title} className="rounded-2xl border border-white/10 bg-white/5 p-5">
                 <div className="text-lg font-semibold">{step.title}</div>
-                <p className="mt-3 text-sm text-white/85">{step.desc}</p>
+                <p className="mt-3 text-sm text-white/95">{step.desc}</p>
               </div>
             ))}
           </div>
@@ -228,9 +228,9 @@ export default function Landing() {
 
         <section id="features" className="pb-14">
           <div className="flex flex-col gap-3">
-            <p className="text-xs uppercase tracking-[0.3em] text-white/90">Core features</p>
+            <p className="text-xs uppercase tracking-[0.3em] text-white/95">Core features</p>
             <h2 className="text-3xl font-semibold">Everything you need to move rankings.</h2>
-            <p className="text-sm text-white/85">Every feature below includes a unique visual and a clear outcome.</p>
+            <p className="text-sm text-white/95">Every feature below includes a unique visual and a clear outcome.</p>
           </div>
           <div className="mt-8 grid gap-5">
             {[
@@ -300,18 +300,18 @@ export default function Landing() {
             ].map((feature, idx) => (
               <div key={feature.title} className="grid gap-4 rounded-3xl border border-white/10 bg-white/5 p-6 shadow-[0_24px_60px_rgba(0,0,0,0.35)] md:grid-cols-[1.1fr_0.9fr]">
                 <div>
-                  <div className="text-xs uppercase tracking-[0.3em] text-white/90">{feature.title}</div>
+                  <div className="text-xs uppercase tracking-[0.3em] text-white/95">{feature.title}</div>
                   <h3 className="mt-3 text-2xl font-semibold text-white">{feature.title}</h3>
-                  <p className="mt-3 text-sm text-white/85">{feature.description}</p>
-                  <p className="mt-3 text-sm text-white/90">{feature.outcome}</p>
+                  <p className="mt-3 text-sm text-white/95">{feature.description}</p>
+                  <p className="mt-3 text-sm text-white/95">{feature.outcome}</p>
                   <div className="mt-4 flex flex-wrap gap-2">
                     {feature.stats.map((stat) => (
-                      <span key={stat} className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-white/85">
+                      <span key={stat} className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-white/95">
                         {stat}
                       </span>
                     ))}
                   </div>
-                  <ul className="mt-4 grid gap-2 text-sm text-white/85">
+                  <ul className="mt-4 grid gap-2 text-sm text-white/95">
                     {feature.bullets.map((point) => (
                       <li key={point} className="flex items-center gap-2">
                         <span className="h-2 w-2 rounded-full bg-violet-400" />
@@ -325,30 +325,30 @@ export default function Landing() {
                   </Link>
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                  <div className="flex items-center justify-between text-xs text-white/90">
+                  <div className="flex items-center justify-between text-xs text-white/95">
                     <span>Feature snapshot</span>
                     <span className="rounded-full border border-white/10 px-2 py-1">Live</span>
                   </div>
                   <div className="mt-4 grid gap-3">
                     {feature.visual === "score" && (
                       <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                        <div className="text-[11px] uppercase tracking-[0.2em] text-white/90">SEO score gauge</div>
+                        <div className="text-[11px] uppercase tracking-[0.2em] text-white/95">SEO score gauge</div>
                         <div className="mt-2 flex items-center gap-3">
                           <div className="h-16 w-16 rounded-full" style={{ background: "conic-gradient(#a855f7 0 72%, rgba(255,255,255,0.1) 72% 100%)" }} />
                           <div>
                             <div className="text-xl font-semibold leading-none">92</div>
-                            <div className="text-[11px] text-white/90">Healthy</div>
+                            <div className="text-[11px] text-white/95">Healthy</div>
                           </div>
                         </div>
                       </div>
                     )}
                     {feature.visual === "run" && (
                       <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                        <div className="text-[11px] uppercase tracking-[0.2em] text-white/90">Audit progress</div>
+                        <div className="text-[11px] uppercase tracking-[0.2em] text-white/95">Audit progress</div>
                         <div className="mt-2 h-1.5 w-full rounded-full bg-white/10">
                           <div className="h-1.5 w-4/5 rounded-full bg-violet-400" />
                         </div>
-                        <div className="mt-2 grid gap-1.5 text-[12px] text-white/85">
+                        <div className="mt-2 grid gap-1.5 text-[12px] text-white/95">
                           <div className="flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-violet-400" />Crawling pages</div>
                           <div className="flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-violet-400" />Analyzing issues</div>
                           <div className="flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-violet-400" />Generating report</div>
@@ -357,7 +357,7 @@ export default function Landing() {
                     )}
                     {feature.visual === "priorities" && (
                       <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                        <div className="text-xs text-white/90">Priority queue</div>
+                        <div className="text-xs text-white/95">Priority queue</div>
                         <div className="mt-3 space-y-2">
                           {["Fix missing H1", "Compress hero image", "Resolve redirects"].map((item) => (
                             <div key={item} className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm">
@@ -370,7 +370,7 @@ export default function Landing() {
                     )}
                     {feature.visual === "rank" && (
                       <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                        <div className="text-xs text-white/90">Rank movement</div>
+                        <div className="text-xs text-white/95">Rank movement</div>
                         <svg viewBox="0 0 240 64" className="mt-3 h-16 w-full" aria-label="Rank trend">
                           <defs>
                             <linearGradient id={`featureTrend-${idx}`} x1="0" y1="0" x2="1" y2="0">
@@ -388,7 +388,7 @@ export default function Landing() {
                     )}
                     {feature.visual === "improve" && (
                       <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                        <div className="text-xs text-white/90">Content brief</div>
+                        <div className="text-xs text-white/95">Content brief</div>
                         <div className="mt-3 space-y-2">
                           {["Add comparison section", "Include FAQ block", "Update meta description"].map((item) => (
                             <div key={item} className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm">
@@ -400,7 +400,7 @@ export default function Landing() {
                     )}
                     {feature.visual === "embed" && (
                       <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                        <div className="text-xs text-white/90">Lead funnel</div>
+                        <div className="text-xs text-white/95">Lead funnel</div>
                         <div className="mt-3 space-y-2">
                           {[
                             { label: "Views", value: "1,240", width: "w-full" },
@@ -408,7 +408,7 @@ export default function Landing() {
                             { label: "Leads", value: "124", width: "w-1/3" }
                           ].map((row) => (
                             <div key={row.label}>
-                              <div className="flex items-center justify-between text-xs text-white/90">
+                              <div className="flex items-center justify-between text-xs text-white/95">
                                 <span>{row.label}</span>
                                 <span>{row.value}</span>
                               </div>
@@ -422,11 +422,11 @@ export default function Landing() {
                     )}
                     {feature.visual === "leads" && (
                       <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                        <div className="text-xs text-white/90">Pipeline snapshot</div>
+                        <div className="text-xs text-white/95">Pipeline snapshot</div>
                         <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
                           {["New", "Contacted", "Won"].map((stage) => (
                             <div key={stage} className="rounded-xl border border-white/10 bg-white/5 px-2 py-2 text-center">
-                              <div className="text-[10px] uppercase tracking-[0.2em] text-white/90">{stage}</div>
+                              <div className="text-[10px] uppercase tracking-[0.2em] text-white/95">{stage}</div>
                               <div className="mt-2 text-sm font-semibold">{stage === "New" ? "38" : stage === "Contacted" ? "19" : "7"}</div>
                             </div>
                           ))}
@@ -436,7 +436,7 @@ export default function Landing() {
                     <div className="grid grid-cols-3 gap-3">
                       {feature.stats.map((stat) => (
                         <div key={stat} className="rounded-xl border border-white/10 bg-white/5 p-3">
-                          <div className="text-[10px] uppercase tracking-[0.2em] text-white/90">Metric</div>
+                          <div className="text-[10px] uppercase tracking-[0.2em] text-white/95">Metric</div>
                           <div className="mt-2 text-sm font-semibold text-white">{stat}</div>
                         </div>
                       ))}
@@ -450,9 +450,9 @@ export default function Landing() {
 
         <section className="pb-14">
           <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
-            <p className="text-xs uppercase tracking-[0.3em] text-white/90">Who it’s for</p>
+            <p className="text-xs uppercase tracking-[0.3em] text-white/95">Who it’s for</p>
             <h2 className="mt-3 text-2xl font-semibold">Built for the teams that need SEO wins now.</h2>
-            <p className="mt-3 text-sm text-white/85">
+            <p className="mt-3 text-sm text-white/95">
               Each audience gets a tailored workflow with clear proof, faster fixes, and measurable impact.
             </p>
             <div className="mt-6 rp-marquee">
@@ -513,8 +513,8 @@ export default function Landing() {
                     </div>
                     <div className="h-1/2 p-5">
                       <div className="text-[15px] font-semibold text-white">{item.title}</div>
-                      <p className="mt-2 text-[13px] leading-relaxed text-white/85">{item.body}</p>
-                      <div className="mt-3 inline-flex items-center rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[10px] uppercase tracking-[0.24em] text-white/90">
+                      <p className="mt-2 text-[13px] leading-relaxed text-white/95">{item.body}</p>
+                      <div className="mt-3 inline-flex items-center rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[10px] uppercase tracking-[0.24em] text-white/95">
                         {item.stat}
                       </div>
                     </div>
@@ -576,8 +576,8 @@ export default function Landing() {
                     </div>
                     <div className="h-1/2 p-5">
                       <div className="text-[15px] font-semibold text-white">{item.title}</div>
-                      <p className="mt-2 text-[13px] leading-relaxed text-white/85">{item.body}</p>
-                      <div className="mt-3 inline-flex items-center rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[10px] uppercase tracking-[0.24em] text-white/90">
+                      <p className="mt-2 text-[13px] leading-relaxed text-white/95">{item.body}</p>
+                      <div className="mt-3 inline-flex items-center rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[10px] uppercase tracking-[0.24em] text-white/95">
                         {item.stat}
                       </div>
                     </div>
@@ -592,7 +592,7 @@ export default function Landing() {
           <div className="grid gap-8 md:grid-cols-[1.2fr_0.8fr]">
             <div className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-[0_20px_50px_rgba(0,0,0,0.25)]">
               <div className="flex items-center justify-between">
-                <p className="text-xs uppercase tracking-[0.35em] text-white/90">Trusted by growth teams</p>
+                <p className="text-xs uppercase tracking-[0.35em] text-white/95">Trusted by growth teams</p>
                 <span className="text-[10px] uppercase tracking-[0.3em] text-white/40">Real teams</span>
               </div>
               <div className="mt-5 grid gap-4 sm:grid-cols-3 xl:grid-cols-6">
@@ -609,7 +609,7 @@ export default function Landing() {
                       {item.mono}
                     </div>
                     <div className="mt-3 text-sm font-semibold text-white">{item.name}</div>
-                    <div className="text-[10px] uppercase tracking-[0.2em] text-white/90">{item.note}</div>
+                    <div className="text-[10px] uppercase tracking-[0.2em] text-white/95">{item.note}</div>
                   </div>
                 ))}
               </div>
@@ -620,19 +620,19 @@ export default function Landing() {
                   { label: "Fixes shipped", value: "41k", note: "High-impact wins" }
                 ].map((stat) => (
                   <div key={stat.label} className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                    <div className="text-xs text-white/90">{stat.label}</div>
+                    <div className="text-xs text-white/95">{stat.label}</div>
                     <div className="mt-2 text-xl font-semibold text-white">{stat.value}</div>
-                    <div className="mt-1 text-[11px] text-white/90">{stat.note}</div>
+                    <div className="mt-1 text-[11px] text-white/95">{stat.note}</div>
                   </div>
                 ))}
               </div>
             </div>
             <div className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-[0_20px_50px_rgba(0,0,0,0.35)]">
-              <p className="text-base leading-7 text-white/90">
+              <p className="text-base leading-7 text-white/95">
                 “RankyPulse gave us a crystal-clear fix list and the proof we needed to prioritize work with stakeholders.”
               </p>
               <div className="mt-4 text-sm font-semibold text-white">Lena Ortega</div>
-              <div className="text-xs text-white/90">Director of Growth, Everlight</div>
+              <div className="text-xs text-white/95">Director of Growth, Everlight</div>
             </div>
           </div>
         </section>
@@ -641,9 +641,9 @@ export default function Landing() {
         <section id="pricing" className="pb-14">
           <div className="rounded-2xl border border-white/10 bg-white/5 p-6 md:flex md:items-center md:justify-between">
             <div>
-              <p className="text-xs uppercase tracking-[0.3em] text-white/90">Pricing</p>
+              <p className="text-xs uppercase tracking-[0.3em] text-white/95">Pricing</p>
               <h2 className="mt-2 text-2xl font-semibold">Simple plans for growing teams.</h2>
-              <p className="mt-2 text-sm text-white/85">Upgrade anytime. Cancel anytime.</p>
+              <p className="mt-2 text-sm text-white/95">Upgrade anytime. Cancel anytime.</p>
             </div>
             <Link to="/pricing" className="mt-4 rounded-xl bg-violet-500 px-5 py-3 text-sm font-semibold text-white shadow-[0_18px_40px_rgba(124,58,237,0.35)] hover:bg-violet-400 md:mt-0">
               See pricing
@@ -654,7 +654,7 @@ export default function Landing() {
         <section className="pb-20">
           <div className="rounded-3xl border border-white/10 bg-gradient-to-br from-violet-500/30 via-white/5 to-transparent p-8 text-center shadow-[0_30px_90px_rgba(0,0,0,0.45)]">
             <h2 className="text-3xl font-semibold">Ready to find your biggest SEO wins?</h2>
-            <p className="mt-3 text-sm text-white/85">No credit card required • Results in under 60 seconds</p>
+            <p className="mt-3 text-sm text-white/95">No credit card required • Results in under 60 seconds</p>
             <div className="mt-6 flex flex-wrap justify-center gap-4">
               <Link to="/start" className="rounded-xl bg-violet-500 px-5 py-3 text-sm font-semibold text-white shadow-[0_18px_40px_rgba(124,58,237,0.35)] hover:bg-violet-400">
                 Run Free Audit
@@ -669,7 +669,7 @@ export default function Landing() {
       </div>
 
       <footer className="border-t border-white/10 py-10">
-        <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-5 text-sm text-white/85 md:flex-row md:items-center md:justify-between">
+        <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-5 text-sm text-white/95 md:flex-row md:items-center md:justify-between">
           <span>© {new Date().getFullYear()} RankyPulse</span>
           <div className="flex flex-wrap gap-4">
             <Link to="/about" className="hover:text-white">About</Link>

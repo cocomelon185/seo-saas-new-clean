@@ -1,0 +1,27 @@
+/** @type {import('tailwindcss').Config} */
+module.exports = {
+  darkMode: ["class"],
+  content: [
+    "./index.html",
+    "./src/pages/Landing.jsx",
+    "./src/pages/StartAuditPage.jsx",
+    "./src/pages/PricingPage.jsx",
+    "./src/pages/AboutPage.jsx",
+    "./src/pages/ChangelogPage.jsx",
+    "./src/pages/SharePage.jsx",
+    "./src/pages/SaasLandingAuditPage.jsx",
+    "./src/pages/BlogAuditChecklistPage.jsx",
+    "./src/pages/AgencyAuditWorkflowPage.jsx",
+    "./src/components/MarketingShell.jsx",
+    "./src/components/DeferredRender.jsx",
+    "./src/components/CookieConsent.jsx",
+    "./src/components/StartAuditExtras.jsx",
+    "./src/components/Icons.jsx",
+    "./src/components/ScreenshotGrid.jsx",
+    "./src/components/Navbars/IndexNavbar.jsx",
+    "./src/index.css",
+    "./src/styles/marketing.css"
+  ],
+  theme: { extend: {} },
+  plugins: [],
+};
