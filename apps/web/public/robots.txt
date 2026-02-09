@@ -1,0 +1,17 @@
+User-agent: *
+Allow: /
+
+Disallow: /api/
+Disallow: /auth/
+Disallow: /account/
+Disallow: /admin/
+Disallow: /embed/
+Disallow: /leads
+Disallow: /rank
+Disallow: /improve
+Disallow: /audit
+Disallow: /r/
+Disallow: /upgrade
+Disallow: /plan-change
+
+Sitemap: https://rankypulse.com/sitemap.xml

@@ -2,6 +2,7 @@ import React, { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import logo from "../assets/rankypulse-logo.svg";
 import CookieConsent from "../components/CookieConsent.jsx";
+import DeferredRender from "../components/DeferredRender.jsx";
 
 export default function Landing() {
   const navigate = useNavigate();
@@ -182,6 +183,7 @@ export default function Landing() {
 
         
 
+        <DeferredRender>
         <section className="pb-14">
           <div className="grid gap-10 lg:grid-cols-2">
             <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
@@ -655,6 +657,7 @@ export default function Landing() {
             </div>
           </div>
         </section>
+        </DeferredRender>
       </div>
 
       <footer className="border-t border-white/10 py-10">

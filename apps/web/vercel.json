@@ -1,6 +1,14 @@
 {
   "rewrites": [
     {
+      "source": "/robots.txt",
+      "destination": "/robots.txt"
+    },
+    {
+      "source": "/sitemap.xml",
+      "destination": "/sitemap.xml"
+    },
+    {
       "source": "/api/:path*",
       "destination": "https://api.rankypulse.com/api/:path*"
     },

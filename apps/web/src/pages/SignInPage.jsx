@@ -137,12 +137,13 @@ export default function SignInPage() {
           if (response?.credential) {
             handleGoogleCredential(response.credential);
           }
-        }
-      auto_select: false,
-});
+        },
+        auto_select: false
+      });
       target.innerHTML = "";
-      window.google.accounts.id.renderButton(target, {text: "signin_with",
-      theme: "outline",
+      window.google.accounts.id.renderButton(target, {
+        text: "signin_with",
+        theme: "outline",
         size: "large",
         shape: "pill",
         width: "320"
