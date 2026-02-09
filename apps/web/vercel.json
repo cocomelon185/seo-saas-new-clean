@@ -1,4 +1,5 @@
 {
+  "cleanUrls": true,
   "rewrites": [
     {
       "source": "/robots.txt",
@@ -13,7 +14,7 @@
       "destination": "https://api.rankypulse.com/api/:path*"
     },
     {
-      "source": "/(.*)",
+      "source": "/r/:path*",
       "destination": "/index.html"
     }
   ]
