@@ -1,9 +1,10 @@
 import { defineConfig } from "@playwright/test";
 
 const isCI = Boolean(process.env.CI);
-const defaultBrowser = process.env.PW_BROWSER || (isCI ? "chromium" : "webkit");
+const defaultBrowser = process.env.PW_BROWSER || "chromium";
 const isChromium = defaultBrowser === "chromium";
 const isDarwin = process.platform === "darwin";
+const chromiumChannel = isDarwin && isChromium ? "chrome" : undefined;
 
 if (isDarwin && !isCI) {
   process.env.PLAYWRIGHT_HOST_PLATFORM_OVERRIDE =
@@ -13,6 +14,7 @@ if (isDarwin && !isCI) {
 const testPort = process.env.RP_TEST_PORT || "5173";
 const testHost = process.env.RP_TEST_HOST || "127.0.0.1";
 const baseURL = process.env.RP_BASE_URL || `http://${testHost}:${testPort}`;
+const disableWebServer = process.env.RP_DISABLE_WEBSERVER === "true";
 
 export default defineConfig({
   testDir: "./tests",
@@ -27,6 +29,7 @@ export default defineConfig({
     trace: "on-first-retry",
     launchOptions: isChromium
       ? {
+          ...(chromiumChannel ? { channel: chromiumChannel } : {}),
           args: [
             "--disable-dev-shm-usage",
             ...(process.platform === "linux" ? ["--no-sandbox"] : []),
@@ -34,7 +37,7 @@ export default defineConfig({
         }
       : undefined
   },
-  webServer: {
+  webServer: disableWebServer ? undefined : {
     command: `npm run dev -- --host ${testHost} --port ${testPort} --strictPort`,
     url: baseURL,
     reuseExistingServer: !process.env.CI,
