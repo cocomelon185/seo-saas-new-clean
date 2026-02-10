@@ -8,6 +8,8 @@ import rateLimit from "express-rate-limit";
 import path from "path";
 import { fileURLToPath } from "url";
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
+import fs from "fs";
 
 import pageReport from "./api/page-report.js";
 import aiFix from "./api/ai-fix.js";
@@ -61,7 +63,50 @@ app.use(
   })
 );
 
-app.use(helmet({ contentSecurityPolicy: false }));
+app.use(
+  helmet({
+    contentSecurityPolicy: false,
+    frameguard: { action: "deny" },
+    hsts: {
+      maxAge: 31536000,
+      includeSubDomains: true,
+      preload: true,
+    },
+    referrerPolicy: { policy: "strict-origin-when-cross-origin" },
+    crossOriginOpenerPolicy: { policy: "same-origin" },
+  })
+);
+
+app.use((req, res, next) => {
+  const nonce = crypto.randomBytes(16).toString("base64");
+  res.locals.cspNonce = nonce;
+  res.setHeader(
+    "Content-Security-Policy",
+    [
+      "default-src 'self'",
+      "base-uri 'self'",
+      "object-src 'none'",
+      "frame-ancestors 'none'",
+      "form-action 'self'",
+      "img-src 'self' data: https:",
+      "font-src 'self' data: https://fonts.gstatic.com",
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+      `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`,
+      "connect-src 'self' https:",
+      "frame-src 'self' https://checkout.razorpay.com",
+      "upgrade-insecure-requests"
+    ].join("; ")
+  );
+  next();
+});
+
+if (process.env.ENABLE_TRUSTED_TYPES === "true") {
+  app.use((req, res, next) => {
+    res.setHeader("require-trusted-types-for", "'script'");
+    res.setHeader("trusted-types", "default");
+    next();
+  });
+}
 app.use(compression());
 app.use(cookieParser());
 app.use(express.json({ limit: "2mb" }));
@@ -102,6 +147,236 @@ async function seedTesterAccount() {
 
 // ---- Static / SPA ----
 const FRONTEND_DIST = path.join(__dirname, "apps", "web", "dist");
+const INDEX_HTML = path.join(FRONTEND_DIST, "index.html");
+const ROOT_ROBOTS = path.join(__dirname, "robots.txt");
+const ROOT_SITEMAP = path.join(__dirname, "sitemap.xml");
+
+function injectNonce(html, nonce) {
+  return html.replace(/<script(?![^>]*\\bnonce=)/gi, `<script nonce="${nonce}"`);
+}
+
+function injectCanonical(html, absoluteUrl) {
+  let output = html;
+  if (/<link[^>]+rel=["']canonical["']/i.test(output)) {
+    output = output.replace(
+      /<link[^>]+rel=["']canonical["'][^>]*>/i,
+      `<link rel="canonical" href="${absoluteUrl}">`
+    );
+  } else {
+    output = output.replace(
+      /<head[^>]*>/i,
+      `$&\n    <link rel="canonical" href="${absoluteUrl}">`
+    );
+  }
+  if (/<meta[^>]+property=["']og:url["']/i.test(output)) {
+    output = output.replace(
+      /<meta[^>]+property=["']og:url["'][^>]*>/i,
+      `<meta property="og:url" content="${absoluteUrl}">`
+    );
+  } else {
+    output = output.replace(
+      /<head[^>]*>/i,
+      `$&\n    <meta property="og:url" content="${absoluteUrl}">`
+    );
+  }
+  return output;
+}
+
+function injectMeta(html, meta) {
+  let output = html;
+  if (meta.title) {
+    if (/<title>.*<\/title>/i.test(output)) {
+      output = output.replace(/<title>.*<\/title>/i, `<title>${meta.title}</title>`);
+    } else {
+      output = output.replace(/<head[^>]*>/i, `$&\n    <title>${meta.title}</title>`);
+    }
+  }
+  if (meta.description) {
+    if (/<meta[^>]+name=["']description["']/i.test(output)) {
+      output = output.replace(
+        /<meta[^>]+name=["']description["'][^>]*>/i,
+        `<meta name="description" content="${meta.description}">`
+      );
+    } else {
+      output = output.replace(
+        /<head[^>]*>/i,
+        `$&\n    <meta name="description" content="${meta.description}">`
+      );
+    }
+  }
+  if (meta.ogTitle) {
+    if (/<meta[^>]+property=["']og:title["']/i.test(output)) {
+      output = output.replace(
+        /<meta[^>]+property=["']og:title["'][^>]*>/i,
+        `<meta property="og:title" content="${meta.ogTitle}">`
+      );
+    } else {
+      output = output.replace(
+        /<head[^>]*>/i,
+        `$&\n    <meta property="og:title" content="${meta.ogTitle}">`
+      );
+    }
+  }
+  if (meta.ogDescription) {
+    if (/<meta[^>]+property=["']og:description["']/i.test(output)) {
+      output = output.replace(
+        /<meta[^>]+property=["']og:description["'][^>]*>/i,
+        `<meta property="og:description" content="${meta.ogDescription}">`
+      );
+    } else {
+      output = output.replace(
+        /<head[^>]*>/i,
+        `$&\n    <meta property="og:description" content="${meta.ogDescription}">`
+      );
+    }
+  }
+  if (meta.robots) {
+    if (/<meta[^>]+name=["']robots["']/i.test(output)) {
+      output = output.replace(
+        /<meta[^>]+name=["']robots["'][^>]*>/i,
+        `<meta name="robots" content="${meta.robots}">`
+      );
+    } else {
+      output = output.replace(
+        /<head[^>]*>/i,
+        `$&\n    <meta name="robots" content="${meta.robots}">`
+      );
+    }
+  }
+  return output;
+}
+
+function absoluteUrlFor(req) {
+  const host = req.get("host");
+  const protocol = req.protocol;
+  return `${protocol}://${host}${req.path}`;
+}
+
+function stripLeadingSlash(value) {
+  return value.replace(/^\/+/, "");
+}
+
+function resolveHtmlPath(reqPath) {
+  if (reqPath === "/" || reqPath === "/index.html") return INDEX_HTML;
+  const cleanPath = stripLeadingSlash(reqPath);
+  if (cleanPath.endsWith(".html")) {
+    return path.join(FRONTEND_DIST, cleanPath);
+  }
+  return path.join(FRONTEND_DIST, cleanPath, "index.html");
+}
+
+const publicMeta = [
+  {
+    test: (pathName) => pathName === "/",
+    title: "RankyPulse — Clear SEO decisions",
+    description: "RankyPulse helps you make clear SEO decisions with fast audits, page reports, and actionable recommendations."
+  },
+  {
+    test: (pathName) => pathName === "/start",
+    title: "Run a Free SEO Audit in 30 Seconds | RankyPulse",
+    description: "Launch a free SEO audit and get quick wins, priority fixes, and a clear action plan in under a minute."
+  },
+  {
+    test: (pathName) => pathName === "/pricing",
+    title: "Pricing | RankyPulse",
+    description: "Compare plans and pick the RankyPulse package that fits your SEO workflow."
+  },
+  {
+    test: (pathName) => pathName === "/about",
+    title: "About RankyPulse",
+    description: "Learn how RankyPulse helps teams ship SEO improvements with clarity and speed."
+  },
+  {
+    test: (pathName) => pathName === "/changelog",
+    title: "Changelog | RankyPulse",
+    description: "Product updates, improvements, and new SEO features from the RankyPulse team."
+  },
+  {
+    test: (pathName) => pathName === "/shared",
+    title: "Sample SEO Audit Report | RankyPulse",
+    description: "Explore a sample audit report with prioritized fixes, visuals, and next steps."
+  },
+  {
+    test: (pathName) => pathName.startsWith("/r/"),
+    title: "SEO Audit Report | RankyPulse",
+    description: "Shared SEO audit report with prioritized issues and actionable recommendations.",
+    robots: "noindex, nofollow"
+  },
+  {
+    test: (pathName) => pathName.startsWith("/use-cases/saas-landing-audit"),
+    title: "SaaS Landing Page Audit | RankyPulse",
+    description: "Run a SaaS landing page audit and get a fix plan built for conversions."
+  },
+  {
+    test: (pathName) => pathName.startsWith("/use-cases/blog-audit-checklist"),
+    title: "Blog SEO Audit Checklist | RankyPulse",
+    description: "Audit blog pages fast with a checklist of high-impact SEO fixes."
+  },
+  {
+    test: (pathName) => pathName.startsWith("/use-cases/agency-audit-workflow"),
+    title: "Agency SEO Audit Workflow | RankyPulse",
+    description: "Standardize audits with a repeatable workflow built for agencies."
+  }
+];
+
+const noindexPrefixes = [
+  "/auth",
+  "/account",
+  "/admin",
+  "/embed",
+  "/leads",
+  "/rank",
+  "/improve",
+  "/audit",
+  "/r/",
+  "/upgrade",
+  "/plan-change"
+];
+
+function getMetaForPath(pathName) {
+  const match = publicMeta.find((entry) => entry.test(pathName));
+  const base = match || {
+    title: "RankyPulse — Clear SEO decisions",
+    description: "RankyPulse helps you make clear SEO decisions with fast audits, page reports, and actionable recommendations."
+  };
+  const noindex = noindexPrefixes.some((prefix) => pathName.startsWith(prefix));
+  const robots = match?.robots || (noindex ? "noindex, nofollow" : "index, follow");
+  return {
+    title: base.title,
+    description: base.description,
+    ogTitle: base.title,
+    ogDescription: base.description,
+    robots
+  };
+}
+
+app.get("/robots.txt", (req, res) => {
+  res.setHeader("Content-Type", "text/plain; charset=utf-8");
+  res.sendFile(ROOT_ROBOTS);
+});
+
+app.get("/sitemap.xml", (req, res) => {
+  res.setHeader("Content-Type", "application/xml; charset=utf-8");
+  res.sendFile(ROOT_SITEMAP);
+});
+
+app.get("*", (req, res, next) => {
+  if (req.path.startsWith("/api")) return next();
+  const hasExtension = /\.[a-z0-9]+$/i.test(req.path);
+  if (hasExtension && !req.path.endsWith(".html")) return next();
+  const htmlPath = resolveHtmlPath(req.path);
+  fs.readFile(htmlPath, "utf8", (err, html) => {
+    if (err) return next();
+    const nonce = res.locals.cspNonce;
+    const absoluteUrl = absoluteUrlFor(req);
+    let body = injectCanonical(html, absoluteUrl);
+    body = injectMeta(body, getMetaForPath(req.path));
+    body = injectNonce(body, nonce);
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.send(body);
+  });
+});
+
 app.use(express.static(FRONTEND_DIST));
 
 // ---- API routes (from your earlier server.js list) ----
@@ -169,7 +444,19 @@ app.get("/api/health", (req, res) => res.json({ ok: true }));
 // Catch-all: serve SPA (but never for /api)
 app.get("*", (req, res, next) => {
   if (req.path.startsWith("/api")) return next();
-  res.sendFile(path.join(FRONTEND_DIST, "index.html"));
+  fs.readFile(INDEX_HTML, "utf8", (err, html) => {
+    if (err) {
+      res.status(404).send("Not found");
+      return;
+    }
+    const nonce = res.locals.cspNonce;
+    const absoluteUrl = absoluteUrlFor(req);
+    let body = injectCanonical(html, absoluteUrl);
+    body = injectMeta(body, getMetaForPath(req.path));
+    body = injectNonce(body, nonce);
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.send(body);
+  });
 });
 
 // Error handler (so you see real errors)
