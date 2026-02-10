@@ -1,11 +1,11 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { track } from "../lib/eventsClient.js";
 import AppShell from "../components/AppShell.jsx";
-import IssuesPanel from "../components/IssuesPanel.jsx";
 import { IconPlay, IconArrowRight } from "../components/Icons.jsx";
-import { exportAuditPdf } from "../utils/exportAuditPdf.js";
 import { safeJson } from "../lib/safeJson.js";
+
+const IssuesPanel = lazy(() => import("../components/IssuesPanel.jsx"));
 
 export default function SharedReportPage() {
   const { reportId } = useParams();
@@ -150,7 +150,10 @@ export default function SharedReportPage() {
                         <div className="mt-1 rp-body-xsmall text-center">You'll see your SEO score, key issues, and quick wins instantly.</div>
                       </div>
                       <button
-                        onClick={() => exportAuditPdf(report)}
+                        onClick={async () => {
+                          const mod = await import("../utils/exportAuditPdf.js");
+                          mod.exportAuditPdf(report);
+                        }}
                         className="rp-btn-secondary text-sm"
                       >
                         Export PDF
@@ -198,7 +201,9 @@ export default function SharedReportPage() {
 
               {/* Issues Panel */}
               {issues.length > 0 && (
-                <IssuesPanel issues={issues} />
+                <Suspense fallback={null}>
+                  <IssuesPanel issues={issues} />
+                </Suspense>
               )}
 
               {/* Content Brief */}
@@ -228,7 +233,10 @@ export default function SharedReportPage() {
                     <div className="mt-1 rp-body-xsmall text-center">You'll see your SEO score, key issues, and quick wins instantly.</div>
                   </div>
                   <button
-                    onClick={() => exportAuditPdf(report)}
+                    onClick={async () => {
+                      const mod = await import("../utils/exportAuditPdf.js");
+                      mod.exportAuditPdf(report);
+                    }}
                     className="rp-btn-secondary text-sm"
                   >
                     Export PDF

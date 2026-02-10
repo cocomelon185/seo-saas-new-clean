@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import MarketingShell from "../components/MarketingShell.jsx";
+import MarketingShell from "../marketing/components/MarketingShell.jsx";
 import IssuesPanel from "../components/IssuesPanel.jsx";
 import AuditImpactBanner from "../components/AuditImpactBanner.jsx";
 import { decodeSharePayload } from "../utils/shareCodec.js";

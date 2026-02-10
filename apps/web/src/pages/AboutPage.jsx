@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import MarketingShell from "../components/MarketingShell.jsx";
+import MarketingShell from "../marketing/components/MarketingShell.jsx";
 import { IconArrowRight, IconShield } from "../components/Icons.jsx";
 
 export default function AboutPage() {

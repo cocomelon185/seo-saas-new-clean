@@ -1,19 +1,20 @@
-import { useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import AppShell from "../components/AppShell.jsx";
 import { IconCompass, IconChart, IconReport } from "../components/Icons.jsx";
-import PricingModal from "../components/PricingModal.jsx";
-import RankHistoryPanel from "../components/RankHistoryPanel.jsx";
 import ShareRankButton from "../components/ShareRankButton.jsx";
-import RankUpsellBanner from "../components/RankUpsellBanner.jsx";
+import DeferredRender from "../components/DeferredRender.jsx";
 import { saveRankCheck } from "../utils/rankHistory.js";
-import { exportRankSummary } from "../utils/exportRankSummary.js";
 import { decodeSharePayload } from "../utils/shareRank.js";
 import { listSnapshots } from "../utils/auditSnapshots.js";
 import { listRankChecks } from "../utils/rankHistory.js";
 import { getAuthToken, getAuthUser } from "../lib/authClient.js";
 import { safeJson } from "../lib/safeJson.js";
 import { apiUrl } from "../lib/api.js";
+
+const PricingModal = lazy(() => import("../components/PricingModal.jsx"));
+const RankHistoryPanel = lazy(() => import("../components/RankHistoryPanel.jsx"));
+const RankUpsellBanner = lazy(() => import("../components/RankUpsellBanner.jsx"));
 
 function rankExplain(r) {
   if (!Number.isFinite(Number(r))) return "";
@@ -200,7 +201,11 @@ export default function RankPage() {
       title="Rank Checker"
       subtitle="Check where your domain ranks for a keyword. Keep it fast and simple - history comes later."
     >
-      <PricingModal open={pricingOpen} onClose={() => setPricingOpen(false)} />
+      {pricingOpen ? (
+        <Suspense fallback={null}>
+          <PricingModal open={pricingOpen} onClose={() => setPricingOpen(false)} />
+        </Suspense>
+      ) : null}
 
       <div className="mb-4 grid gap-4 md:grid-cols-3">
         {[
@@ -249,7 +254,11 @@ export default function RankPage() {
         <div className="flex justify-end gap-2">
           <ShareRankButton result={result} />
           <button
-            onClick={() => result && exportRankSummary(result)}
+            onClick={async () => {
+              if (!result) return;
+              const mod = await import("../utils/exportRankSummary.js");
+              mod.exportRankSummary(result);
+            }}
             disabled={!result}
             className={"rp-btn-secondary rp-btn-sm h-9 px-3 text-xs " + (result ? "" : "cursor-not-allowed opacity-50")}
             title={result ? "Download a .txt summary" : "Run a check first"}
@@ -258,9 +267,17 @@ export default function RankPage() {
           </button>
         </div>
 
-        <RankHistoryPanel onPick={({ keyword, domain }) => { setKeyword(keyword); setDomain(domain); }} />
+        <DeferredRender>
+          <Suspense fallback={null}>
+            <RankHistoryPanel onPick={({ keyword, domain }) => { setKeyword(keyword); setDomain(domain); }} />
+          </Suspense>
+        </DeferredRender>
 
-        <RankUpsellBanner onOpen={() => setPricingOpen(true)} />
+        <DeferredRender>
+          <Suspense fallback={null}>
+            <RankUpsellBanner onOpen={() => setPricingOpen(true)} />
+          </Suspense>
+        </DeferredRender>
 
         <div className="grid gap-4 md:grid-cols-3 md:items-end">
           <div>
@@ -361,7 +378,11 @@ export default function RankPage() {
                   </button>
 
                   <button
-                    onClick={() => exportRankSummary(result)}
+                    onClick={async () => {
+                      if (!result) return;
+                      const mod = await import("../utils/exportRankSummary.js");
+                      mod.exportRankSummary(result);
+                    }}
                     className="rp-btn-secondary rp-btn-sm h-9 px-3 text-xs"
                   >
                     Export result

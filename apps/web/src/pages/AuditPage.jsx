@@ -1,16 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, Link } from "react-router-dom";
-import PricingModal from "../components/PricingModal.jsx";
 import ShareAuditButton from "../components/ShareAuditButton.jsx";
 import AppShell from "../components/AppShell.jsx";
-import IssuesPanel from "../components/IssuesPanel.jsx";
-import { exportAuditSummary } from "../utils/exportAuditSummary.js";
-import { exportAuditPdf } from "../utils/exportAuditPdf.js";
 import { isMonitored, listMonitors, removeMonitor, updateMonitorFromAudit, upsertMonitor } from "../utils/monitoring.js";
 import { getAnonId } from "../utils/anonId.js";
-import SavedAuditsPanel from "../components/SavedAuditsPanel.jsx";
-import AuditImpactBanner from "../components/AuditImpactBanner.jsx";
-import AuditHistoryPanel from "../components/AuditHistoryPanel.jsx";
 import { pushAuditHistory } from "../lib/auditHistory.js";
 import ErrorBoundary from "../components/ErrorBoundary.jsx";
 import { track } from "../lib/eventsClient.js";
@@ -36,6 +29,10 @@ import {
   IconShield,
   IconCompass
 } from "../components/Icons.jsx";
+
+const PricingModal = lazy(() => import("../components/PricingModal.jsx"));
+const IssuesPanel = lazy(() => import("../components/IssuesPanel.jsx"));
+const AuditImpactBanner = lazy(() => import("../components/AuditImpactBanner.jsx"));
 
 function AuditPageInner() {
   const __rp_markSkipAutoRun = () => {
@@ -1185,21 +1182,29 @@ try {
           <div className="flex flex-wrap items-center gap-2">
             <ShareAuditButton result={result} />
             <button
-              onClick={() => exportAuditSummary(result)}
+              onClick={async () => {
+                if (!result) return;
+                const mod = await import("../utils/exportAuditSummary.js");
+                mod.exportAuditSummary(result);
+              }}
               className="rp-btn-secondary rp-btn-sm h-9 px-3 text-xs"
             >
               Export summary
             </button>
             <button
-              onClick={() => exportAuditPdf({
-                ...result,
-                score: typeof scoreValue === "number" ? scoreValue : result.score,
-                branding: {
-                  name: reportBrandName,
-                  color: reportBrandColor,
-                  logo: reportBrandLogo
-                }
-              })}
+              onClick={async () => {
+                if (!result) return;
+                const mod = await import("../utils/exportAuditPdf.js");
+                mod.exportAuditPdf({
+                  ...result,
+                  score: typeof scoreValue === "number" ? scoreValue : result.score,
+                  branding: {
+                    name: reportBrandName,
+                    color: reportBrandColor,
+                    logo: reportBrandLogo
+                  }
+                });
+              }}
               className="rp-btn-secondary rp-btn-sm h-9 px-3 text-xs"
             >
               Export PDF
@@ -2919,26 +2924,34 @@ try {
           </div>
         )}
       </div>
+      {pricingOpen ? (
+        <Suspense fallback={null}>
           <PricingModal
-        open={pricingOpen}
-        onClose={() => setPricingOpen(false)}
-        onSelectPlan={() => {
-          setPricingOpen(false);
-          navigate("/pricing");
-        }}
-      />
+            open={pricingOpen}
+            onClose={() => setPricingOpen(false)}
+            onSelectPlan={() => {
+              setPricingOpen(false);
+              navigate("/pricing");
+            }}
+          />
+        </Suspense>
+      ) : null}
+      {result ? (
+        <Suspense fallback={null}>
           <AuditImpactBanner score={typeof scoreValue === "number" ? scoreValue : result?.score} issues={issues} />
-            <div data-testid="key-issues">
-              <IssuesPanel
-                issues={strictPrioritizeIssues(issues)}
-                advanced={advancedView}
-                finalUrl={String(result?.debug?.final_url || result?.final_url || "")}
-                fixWebhookUrl={fixWebhookUrl}
-                wpWebhookUrl={wpSiteUrl}
-                shopifyWebhookUrl={shopifyShop}
-                ownerId={anonId}
-              />
-            </div>
+          <div data-testid="key-issues">
+            <IssuesPanel
+              issues={strictPrioritizeIssues(issues)}
+              advanced={advancedView}
+              finalUrl={String(result?.debug?.final_url || result?.final_url || "")}
+              fixWebhookUrl={fixWebhookUrl}
+              wpWebhookUrl={wpSiteUrl}
+              shopifyWebhookUrl={shopifyShop}
+              ownerId={anonId}
+            />
+          </div>
+        </Suspense>
+      ) : null}
       {import.meta.env.DEV && debug && (
         <div className="rp-card p-5 rp-fade-in">
           <button

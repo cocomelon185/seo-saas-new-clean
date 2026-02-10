@@ -1,4 +1,4 @@
-import StartAuditExtras from "../components/StartAuditExtras.jsx";
+import StartAuditExtras from "../marketing/components/StartAuditExtras.jsx";
 import { IconPlay } from "../components/Icons.jsx";
 
 export default function StartAuditPage() {

@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
-import logo from "../assets/rankypulse-logo.svg";
-import CookieConsent from "./CookieConsent.jsx";
+import logo from "../../assets/rankypulse-logo.svg";
+import CookieConsent from "../../components/CookieConsent.jsx";
 
 export default function MarketingShell({ title, subtitle, children }) {
   return (

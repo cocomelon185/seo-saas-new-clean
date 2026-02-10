@@ -1,4 +1,4 @@
-import MarketingShell from "../components/MarketingShell.jsx";
+import MarketingShell from "../marketing/components/MarketingShell.jsx";
 import { Link } from "react-router-dom";
 import { IconDoc, IconBolt, IconReport, IconArrowRight } from "../components/Icons.jsx";
 

@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import PricingModal from "../components/PricingModal.jsx";
-import MarketingShell from "../components/MarketingShell.jsx";
+import MarketingShell from "../marketing/components/MarketingShell.jsx";
 import { IconArrowRight } from "../components/Icons.jsx";
 import { getAuthUser } from "../lib/authClient.js";
 import { startSubscriptionCheckout } from "../lib/billingClient.js";
