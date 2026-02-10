@@ -60,7 +60,9 @@ export default function Landing() {
                 </Link>
               </div>
               <form action="/audit" method="GET" className="mt-6 flex flex-wrap items-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-3">
+                <label className="sr-only" htmlFor="home-audit-url">Website URL</label>
                 <input
+                  id="home-audit-url"
                   type="text"
                   name="url"
                   placeholder="https://example.com"

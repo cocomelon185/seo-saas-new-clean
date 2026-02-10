@@ -16,7 +16,9 @@ export default function StartAuditPage() {
 
           <form action="/audit" method="GET" className="mt-6 space-y-3">
             <div>
+              <label className="sr-only" htmlFor="start-audit-url">Website URL</label>
               <input
+                id="start-audit-url"
                 type="text"
                 name="url"
                 placeholder="https://example.com"

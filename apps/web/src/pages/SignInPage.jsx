@@ -201,14 +201,18 @@ export default function SignInPage() {
           </div>
 
           <form className="mt-4 space-y-3" onSubmit={submit}>
+            <label className="sr-only" htmlFor="signin-email">Email</label>
             <input
+              id="signin-email"
               className="w-full rounded-xl border border-[var(--rp-gray-200)] bg-white px-3 py-2 text-[var(--rp-text-900)] outline-none placeholder:text-[var(--rp-text-400)]"
               placeholder="Email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               autoComplete="email"
             />
+            <label className="sr-only" htmlFor="signin-password">Password</label>
             <input
+              id="signin-password"
               className="w-full rounded-xl border border-[var(--rp-gray-200)] bg-white px-3 py-2 text-[var(--rp-text-900)] outline-none placeholder:text-[var(--rp-text-400)]"
               placeholder="Password"
               type="password"
