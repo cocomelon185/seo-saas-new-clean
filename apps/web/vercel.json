@@ -31,6 +31,90 @@
       "destination": "https://api.rankypulse.com/api/:path*"
     },
     {
+      "source": "/audit",
+      "destination": "/audit/index.html"
+    },
+    {
+      "source": "/rank",
+      "destination": "/rank/index.html"
+    },
+    {
+      "source": "/improve",
+      "destination": "/improve/index.html"
+    },
+    {
+      "source": "/upgrade",
+      "destination": "/upgrade/index.html"
+    },
+    {
+      "source": "/upgrade/success",
+      "destination": "/upgrade/success/index.html"
+    },
+    {
+      "source": "/upgrade/failure",
+      "destination": "/upgrade/failure/index.html"
+    },
+    {
+      "source": "/plan-change",
+      "destination": "/plan-change/index.html"
+    },
+    {
+      "source": "/plan-change/success",
+      "destination": "/plan-change/success/index.html"
+    },
+    {
+      "source": "/account/settings",
+      "destination": "/account/settings/index.html"
+    },
+    {
+      "source": "/account/deleted",
+      "destination": "/account/deleted/index.html"
+    },
+    {
+      "source": "/embed",
+      "destination": "/embed/index.html"
+    },
+    {
+      "source": "/embed/form",
+      "destination": "/embed/form/index.html"
+    },
+    {
+      "source": "/leads",
+      "destination": "/leads/index.html"
+    },
+    {
+      "source": "/auth/signin",
+      "destination": "/auth/signin/index.html"
+    },
+    {
+      "source": "/auth/signup",
+      "destination": "/auth/signup/index.html"
+    },
+    {
+      "source": "/auth/reset",
+      "destination": "/auth/reset/index.html"
+    },
+    {
+      "source": "/auth/verify",
+      "destination": "/auth/verify/index.html"
+    },
+    {
+      "source": "/auth/invite",
+      "destination": "/auth/invite/index.html"
+    },
+    {
+      "source": "/auth/invite-accepted",
+      "destination": "/auth/invite-accepted/index.html"
+    },
+    {
+      "source": "/admin/team",
+      "destination": "/admin/team/index.html"
+    },
+    {
+      "source": "/admin/analytics",
+      "destination": "/admin/analytics/index.html"
+    },
+    {
       "source": "/audit/:path*",
       "destination": "/app.html"
     },

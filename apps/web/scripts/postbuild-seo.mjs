@@ -72,6 +72,30 @@ const noindexPrefixes = [
   "/plan-change"
 ];
 
+const appStaticRoutes = [
+  "/audit",
+  "/rank",
+  "/improve",
+  "/upgrade",
+  "/upgrade/success",
+  "/upgrade/failure",
+  "/plan-change",
+  "/plan-change/success",
+  "/account/settings",
+  "/account/deleted",
+  "/embed",
+  "/embed/form",
+  "/leads",
+  "/auth/signin",
+  "/auth/signup",
+  "/auth/reset",
+  "/auth/verify",
+  "/auth/invite",
+  "/auth/invite-accepted",
+  "/admin/team",
+  "/admin/analytics"
+];
+
 function getMetaForPath(pathName) {
   const match = publicMeta.find((entry) => entry.test(pathName));
   const base = match || {
@@ -188,6 +212,23 @@ async function main() {
       await fs.writeFile(file, updated, "utf8");
     }
   }));
+
+  const appHtmlPath = path.join(distDir, "app.html");
+  let appHtml = null;
+  try {
+    appHtml = await fs.readFile(appHtmlPath, "utf8");
+  } catch {
+    appHtml = null;
+  }
+
+  if (appHtml) {
+    await Promise.all(appStaticRoutes.map(async (routePath) => {
+      const targetPath = path.join(distDir, routePath.replace(/^\//, ""), "index.html");
+      await fs.mkdir(path.dirname(targetPath), { recursive: true });
+      const updated = injectMeta(appHtml, routePath);
+      await fs.writeFile(targetPath, updated, "utf8");
+    }));
+  }
 }
 
 main().catch((err) => {

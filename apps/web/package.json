@@ -10,6 +10,7 @@
     "preview": "vite preview",
     "start": "vite preview --host 0.0.0.0 --port $PORT",
     "postbuild": "bash scripts/postbuild-folder-pages.sh && node scripts/postbuild-seo.mjs",
+    "verify:p0": "node scripts/verify-p0.mjs",
     "images:opt": "node scripts/optimize-images.mjs",
     "images:capture": "node scripts/capture-screenshots.mjs",
     "validate:links": "node scripts/validate-links.mjs"
