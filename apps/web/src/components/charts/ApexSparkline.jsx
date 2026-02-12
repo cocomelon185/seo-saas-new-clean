@@ -1,6 +1,6 @@
 import SafeApexChart from "./SafeApexChart.jsx";
 
-export default function ApexSparkline({ values = [], height = 44 }) {
+export default function ApexSparkline({ values = [], height = 44, inverted = false }) {
   const clean = Array.isArray(values) ? values.filter((v) => Number.isFinite(Number(v))).map(Number) : [];
   if (!clean.length) return null;
 
@@ -29,7 +29,8 @@ export default function ApexSparkline({ values = [], height = 44 }) {
       y: {
         formatter: (v) => `Rank: ${Math.round(v)}`
       }
-    }
+    },
+    yaxis: inverted ? { reversed: true } : undefined
   };
 
   return (

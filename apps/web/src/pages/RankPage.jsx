@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import AppShell from "../components/AppShell.jsx";
-import { IconCompass, IconChart, IconReport } from "../components/Icons.jsx";
+import { IconArrowRight, IconCompass, IconChart, IconReport } from "../components/Icons.jsx";
 import ShareRankButton from "../components/ShareRankButton.jsx";
 import DeferredRender from "../components/DeferredRender.jsx";
 import { saveRankCheck } from "../utils/rankHistory.js";
@@ -12,10 +12,17 @@ import { getAuthToken, getAuthUser } from "../lib/authClient.js";
 import { safeJson } from "../lib/safeJson.js";
 import { apiUrl } from "../lib/api.js";
 import ApexSparkline from "../components/charts/ApexSparkline.jsx";
+import SafeApexChart from "../components/charts/SafeApexChart.jsx";
 
 const PricingModal = lazy(() => import("../components/PricingModal.jsx"));
 const RankHistoryPanel = lazy(() => import("../components/RankHistoryPanel.jsx"));
 const RankUpsellBanner = lazy(() => import("../components/RankUpsellBanner.jsx"));
+
+const EXAMPLE_KEYWORDS = [
+  "seo audit tool",
+  "technical seo audit",
+  "rank tracker for agencies"
+];
 
 function rankExplain(r) {
   if (!Number.isFinite(Number(r))) return "";
@@ -42,6 +49,31 @@ function domainFromInput(s) {
   return raw.replace(/^https?:\/\//i, "").replace(/\/.*$/, "");
 }
 
+function isLikelyDomain(value) {
+  const clean = domainFromInput(value);
+  if (!clean) return false;
+  return /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$/i.test(clean);
+}
+
+function estimateCtr(rank) {
+  const r = Number(rank);
+  if (!Number.isFinite(r)) return 0;
+  if (r <= 1) return 0.28;
+  if (r <= 3) return 0.18;
+  if (r <= 5) return 0.1;
+  if (r <= 10) return 0.05;
+  if (r <= 20) return 0.02;
+  return 0.008;
+}
+
+function estimateMonthlyClicksGain(rank, targetRank = 10, monthlyVolume = 1200) {
+  const r = Number(rank);
+  if (!Number.isFinite(r)) return 0;
+  const currentCtr = estimateCtr(r);
+  const targetCtr = estimateCtr(targetRank);
+  return Math.max(0, Math.round((targetCtr - currentCtr) * monthlyVolume));
+}
+
 function latestKeywordIdeasForDomain(domain) {
   const d = domainFromInput(domain);
   if (!d) return [];
@@ -63,9 +95,14 @@ export default function RankPage() {
 
   const [keyword, setKeyword] = useState("");
   const [domain, setDomain] = useState("");
+  const [waitlistEmail, setWaitlistEmail] = useState("");
   const [status, setStatus] = useState("idle");
   const [error, setError] = useState("");
   const [result, setResult] = useState(null);
+  const [lastCheckedAt, setLastCheckedAt] = useState("");
+  const [loadingStep, setLoadingStep] = useState(0);
+  const [inlineErrors, setInlineErrors] = useState({ keyword: "", domain: "" });
+  const [waitlistMessage, setWaitlistMessage] = useState("");
   const authUser = getAuthUser();
   const [requestStatus, setRequestStatus] = useState("");
   const [allowRank, setAllowRank] = useState(true);
@@ -81,7 +118,27 @@ export default function RankPage() {
       .catch(() => {});
   }, []);
 
-  const canRun = useMemo(() => keyword.trim().length > 0 && domain.trim().length > 0, [keyword, domain]);
+  const canRun = useMemo(() => {
+    return keyword.trim().length > 0 && domain.trim().length > 0 && !inlineErrors.keyword && !inlineErrors.domain;
+  }, [keyword, domain, inlineErrors]);
+
+  useEffect(() => {
+    const next = { keyword: "", domain: "" };
+    if (keyword.trim() && keyword.trim().length < 2) next.keyword = "Use at least 2 characters.";
+    if (domain.trim() && !isLikelyDomain(domain)) next.domain = "Use a real domain like example.com (no https).";
+    setInlineErrors(next);
+  }, [keyword, domain]);
+
+  useEffect(() => {
+    if (status !== "loading") {
+      setLoadingStep(0);
+      return;
+    }
+    const id = setInterval(() => {
+      setLoadingStep((prev) => (prev >= 2 ? 2 : prev + 1));
+    }, 850);
+    return () => clearInterval(id);
+  }, [status]);
 
   useEffect(() => {
     try {
@@ -112,15 +169,21 @@ export default function RankPage() {
   async function checkRank() {
     setError("");
     setResult(null);
+    setWaitlistMessage("");
 
     if (!allowRank) {
       setStatus("error");
       setError("Rank Tracker disabled for your team.");
       return;
     }
-    if (!canRun) {
+    if (!keyword.trim() || !domain.trim()) {
       setStatus("error");
       setError("Enter both a keyword and a domain.");
+      return;
+    }
+    if (inlineErrors.keyword || inlineErrors.domain) {
+      setStatus("error");
+      setError("Please fix the highlighted fields before running the check.");
       return;
     }
 
@@ -149,6 +212,7 @@ export default function RankPage() {
       };
       setResult(normalized);
       try { saveRankCheck(normalized); } catch {}
+      setLastCheckedAt(normalized?.checked_at || new Date().toISOString());
       setStatus("success");
     } catch (e) {
       setStatus("error");
@@ -185,6 +249,31 @@ export default function RankPage() {
       .reverse();
   }, [history]);
 
+  const previousRank = useMemo(() => {
+    if (!history.length || !Number.isFinite(Number(shownRank))) return null;
+    const previous = history
+      .map((x) => Number(x.rank))
+      .filter((x) => Number.isFinite(x))
+      .find((x) => x !== Number(shownRank));
+    return Number.isFinite(previous) ? previous : null;
+  }, [history, shownRank]);
+
+  const rankDelta = useMemo(() => {
+    if (!Number.isFinite(Number(shownRank)) || !Number.isFinite(Number(previousRank))) return null;
+    return Number(previousRank) - Number(shownRank);
+  }, [shownRank, previousRank]);
+
+  const inferredCompetitor = useMemo(() => {
+    if (Number(shownRank) <= 1) return "You are currently leading";
+    const known = String(result?.top_competitor || result?.competitor || "").trim();
+    if (known) return known;
+    return "Higher-ranked competitor in this SERP";
+  }, [shownRank, result?.top_competitor, result?.competitor]);
+
+  const estimatedClicksGain = useMemo(() => {
+    return estimateMonthlyClicksGain(shownRank, 10, 1200);
+  }, [shownRank]);
+
   const bestRank = useMemo(() => {
     const ranks = history.map((x) => Number(x.rank)).filter((x) => Number.isFinite(x));
     if (!ranks.length) return null;
@@ -194,7 +283,7 @@ export default function RankPage() {
   return (
     <AppShell
       title="Rank Checker"
-      subtitle="Check where your domain ranks for a keyword. Keep it fast and simple - history comes later."
+      subtitle="Track where your keyword ranks and what to fix next."
       seoTitle="Rank Checker | RankyPulse"
       seoDescription="Check where your domain ranks for a keyword."
       seoCanonical={`${base}/rank`}
@@ -208,9 +297,25 @@ export default function RankPage() {
 
       <div className="mb-4 grid gap-4 md:grid-cols-3">
         {[
-          { label: "Tracked keywords", value: "128", tone: "text-[var(--rp-indigo-700)]" },
-          { label: "Avg. position", value: "18.4", tone: "text-amber-600" },
-          { label: "Visibility lift", value: "+12%", tone: "text-emerald-600" }
+          {
+            label: "Tracked keywords",
+            value: String(
+              new Set(listRankChecks().map((x) => String(x.keyword || "").trim()).filter(Boolean)).size || 0
+            ),
+            tone: "text-[var(--rp-indigo-700)]"
+          },
+          {
+            label: "Avg. position",
+            value: history.length
+              ? (history.reduce((sum, row) => sum + Number(row.rank || 0), 0) / history.length).toFixed(1)
+              : "—",
+            tone: "text-amber-600"
+          },
+          {
+            label: "Visibility lift",
+            value: rankDelta === null ? "—" : `${rankDelta > 0 ? "+" : ""}${rankDelta}`,
+            tone: rankDelta !== null && rankDelta > 0 ? "text-emerald-600" : "text-[var(--rp-text-700)]"
+          }
         ].map((item) => (
           <div key={item.label} className="rp-kpi-card rounded-2xl border border-[var(--rp-border)] bg-white p-4 shadow-sm">
             <div className="text-xs text-[var(--rp-text-500)]">{item.label}</div>
@@ -274,9 +379,49 @@ export default function RankPage() {
 
         <DeferredRender>
           <Suspense fallback={null}>
-            <RankUpsellBanner onOpen={() => setPricingOpen(true)} />
+            <RankUpsellBanner
+              onOpen={() => setPricingOpen(true)}
+              email={waitlistEmail}
+              onEmailChange={setWaitlistEmail}
+              onJoinWaitlist={() => {
+                const clean = String(waitlistEmail || "").trim().toLowerCase();
+                if (!clean || !clean.includes("@")) {
+                  setWaitlistMessage("Enter a valid email.");
+                  setTimeout(() => setWaitlistMessage(""), 2200);
+                  return;
+                }
+                try {
+                  const key = "rp_rank_waitlist";
+                  const existing = JSON.parse(localStorage.getItem(key) || "[]");
+                  const next = Array.isArray(existing) ? existing : [];
+                  if (!next.includes(clean)) next.push(clean);
+                  localStorage.setItem(key, JSON.stringify(next));
+                } catch {}
+                setWaitlistMessage("You are on the waitlist. Weekly alerts coming soon.");
+                setTimeout(() => setWaitlistMessage(""), 2600);
+              }}
+              message={waitlistMessage}
+            />
           </Suspense>
         </DeferredRender>
+
+        <div className="rp-card border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-4">
+          <div className="text-xs font-semibold uppercase tracking-[0.15em] text-[var(--rp-text-500)]">
+            Try a keyword
+          </div>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {EXAMPLE_KEYWORDS.map((sample) => (
+              <button
+                key={sample}
+                onClick={() => setKeyword(sample)}
+                className="rp-chip rp-chip-neutral"
+                title="Use this example keyword"
+              >
+                {sample}
+              </button>
+            ))}
+          </div>
+        </div>
 
         <div className="grid gap-4 md:grid-cols-3 md:items-end">
           <div>
@@ -288,8 +433,10 @@ export default function RankPage() {
               value={keyword}
               onChange={(e) => setKeyword(e.target.value)}
               placeholder="seo audit tool"
-              className="rp-input"
+              className={"rp-input " + (inlineErrors.keyword ? "border-rose-300 focus:border-rose-400" : "")}
             />
+            <div className="mt-1 text-xs text-[var(--rp-text-500)]">One query at a time for the cleanest signal.</div>
+            {inlineErrors.keyword ? <div className="mt-1 text-xs text-rose-600">{inlineErrors.keyword}</div> : null}
             {!!ideas.length && (
               <div className="mt-2 flex flex-wrap gap-2">
                 {ideas.map((x) => (
@@ -315,8 +462,10 @@ export default function RankPage() {
               value={domain}
               onChange={(e) => setDomain(e.target.value)}
               placeholder="rankypulse.com"
-              className="rp-input"
+              className={"rp-input " + (inlineErrors.domain ? "border-rose-300 focus:border-rose-400" : "")}
             />
+            <div className="mt-1 text-xs text-[var(--rp-text-500)]">Use root domain only (example.com), no https or path.</div>
+            {inlineErrors.domain ? <div className="mt-1 text-xs text-rose-600">{inlineErrors.domain}</div> : null}
           </div>
 
           <button
@@ -340,7 +489,22 @@ export default function RankPage() {
 
         {status === "loading" && (
           <div className="rp-card p-5 text-[var(--rp-text-600)]">
-            Checking rank...
+            <div className="text-sm font-semibold text-[var(--rp-text-800)]">Checking rank…</div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {["Fetching SERP", "Comparing domains", "Calculating visibility"].map((step, index) => (
+                <span
+                  key={step}
+                  className={[
+                    "inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold",
+                    loadingStep >= index
+                      ? "border-[var(--rp-indigo-300)] bg-[var(--rp-indigo-100)] text-[var(--rp-indigo-800)]"
+                      : "border-[var(--rp-border)] bg-white text-[var(--rp-text-500)]"
+                  ].join(" ")}
+                >
+                  {index + 1}. {step}
+                </span>
+              ))}
+            </div>
           </div>
         )}
 
@@ -354,12 +518,37 @@ export default function RankPage() {
           <div className="grid gap-4">
             <div className="rp-card p-5">
               <div className="flex items-center gap-2">
-                <div className="rp-section-title">Result</div>
+                <div className="rp-section-title">Rank result</div>
                 {badge && (
                   <span className={"inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold " + badge.cls}>
                     {badge.label}
                   </span>
                 )}
+              </div>
+
+              <div className="mt-2 text-xs text-[var(--rp-text-500)]">
+                Last checked: {lastCheckedAt ? new Date(lastCheckedAt).toLocaleString() : "Just now"}
+              </div>
+
+              <div className="mt-3 grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+                <div className="rounded-xl border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-3">
+                  <div className="text-xs text-[var(--rp-text-500)]">Current position</div>
+                  <div className="mt-1 text-2xl font-semibold text-[var(--rp-text-900)]">{shownRank ?? "—"}</div>
+                </div>
+                <div className="rounded-xl border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-3">
+                  <div className="text-xs text-[var(--rp-text-500)]">Change vs last check</div>
+                  <div className={"mt-1 text-2xl font-semibold " + (rankDelta && rankDelta > 0 ? "text-emerald-600" : "text-[var(--rp-text-900)]")}>
+                    {rankDelta === null ? "—" : `${rankDelta > 0 ? "+" : ""}${rankDelta}`}
+                  </div>
+                </div>
+                <div className="rounded-xl border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-3">
+                  <div className="text-xs text-[var(--rp-text-500)]">Top competitor</div>
+                  <div className="mt-1 text-sm font-semibold text-[var(--rp-text-800)]">{inferredCompetitor}</div>
+                </div>
+                <div className="rounded-xl border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-3">
+                  <div className="text-xs text-[var(--rp-text-500)]">Estimated clicks opportunity</div>
+                  <div className="mt-1 text-2xl font-semibold text-[var(--rp-indigo-700)]">+{estimatedClicksGain}/mo</div>
+                </div>
               </div>
 
               <div className="mt-3 grid gap-2 text-[var(--rp-text-700)]">
@@ -433,7 +622,7 @@ export default function RankPage() {
                 </div>
                 <div className="rp-chart-card mt-3 h-14 rounded-xl border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-2">
                   {trendValues.length ? (
-                    <ApexSparkline values={trendValues} />
+                    <ApexSparkline values={trendValues} inverted />
                   ) : (
                     <div className="text-xs text-[var(--rp-text-500)]">No trend data yet.</div>
                   )}
@@ -443,6 +632,39 @@ export default function RankPage() {
                 </div>
               </div>
             </div>
+
+            {trendValues.length ? (
+              <div className="rp-card p-4">
+                <div className="flex items-center justify-between">
+                  <div className="text-sm font-semibold text-[var(--rp-text-800)]">Position trend (recent checks)</div>
+                  <div className="text-xs text-[var(--rp-text-500)]">Rank 1 is best</div>
+                </div>
+                <div className="mt-3 h-48 rounded-xl border border-[var(--rp-border)] bg-white p-2">
+                  <SafeApexChart
+                    type="line"
+                    height={176}
+                    options={{
+                      chart: { toolbar: { show: false }, animations: { enabled: true } },
+                      stroke: { curve: "smooth", width: 3 },
+                      colors: ["#7c3aed"],
+                      grid: { borderColor: "#ede9fe" },
+                      yaxis: {
+                        reversed: true,
+                        min: 1,
+                        forceNiceScale: true,
+                        labels: { style: { colors: "#6b5b95" } }
+                      },
+                      xaxis: {
+                        categories: trendValues.map((_, i) => `Check ${i + 1}`),
+                        labels: { style: { colors: "#6b5b95" } }
+                      },
+                      tooltip: { y: { formatter: (v) => `Position ${Math.round(v)}` } }
+                    }}
+                    series={[{ name: "Position", data: trendValues }]}
+                  />
+                </div>
+              </div>
+            ) : null}
           </div>
         )}
 
