@@ -30,7 +30,7 @@ export default function RequireAuth({ children, role }) {
   }
   if (role) {
     if (role === "member") {
-      if (!user?.role || (user.role !== "member" && user.role !== "admin")) {
+      if (user?.role && user.role !== "member" && user.role !== "admin") {
         return <Navigate to="/audit" replace />;
       }
     } else if (user?.role !== role) {
