@@ -5,9 +5,7 @@ import AppShell from "../components/AppShell.jsx";
 export default function RequireAuth({ children, role }) {
   const location = useLocation();
   const token = getAuthToken();
-  const isSsg =
-    typeof window === "undefined" ||
-    (typeof import.meta !== "undefined" && import.meta.env && (import.meta.env.SSR || import.meta.env.MODE === "app-public"));
+  const isSsg = typeof window === "undefined" || (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.SSR);
 
   if (isSsg) {
     return (
