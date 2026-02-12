@@ -1,18 +1,8 @@
-FROM python:3.11-slim
-
+FROM node:22-alpine
 WORKDIR /app
-
-RUN apt-get update && apt-get install -y gcc && rm -rf /var/lib/apt/lists/*
-
-COPY requirements.txt .
-
-RUN pip install --no-cache-dir -r requirements.txt
-
-COPY main.py .
-COPY api/ api/
-COPY lib/ lib/
-
-EXPOSE 8000
-
-CMD uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}
-
+COPY services/node-api/package*.json ./
+RUN npm ci --omit=dev
+COPY services/node-api/ ./
+ENV NODE_ENV=production
+EXPOSE 8080
+CMD ["npm","start"]
