@@ -4,6 +4,7 @@ import { safeJson } from "../lib/safeJson.js";
 import { apiUrl } from "../lib/api.js";
 
 export default function ResetPasswordPage() {
+  const base = typeof window !== "undefined" ? window.location.origin : "https://rankypulse.com";
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState("idle");
   const [token, setToken] = useState("");
@@ -54,7 +55,14 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <AppShell title="Reset password" subtitle="We’ll send a reset link to your email.">
+    <AppShell
+      title="Reset password"
+      subtitle="We’ll send a reset link to your email."
+      seoTitle="Reset Password | RankyPulse"
+      seoDescription="Reset your RankyPulse password."
+      seoCanonical={`${base}/auth/reset`}
+      seoRobots="noindex,nofollow"
+    >
       <div className="mx-auto max-w-md rp-auth-shell">
         <form onSubmit={submit} className="rp-card rp-auth-card p-6">
           <div className="rp-auth-title text-sm font-semibold text-[var(--rp-text-700)]">

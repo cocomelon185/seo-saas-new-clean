@@ -41,6 +41,52 @@ function AuditPageInner() {
   const __rpSkipAutoRunRef = useRef(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const base = typeof window !== "undefined" ? window.location.origin : "https://rankypulse.com";
+  const structuredData = [
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      name: "RankyPulse SEO Audit",
+      applicationCategory: "BusinessApplication",
+      operatingSystem: "Web",
+      url: `${base}/audit`,
+      description: "Run a full-site SEO audit, get prioritized fixes, and export a client-ready report in minutes.",
+      brand: {
+        "@type": "Brand",
+        name: "RankyPulse"
+      }
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      mainEntity: [
+        {
+          "@type": "Question",
+          name: "What does the SEO audit include?",
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: "The audit includes a score, quick wins, prioritized issues, and a client-ready report."
+          }
+        },
+        {
+          "@type": "Question",
+          name: "How long does an audit take?",
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: "Most audits complete in under a minute, depending on site size."
+          }
+        },
+        {
+          "@type": "Question",
+          name: "Can I share the report?",
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: "Yes. You can generate a shareable report link for clients and stakeholders."
+          }
+        }
+      ]
+    }
+  ];
   const [pricingOpen, setPricingOpen] = useState(false);
 
   const [url, setUrl] = useState("");
@@ -51,6 +97,7 @@ function AuditPageInner() {
   const [hasResumeSnapshot, setHasResumeSnapshot] = useState(false);
   const [debug, setDebug] = useState("");
   const [debugExpanded, setDebugExpanded] = useState(false);
+  const [showDeepSections, setShowDeepSections] = useState(false);
   const autoRunRef = useRef(false);
   
   // Conversion panel state
@@ -65,8 +112,12 @@ function AuditPageInner() {
     }
   });
   const [showAllGuidedFixes, setShowAllGuidedFixes] = useState(false);
+  const [quickWinNotice, setQuickWinNotice] = useState("");
+  const [topFixNotice, setTopFixNotice] = useState("");
   const [guidedDone, setGuidedDone] = useState({});
   const [showScoreInfo, setShowScoreInfo] = useState(false);
+  const [showGrowthTools, setShowGrowthTools] = useState(false);
+  const [lastAuditAt, setLastAuditAt] = useState(null);
   const [scoreMode, setScoreMode] = useState(() => {
     try {
       return localStorage.getItem("rp_score_mode") || "narrowed";
@@ -102,6 +153,7 @@ function AuditPageInner() {
   const [requireVerified, setRequireVerified] = useState(false);
   const [allowAudit, setAllowAudit] = useState(true);
   const [requestStatus, setRequestStatus] = useState("");
+  const autoFocusIssueRef = useRef("");
   const auditDisabledReason =
     !allowAudit
       ? "Audit tool is disabled by your admin."
@@ -243,6 +295,11 @@ function AuditPageInner() {
 
   const issues = Array.isArray(result?.issues) ? result.issues : [];
   const quickWins = Array.isArray(result?.quick_wins) ? result.quick_wins : [];
+  const prioritizedQuickWins = useMemo(() => strictPrioritizeQuickWins(quickWins).slice(0, 10), [quickWins]);
+  const topPriorityIssue = useMemo(() => {
+    const prioritized = strictPrioritizeIssues(issues);
+    return prioritized.length ? prioritized[0] : null;
+  }, [issues]);
   const scoreValue = useMemo(() => {
     if (typeof result?.score !== "number") return null;
     return displayScore(result.score, issues);
@@ -314,6 +371,94 @@ function AuditPageInner() {
   const pageType = result?.page_type || "landing";
   const pageTypeAdvice = Array.isArray(result?.page_type_advice) ? result.page_type_advice : [];
   const rewriteExamples = Array.isArray(result?.rewrite_examples) ? result.rewrite_examples : [];
+  const heroKpis = useMemo(() => {
+    const score = typeof scoreValue === "number"
+      ? Math.round(scoreValue)
+      : (typeof result?.score === "number" ? Math.round(result.score) : null);
+    const issuesCount = Array.isArray(issues) ? issues.length : null;
+    const quickWinsCount = (() => {
+      if (Array.isArray(quickWins) && quickWins.length) return quickWins.length;
+      if (!Array.isArray(issues)) return null;
+      return issues.filter((it) => it?.priority === "fix_now" || it?.priority === "fix_next").length;
+    })();
+    const liftPoints = Array.isArray(issues) ? estimateScoreLiftFromIssues(issues) : null;
+    const liftPercent = (typeof liftPoints === "number" && score !== null)
+      ? Math.max(0, Math.round((liftPoints / Math.max(1, score)) * 100))
+      : null;
+    const liftDisplay = liftPercent === null
+      ? "—"
+      : liftPercent <= 0
+        ? "Calculating…"
+        : `+${liftPercent}%`;
+
+    return [
+      { label: "SEO health", value: score !== null ? String(score) : "—", tone: "text-emerald-700", anchor: "#score-insights", hint: "View score breakdown" },
+      { label: "Problems to fix", value: issuesCount !== null ? String(issuesCount) : "—", tone: "text-rose-600", anchor: "[data-testid='key-issues']", hint: "Open prioritized issues" },
+      { label: "Fast fixes", value: quickWinsCount !== null ? String(quickWinsCount) : "—", tone: "text-amber-700", anchor: "#quick-wins", hint: "Jump to quick wins" },
+      { label: "Estimated lift", value: liftDisplay, tone: "text-[var(--rp-indigo-700)]", anchor: "#top-fixes", hint: liftPercent === null || liftPercent <= 0 ? "Needs more fix data" : "Projected impact from top fixes" }
+    ];
+  }, [issues, quickWins, result?.score, scoreValue]);
+
+  const trustSummary = useMemo(() => {
+    if (!result) return null;
+    const scanCount = Math.max(1, Number(result?.pages_scanned || result?.pages_crawled || 1));
+    const statusCode = Number(result?.debug?.http_status || result?.http_status || 0);
+    const lastRunText = lastAuditAt
+      ? new Date(lastAuditAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+      : "just now";
+    return {
+      scanCount,
+      statusCode: Number.isFinite(statusCode) && statusCode > 0 ? statusCode : 200,
+      lastRunText
+    };
+  }, [lastAuditAt, result]);
+
+  function jumpToSection(target) {
+    try {
+      if (!target) return;
+      const el = document.querySelector(target);
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    } catch {}
+  }
+
+  function focusTopIssue() {
+    if (!topPriorityIssue) return;
+    try {
+      const sp = new URLSearchParams(window.location.search || "");
+      sp.set("p", String(topPriorityIssue?.priority || "fix_now"));
+      if (topPriorityIssue?.issue_id) sp.set("q", String(topPriorityIssue.issue_id));
+      const qs = sp.toString();
+      const nextUrl = qs ? `${window.location.pathname}?${qs}` : window.location.pathname;
+      window.history.replaceState(null, "", nextUrl);
+    } catch {}
+    jumpToSection("[data-testid='key-issues']");
+  }
+
+  const quickWinSimulator = useMemo(() => {
+    const baseScore = typeof scoreValue === "number" ? Math.round(scoreValue) : 0;
+    const fixCount = prioritizedQuickWins.length;
+    const projectedLift = Math.min(18, Math.max(3, fixCount * 3));
+    const projectedScore = Math.min(100, baseScore + projectedLift);
+    const minutes = Math.max(5, fixCount * 8);
+    const confidence = fixCount > 0 ? Math.min(96, 68 + fixCount * 7) : 0;
+    return { baseScore, projectedLift, projectedScore, minutes, confidence };
+  }, [prioritizedQuickWins.length, scoreValue]);
+
+  const kpiFixProgress = useMemo(() => {
+    if (typeof scoreValue !== "number") return null;
+    const topOne = strictPrioritizeIssues(issues).slice(0, 1);
+    const lift = Math.max(1, Math.round(estimateScoreLiftFromIssues(topOne)));
+    const current = Math.max(0, Math.min(100, Math.round(scoreValue)));
+    const projected = Math.max(current, Math.min(100, current + lift));
+    return { current, projected, lift };
+  }, [issues, scoreValue]);
+
+  const heroVisualStats = useMemo(() => {
+    const issueCount = Array.isArray(issues) ? issues.length : 0;
+    const quickCount = Array.isArray(quickWins) ? quickWins.length : 0;
+    const firstFixLift = Math.max(1, Math.round(estimateScoreLiftFromIssues(strictPrioritizeIssues(issues).slice(0, 1))));
+    return { issueCount, quickCount, firstFixLift };
+  }, [issues, quickWins]);
 
   useEffect(() => {
     try {
@@ -517,7 +662,7 @@ function AuditPageInner() {
         setError(String(data.warning));
         return;
       }
-try {
+      try {
         pushAuditHistory({
           url: data?.url || url,
           score: data?.score,
@@ -528,6 +673,7 @@ try {
       } catch {}
 
       setStatus("success");
+      setLastAuditAt(Date.now());
       try {
         track("audit_run", {
           url: data?.url || url,
@@ -549,6 +695,21 @@ try {
       setError(String(e?.message || "Request failed."));
     }
   }
+
+  useEffect(() => {
+    if (status !== "success" || !result || !topPriorityIssue) return;
+    const marker = `${String(result?.url || "")}:${String(topPriorityIssue?.issue_id || topPriorityIssue?.title || "")}`;
+    if (autoFocusIssueRef.current === marker) return;
+    autoFocusIssueRef.current = marker;
+    try {
+      const sp = new URLSearchParams(window.location.search || "");
+      sp.set("p", String(topPriorityIssue?.priority || "fix_now"));
+      if (topPriorityIssue?.issue_id) sp.set("q", String(topPriorityIssue.issue_id));
+      const qs = sp.toString();
+      const nextUrl = qs ? `${window.location.pathname}?${qs}` : window.location.pathname;
+      window.history.replaceState(null, "", nextUrl);
+    } catch {}
+  }, [status, result, topPriorityIssue]);
 
   function handleConversionSubmit(e) {
     e.preventDefault();
@@ -675,6 +836,113 @@ try {
       };
     }
     return { title: raw, detail: "Fixing this removes a common SEO blocker." };
+  }
+
+  function normalizeMainUrl(urlValue) {
+    try {
+      const u = new URL(String(urlValue || ""));
+      return `${u.origin}${u.pathname}`.replace(/\/$/, "") || u.origin;
+    } catch {
+      return "https://example.com/page";
+    }
+  }
+
+  function topFixUX(issue, pageUrl = "") {
+    const id = String(issue?.issue_id || "").toLowerCase();
+    const rawTitle = String(issue?.title || issue?.issue_id || "Issue");
+    const titleLc = rawTitle.toLowerCase();
+    const canonicalUrl = normalizeMainUrl(pageUrl);
+
+    const base = {
+      heading: rawTitle,
+      businessImpact: "Potential ranking loss",
+      time: "5-10 min",
+      effort: "Low effort",
+      impact: "High impact",
+      before: "Current: Issue detected",
+      after: "After fix: Stronger SEO signal",
+      snippet: "",
+      detail: String(issue?.why || issue?.example_fix || "Fix this item to improve SEO clarity.")
+    };
+
+    if (id.includes("canonical") || titleLc.includes("canonical")) {
+      return {
+        ...base,
+        heading: "Google may split ranking power across duplicate URLs",
+        businessImpact: "Duplicate indexing risk",
+        before: "Current: No canonical found",
+        after: "After fix: Main URL signal consolidated",
+        snippet: `<link rel="canonical" href="${canonicalUrl}" />`,
+        detail: "Set one main URL so search engines rank the right page version."
+      };
+    }
+    if (id.includes("h1") || titleLc.includes("h1")) {
+      return {
+        ...base,
+        heading: "Page topic is unclear to search engines",
+        businessImpact: "Lower topical relevance",
+        before: "Current: H1 missing",
+        after: "After fix: Clear page topic signal",
+        snippet: "<h1>Your Main Page Topic</h1>",
+        detail: "Add one clear H1 near the top of the page."
+      };
+    }
+    if (id.includes("meta_description") || titleLc.includes("meta")) {
+      return {
+        ...base,
+        heading: "Search snippet may be weak or random",
+        businessImpact: "Lower click-through potential",
+        time: "10-15 min",
+        before: "Current: Meta description missing",
+        after: "After fix: Clearer search snippet",
+        snippet: '<meta name="description" content="Clear 140-160 character summary of this page." />',
+        detail: "Add a concise meta description for better SERP preview quality."
+      };
+    }
+    if (id.includes("title") || titleLc.includes("title")) {
+      return {
+        ...base,
+        heading: "Search title may reduce clicks",
+        businessImpact: "CTR and relevance risk",
+        before: "Current: Title missing or too long",
+        after: "After fix: Stronger SERP title",
+        snippet: "<title>Primary Keyword | Brand</title>",
+        detail: "Use a clear 30-60 character title with core keyword first."
+      };
+    }
+    return base;
+  }
+
+  async function copyQuickWinPlan(info, pageUrl = "") {
+    const plan = [
+      `Quick win: ${info.title}`,
+      `Why it matters: ${info.detail}`,
+      "",
+      "Simple steps:",
+      "1. Open your page SEO/editor settings.",
+      "2. Apply this fix on the page.",
+      "3. Save, publish, and re-run the audit to confirm."
+    ];
+    if (pageUrl) plan.push(`4. Verify on page: ${pageUrl}`);
+    const text = plan.join("\n");
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {}
+    try {
+      const area = document.createElement("textarea");
+      area.value = text;
+      area.setAttribute("readonly", "");
+      area.style.position = "absolute";
+      area.style.left = "-9999px";
+      document.body.appendChild(area);
+      area.select();
+      const ok = document.execCommand("copy");
+      document.body.removeChild(area);
+      return !!ok;
+    } catch {
+      return false;
+    }
   }
 
   function isValidUrl(value) {
@@ -1010,30 +1278,57 @@ try {
   }
 
   return (
-    <AppShell data-testid="audit-page"
+    <AppShell
+      data-testid="audit-page"
       title="SEO Page Audit"
       subtitle="SEO tools that feel instant. Paste a URL and get a score, quick wins, and a prioritized list of issues."
+      seoTitle="SEO Audit | RankyPulse"
+      seoDescription="Run a full-site SEO audit, get prioritized fixes, and export a client-ready report in minutes."
+      seoCanonical={`${base}/audit`}
+      seoRobots="index,follow"
+      seoJsonLd={structuredData}
     >
 
       <div className="flex flex-col gap-5">
         <div className="grid gap-4 md:grid-cols-4">
-          {[
-            { label: "SEO health", value: "88", tone: "text-emerald-600" },
-            { label: "Issues found", value: "42", tone: "text-rose-600" },
-            { label: "Quick wins", value: "16", tone: "text-amber-600" },
-            { label: "Estimated lift", value: "+31%", tone: "text-[var(--rp-indigo-700)]" }
-          ].map((item) => (
-            <div key={item.label} className="rp-kpi-card rounded-2xl border border-[var(--rp-border)] bg-white p-4 shadow-sm">
+          {heroKpis.map((item) => (
+            <button
+              key={item.label}
+              type="button"
+              onClick={() => jumpToSection(item.anchor)}
+              className="rp-kpi-card rounded-2xl border border-[var(--rp-border)] bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+            >
               <div className="text-xs text-[var(--rp-text-500)]">{item.label}</div>
               <div className={`mt-2 text-2xl font-semibold ${item.tone}`}>{item.value}</div>
-            </div>
+              <div className="mt-2 text-[11px] text-[var(--rp-text-500)]">{item.hint}</div>
+            </button>
           ))}
         </div>
-        <div className="text-xs text-[var(--rp-text-500)]">
-          Want to see an example before running your own?
-          {" "}
-          <a className="text-[var(--rp-indigo-700)] hover:underline" href="/shared">View a sample results report</a>.
-        </div>
+        {kpiFixProgress ? (
+          <div className="rounded-xl border border-[var(--rp-border)] bg-white px-3 py-2">
+            <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+              <span className="font-semibold text-[var(--rp-text-700)]">Fix progress preview</span>
+              <span className="text-[var(--rp-text-500)]">
+                {kpiFixProgress.current} → {kpiFixProgress.projected} after first fix (+{kpiFixProgress.lift})
+              </span>
+            </div>
+            <div className="mt-2 h-2 w-full rounded-full bg-[var(--rp-gray-100)] overflow-hidden">
+              <div className="relative h-full rounded-full bg-emerald-300/40" style={{ width: `${kpiFixProgress.projected}%` }}>
+                <div
+                  className="absolute left-0 top-0 h-full rounded-full bg-gradient-to-r from-[var(--rp-indigo-500)] to-emerald-400"
+                  style={{ width: `${Math.max(2, kpiFixProgress.current)}%` }}
+                />
+                <div
+                  className="absolute top-0 h-full animate-pulse rounded-full bg-emerald-400/70"
+                  style={{
+                    left: `${Math.max(0, kpiFixProgress.current - 1)}%`,
+                    width: `${Math.max(1.5, kpiFixProgress.projected - kpiFixProgress.current)}%`
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        ) : null}
         {authUser?.role === "member" && (
           <div className="rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-4 text-sm text-[var(--rp-text-600)]">
             You’re in a member role. Ask your admin to unlock full fixes, briefs, and exports.
@@ -1089,33 +1384,59 @@ try {
             </div>
           </div>
         )}
-        <div className="rp-hero rounded-2xl border border-white/10 p-6 text-white shadow-[0_30px_80px_rgba(66,25,131,0.25)] md:p-8">
+        <div className="rp-hero relative overflow-hidden rounded-2xl border border-[var(--rp-border)] bg-gradient-to-br from-[rgba(124,58,237,0.10)] via-white to-[rgba(99,102,241,0.10)] p-6 text-[var(--rp-text-900)] shadow-[0_18px_45px_rgba(66,25,131,0.12)] md:p-8">
+          <div className="pointer-events-none absolute -left-16 top-0 h-40 w-40 rounded-full bg-[rgba(124,58,237,0.10)] blur-2xl" />
+          <div className="pointer-events-none absolute -right-20 bottom-0 h-48 w-48 rounded-full bg-[rgba(45,212,191,0.10)] blur-2xl" />
           <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-            <div className="flex flex-col gap-4">
-              <div className="inline-flex w-fit items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-white/90">
+            <div className="flex min-h-[320px] flex-col justify-between gap-4">
+              <div className="inline-flex w-fit items-center gap-2 rounded-full border border-[rgba(124,58,237,0.25)] bg-[rgba(124,58,237,0.10)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--rp-indigo-800)]">
                 RankyPulse Audit
               </div>
-              <h2 className="text-3xl font-semibold leading-tight md:text-4xl">
+              <h2 className="text-3xl font-semibold leading-tight text-[var(--rp-text-900)] md:text-4xl">
                 SEO clarity in one scan.
               </h2>
-              <p className="text-sm text-white/90 md:text-base">
+              <p className="text-sm text-[var(--rp-text-700)] md:text-base">
                 Paste a URL to generate a score, quick wins, and a prioritized fix plan in seconds.
               </p>
-              <div className="flex flex-wrap items-center gap-3 text-xs text-white/85">
-                <span className="rounded-full border border-white/20 px-3 py-1">SEO basics + content depth</span>
-                <span className="rounded-full border border-white/20 px-3 py-1">Core Web Vitals when available</span>
-                <span className="rounded-full border border-white/20 px-3 py-1">Client‑ready report</span>
+              <div className="flex flex-wrap items-center gap-3 text-xs text-[var(--rp-text-700)]">
+                <span className="rounded-full border border-[var(--rp-border)] bg-white px-3 py-1">SEO basics + content depth</span>
+                <span className="rounded-full border border-[var(--rp-border)] bg-white px-3 py-1">Core Web Vitals when available</span>
+                <span className="rounded-full border border-[var(--rp-border)] bg-white px-3 py-1">Client-ready report</span>
+              </div>
+              <div className="mt-1 grid gap-2 sm:grid-cols-3">
+                <div className="rounded-xl border border-[var(--rp-border)] bg-white/85 p-3 shadow-sm">
+                  <div className="text-[10px] uppercase tracking-[0.08em] text-[var(--rp-text-500)]">Problems found</div>
+                  <div className="mt-1 text-lg font-semibold text-rose-700">{heroVisualStats.issueCount || "-"}</div>
+                  <div className="text-[11px] text-[var(--rp-text-500)]">Prioritized instantly</div>
+                </div>
+                <div className="rounded-xl border border-[var(--rp-border)] bg-white/85 p-3 shadow-sm">
+                  <div className="text-[10px] uppercase tracking-[0.08em] text-[var(--rp-text-500)]">Fast fixes</div>
+                  <div className="mt-1 text-lg font-semibold text-amber-700">{heroVisualStats.quickCount || "-"}</div>
+                  <div className="text-[11px] text-[var(--rp-text-500)]">Ready in minutes</div>
+                </div>
+                <div className="rounded-xl border border-[var(--rp-border)] bg-white/85 p-3 shadow-sm">
+                  <div className="text-[10px] uppercase tracking-[0.08em] text-[var(--rp-text-500)]">First-fix lift</div>
+                  <div className="mt-1 text-lg font-semibold text-emerald-700">+{heroVisualStats.firstFixLift}</div>
+                  <div className="text-[11px] text-[var(--rp-text-500)]">Score points estimate</div>
+                </div>
               </div>
             </div>
-            <div className="rounded-2xl bg-white p-5 text-[var(--rp-text-900)] shadow-[0_12px_30px_rgba(15,23,42,0.15)]">
+            <div className="rounded-2xl border border-[rgba(124,58,237,0.18)] bg-white/95 p-5 text-[var(--rp-text-900)] shadow-[0_12px_30px_rgba(66,25,131,0.14)] backdrop-blur-[2px]">
               <div className="flex items-center justify-between text-xs font-semibold text-[var(--rp-text-500)]">
                 <span>Audit setup</span>
                 <span className="rounded-full bg-[var(--rp-gray-100)] px-2 py-1 rp-body-xsmall">~20s</span>
               </div>
+              <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-[var(--rp-text-600)]">
+                <span className="rounded-full border border-[var(--rp-border)] bg-[rgba(124,58,237,0.08)] px-2 py-1 font-semibold text-[var(--rp-indigo-700)]">1. Enter URL</span>
+                <span className="rounded-full border border-[var(--rp-border)] bg-[rgba(56,189,248,0.08)] px-2 py-1 font-semibold text-sky-700">2. Run audit</span>
+                <span className="rounded-full border border-[var(--rp-border)] bg-[rgba(16,185,129,0.10)] px-2 py-1 font-semibold text-emerald-700">3. Fix first issue</span>
+              </div>
               <div className="mt-3 grid gap-4">
-                <label className="block text-xs font-semibold text-[var(--rp-text-500)]">Page URL</label>
+                <label className="block text-xs font-semibold text-[var(--rp-text-500)]" htmlFor="audit-page-url">
+                  Page URL
+                </label>
                 <input
-                  aria-label="Page URL"
+                  id="audit-page-url"
                   value={url}
                   onChange={(e) => setUrl(e.target.value)}
                   placeholder="https://example.com/pricing"
@@ -1123,7 +1444,8 @@ try {
                 />
                 <div className="grid gap-4 md:grid-cols-[1fr_150px]">
                   <div className="rp-body-xsmall">Tip: test with https://example.com</div>
-                  <select className="rp-input text-sm">
+                  <label className="sr-only" htmlFor="audit-region">Audit region</label>
+                  <select id="audit-region" className="rp-input text-sm" aria-label="Audit region">
                     <option>US</option>
                     <option>UK</option>
                     <option>EU</option>
@@ -1141,6 +1463,22 @@ try {
                   <IconPlay size={16} />
                   {status === "loading" ? "Running..." : "Run SEO Audit"}
                 </button>
+                {status === "success" && topPriorityIssue ? (
+                  <button
+                    type="button"
+                    className="rp-btn-secondary rp-btn-sm h-8 px-3 text-xs"
+                    onClick={async () => {
+                      const pageUrl = String(result?.debug?.final_url || result?.final_url || url || "");
+                      const ux = topFixUX(topPriorityIssue, pageUrl);
+                      const text = ux.snippet || String(topPriorityIssue?.example_fix || topPriorityIssue?.fix || ux.detail);
+                      const ok = await copyQuickWinPlan({ title: ux.heading, detail: text }, pageUrl);
+                      setTopFixNotice(ok ? "First fix copied. Paste and publish, then re-run." : "Copy blocked. Please allow clipboard access.");
+                      setTimeout(() => setTopFixNotice(""), 2200);
+                    }}
+                  >
+                    Copy first fix
+                  </button>
+                ) : null}
                 {auditDisabledReason && (!hasUrl || status === "loading" || !allowAudit || (requireVerified && authUser && authUser.verified === false)) && (
                   <div className="text-xs text-[var(--rp-text-500)]">{auditDisabledReason}</div>
                 )}
@@ -1153,19 +1491,19 @@ try {
                   return (
                     <>
                       <div className="rounded-lg border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-2">
-                        <div className="text-[11px] uppercase tracking-wide text-[var(--rp-text-400)]">Score</div>
+                        <div className="text-[11px] uppercase tracking-wide text-[var(--rp-text-500)]">Score</div>
                         <div className="text-sm font-semibold text-[var(--rp-text-800)]">
                           {previewScore || "—"}
                         </div>
                       </div>
                       <div className="rounded-lg border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-2">
-                        <div className="text-[11px] uppercase tracking-wide text-[var(--rp-text-400)]">Issues</div>
+                        <div className="text-[11px] uppercase tracking-wide text-[var(--rp-text-500)]">Issues</div>
                         <div className="text-sm font-semibold text-[var(--rp-text-800)]">
                           {totalIssues || "—"}
                         </div>
                       </div>
                       <div className="rounded-lg border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-2">
-                        <div className="text-[11px] uppercase tracking-wide text-[var(--rp-text-400)]">Fix Now</div>
+                        <div className="text-[11px] uppercase tracking-wide text-[var(--rp-text-500)]">Fix Now</div>
                         <div className="text-sm font-semibold text-[var(--rp-text-800)]">
                           {fixNow || "—"}
                         </div>
@@ -1178,88 +1516,97 @@ try {
           </div>
         </div>
 
-        {result?.url && (
-          <div className="flex flex-wrap items-center gap-2">
-            <ShareAuditButton result={result} />
-            <button
-              onClick={async () => {
-                if (!result) return;
-                const mod = await import("../utils/exportAuditSummary.js");
-                mod.exportAuditSummary(result);
-              }}
-              className="rp-btn-secondary rp-btn-sm h-9 px-3 text-xs"
-            >
-              Export summary
-            </button>
-            <button
-              onClick={async () => {
-                if (!result) return;
-                const mod = await import("../utils/exportAuditPdf.js");
-                mod.exportAuditPdf({
-                  ...result,
-                  score: typeof scoreValue === "number" ? scoreValue : result.score,
-                  branding: {
-                    name: reportBrandName,
-                    color: reportBrandColor,
-                    logo: reportBrandLogo
-                  }
-                });
-              }}
-              className="rp-btn-secondary rp-btn-sm h-9 px-3 text-xs"
-            >
-              Export PDF
-            </button>
-            <button
-              onClick={() => {
-                const u = result?.url;
-                if (!u) return;
-                if (isMonitored(u)) {
-                  removeMonitor(u);
-                } else {
-                  upsertMonitor({ url: u });
-                }
-                refreshMonitors();
-              }}
-              className="rp-btn-secondary rp-btn-sm h-9 px-3 text-xs"
-            >
-              {isMonitored(result.url) ? "Stop monitoring" : "Monitor this page"}
-            </button>
-          </div>
+        {(result?.url || (status !== "loading" && hasResumeSnapshot) || status === "success") && (
+          <details className="rp-card p-4">
+            <summary className="cursor-pointer list-none select-none">
+              <span className="rp-btn-secondary rp-btn-sm h-8 px-3 text-xs inline-flex items-center">
+                More actions
+              </span>
+            </summary>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              {result?.url ? <ShareAuditButton result={result} /> : null}
+              {result?.url ? (
+                <button
+                  onClick={async () => {
+                    if (!result) return;
+                    const mod = await import("../utils/exportAuditSummary.js");
+                    mod.exportAuditSummary(result);
+                  }}
+                  className="rp-btn-secondary rp-btn-sm h-9 px-3 text-xs"
+                >
+                  Export summary
+                </button>
+              ) : null}
+              {result?.url ? (
+                <button
+                  onClick={async () => {
+                    if (!result) return;
+                    const mod = await import("../utils/exportAuditPdf.js");
+                    mod.exportAuditPdf({
+                      ...result,
+                      score: typeof scoreValue === "number" ? scoreValue : result.score,
+                      branding: {
+                        name: reportBrandName,
+                        color: reportBrandColor,
+                        logo: reportBrandLogo
+                      }
+                    });
+                  }}
+                  className="rp-btn-secondary rp-btn-sm h-9 px-3 text-xs"
+                >
+                  Export PDF
+                </button>
+              ) : null}
+              {result?.url ? (
+                <button
+                  onClick={() => {
+                    const u = result?.url;
+                    if (!u) return;
+                    if (isMonitored(u)) {
+                      removeMonitor(u);
+                    } else {
+                      upsertMonitor({ url: u });
+                    }
+                    refreshMonitors();
+                  }}
+                  className="rp-btn-secondary rp-btn-sm h-9 px-3 text-xs"
+                >
+                  {isMonitored(result.url) ? "Stop monitoring" : "Monitor this page"}
+                </button>
+              ) : null}
+              {status !== "loading" && hasResumeSnapshot ? (
+                <button
+                  onClick={() => {
+                    try {
+                      const raw = localStorage.getItem("rp_audit_snapshot::" + (url || "").trim());
+                      if (!raw) return;
+                      const snap = JSON.parse(raw);
+                      setError("");
+                      setResult(snap);
+                      setStatus("success");
+                    } catch {}
+                  }}
+                  className="rp-btn-secondary rp-btn-sm h-9 px-3 text-xs"
+                >
+                  <IconClock size={14} />
+                  Resume audit
+                </button>
+              ) : null}
+              {status === "success" ? (
+                <button
+                  onClick={() => {
+                    __rp_markSkipAutoRun();
+                    run();
+                  }}
+                  className="rp-btn-secondary rp-btn-sm h-9 px-3 text-xs"
+                >
+                  <IconRefresh size={14} />
+                  Re-run audit
+                </button>
+              ) : null}
+            </div>
+          </details>
         )}
-
-        <div className="flex flex-wrap gap-2">
-          {status !== "loading" && hasResumeSnapshot && (
-            <button
-              onClick={() => {
-                try {
-                  const raw = localStorage.getItem("rp_audit_snapshot::" + (url || "").trim());
-                  if (!raw) return;
-                  const snap = JSON.parse(raw);
-                  setError("");
-                  setResult(snap);
-                  setStatus("success");
-                } catch {}
-              }}
-              className="rp-btn-secondary text-sm"
-            >
-              <IconClock size={14} />
-              Resume audit
-            </button>
-          )}
-
-          {status === "success" && (
-            <button
-              onClick={() => {
-                __rp_markSkipAutoRun();
-                run();
-              }}
-              className="rp-btn-secondary text-sm"
-            >
-              <IconRefresh size={14} />
-              Re-run audit
-            </button>
-          )}
-        </div>
 
         {status === "idle" && (
           <div className="rp-card p-5 text-sm text-[var(--rp-text-500)]">
@@ -1285,7 +1632,1389 @@ try {
           </div>
         )}
 
+        {status === "success" && result && (
+          <div className="grid gap-5">
+            <div className="flex flex-wrap items-center gap-2">
+              {[
+                { href: "#quick-wins", label: "Quick Wins" },
+                { href: "#monitoring", label: "Monitoring" }
+              ].map((link) => (
+                <a
+                  key={link.href}
+                  href={link.href}
+                  className="rp-chip rp-chip-neutral text-xs"
+                >
+                  {link.label}
+                </a>
+              ))}
+              <button
+                type="button"
+                className="rp-chip rp-chip-info text-xs"
+                onClick={() => setShowDeepSections((prev) => !prev)}
+              >
+                {showDeepSections ? "Hide detailed analysis" : "Show detailed analysis"}
+              </button>
+            </div>
+            <Suspense fallback={null}>
+              <AuditImpactBanner
+                score={typeof scoreValue === "number" ? scoreValue : result?.score}
+                issues={issues}
+              />
+            </Suspense>
+            <div id="top-fixes" className="rp-card p-5">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <div className="rp-section-title">Start here: your top fixes</div>
+                  <div className="mt-1 text-xs text-[var(--rp-text-500)]">
+                    Tackle these first to unlock the fastest lift. Then work through the full issue list below.
+                  </div>
+                  {trustSummary ? (
+                    <div className="mt-2 text-xs text-[var(--rp-text-500)]">
+                      Scanned {trustSummary.scanCount} page • Last run {trustSummary.lastRunText} • HTTP {trustSummary.statusCode}
+                    </div>
+                  ) : null}
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  {status === "success" && topPriorityIssue ? (
+                    <button type="button" className="rp-btn-primary rp-btn-sm h-9 px-3 text-xs" onClick={focusTopIssue}>
+                      Fix top issue now
+                    </button>
+                  ) : null}
+                  <button
+                    type="button"
+                    className="rp-btn-secondary rp-btn-sm h-9 px-3 text-xs"
+                    onClick={() => {
+                      const el = document.querySelector("[data-testid='key-issues']");
+                      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+                    }}
+                  >
+                    See full issue list
+                  </button>
+                </div>
+              </div>
+              {topFixNotice ? (
+                <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700">
+                  {topFixNotice}
+                </div>
+              ) : null}
+              <div className="mt-4 grid gap-3 md:grid-cols-3">
+                {(() => {
+                  const prioritized = strictPrioritizeIssues(issues);
+                  const topFixes = prioritized.slice(0, 3);
+                  if (!topFixes.length) {
+                    return (
+                      <div className="rounded-xl border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-4 text-sm text-[var(--rp-text-500)]">
+                        No issues found yet. Run an audit to see prioritized fixes.
+                      </div>
+                    );
+                  }
+                  const renderedFixes = topFixes.map((issue, idx) => {
+                    const title = String(issue?.title || issue?.issue_id || "Issue");
+                    const priority = String(issue?.priority || "fix_next");
+                    const severity = String(issue?.severity || "").toLowerCase();
+                    const pageUrl = String(result?.debug?.final_url || result?.final_url || url || "");
+                    const ux = topFixUX(issue, pageUrl);
+                    const priorityChip =
+                      priority === "fix_now"
+                        ? "rp-chip rp-chip-warning"
+                        : priority === "fix_next"
+                        ? "rp-chip rp-chip-info"
+                        : "rp-chip rp-chip-neutral";
+                    const severityChip = severity === "high"
+                      ? "rp-chip rp-chip-warning"
+                      : severity === "medium"
+                      ? "rp-chip rp-chip-info"
+                      : "rp-chip rp-chip-success";
+                    return (
+                      <div key={`${title}-${idx}`} className="rounded-xl border border-[var(--rp-border)] bg-white p-4 shadow-sm">
+                        <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--rp-text-500)]">
+                          <span className={priorityChip}>{priority.replace("_", " ")}</span>
+                          {severity && <span className={severityChip}>{severity} severity</span>}
+                          <span className="rp-chip rp-chip-warning">{ux.time}</span>
+                          <span className="rp-chip rp-chip-info">{ux.effort}</span>
+                          <span className="rp-chip rp-chip-success">{ux.impact}</span>
+                        </div>
+                        <div className="mt-3 text-sm font-semibold text-[var(--rp-text-900)]">{ux.heading}</div>
+                        <div className="mt-1 text-xs font-semibold text-rose-700">Impact: {ux.businessImpact}</div>
+                        <div className="mt-2 text-xs text-[var(--rp-text-600)]">{ux.detail}</div>
+                        <div className="mt-3 grid gap-2 md:grid-cols-2">
+                          <div className="rounded-lg border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-2 text-xs text-[var(--rp-text-600)]">
+                            <span className="font-semibold text-[var(--rp-text-700)]">Before:</span> {ux.before}
+                          </div>
+                          <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-2 text-xs text-emerald-700">
+                            <span className="font-semibold">After:</span> {ux.after}
+                          </div>
+                        </div>
+                        {ux.snippet ? (
+                          <div className="mt-3 rounded-lg border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-2">
+                            <div className="text-[11px] font-semibold text-[var(--rp-text-600)]">Copy-ready fix code</div>
+                            <pre className="mt-1 whitespace-pre-wrap text-xs text-[var(--rp-text-700)]">{ux.snippet}</pre>
+                          </div>
+                        ) : null}
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            className="rp-btn-primary rp-btn-sm h-8 px-3 text-xs"
+                            onClick={() => {
+                              try {
+                                const sp = new URLSearchParams(window.location.search || "");
+                                sp.set("p", "fix_now");
+                                if (issue?.issue_id) sp.set("q", String(issue.issue_id));
+                                const qs = sp.toString();
+                                const nextUrl = qs ? `${window.location.pathname}?${qs}` : window.location.pathname;
+                                window.history.replaceState(null, "", nextUrl);
+                              } catch {}
+                              const el = document.querySelector("[data-testid='key-issues']");
+                              if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+                            }}
+                          >
+                            Fix this now
+                          </button>
+                          <button
+                            type="button"
+                            className="rp-btn-secondary rp-btn-sm h-8 px-3 text-xs"
+                            onClick={async () => {
+                              const text = ux.snippet || String(issue?.example_fix || issue?.fix || ux.detail);
+                              const ok = await copyQuickWinPlan({ title: ux.heading, detail: text }, pageUrl);
+                              setTopFixNotice(ok ? "Fix copied. Paste it into your site settings." : "Copy blocked. Please allow clipboard access.");
+                              setTimeout(() => setTopFixNotice(""), 2200);
+                            }}
+                          >
+                            Copy exact fix
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  });
+
+                  const missingSlots = Math.max(0, 3 - topFixes.length);
+                  const lift = Math.round(estimateScoreLiftFromIssues(topFixes));
+                  const expectedMinutes = Math.max(8, topFixes.length * 10);
+
+                  return (
+                    <>
+                      {renderedFixes}
+                      {missingSlots > 0 ? (
+                        <div className={`rounded-xl border border-[var(--rp-border)] bg-gradient-to-br from-[rgba(124,58,237,0.08)] to-[rgba(45,212,191,0.08)] p-4 shadow-sm ${missingSlots === 2 ? "md:col-span-2" : "md:col-span-1"}`}>
+                          <div className="text-sm font-semibold text-[var(--rp-text-900)]">What happens when you fix this</div>
+                          <div className="mt-2 grid grid-cols-3 gap-2">
+                            <div className="rounded-lg border border-[var(--rp-border)] bg-white/80 p-2">
+                              <div className="text-[10px] uppercase tracking-[0.08em] text-[var(--rp-text-500)]">Issues</div>
+                              <div className="mt-1 text-base font-semibold text-[var(--rp-text-900)]">{topFixes.length}</div>
+                            </div>
+                            <div className="rounded-lg border border-[var(--rp-border)] bg-white/80 p-2">
+                              <div className="text-[10px] uppercase tracking-[0.08em] text-[var(--rp-text-500)]">Score lift</div>
+                              <div className="mt-1 text-base font-semibold text-emerald-700">+{lift}</div>
+                            </div>
+                            <div className="rounded-lg border border-[var(--rp-border)] bg-white/80 p-2">
+                              <div className="text-[10px] uppercase tracking-[0.08em] text-[var(--rp-text-500)]">Time</div>
+                              <div className="mt-1 text-base font-semibold text-[var(--rp-indigo-700)]">~{expectedMinutes} min</div>
+                            </div>
+                          </div>
+                          <div className="mt-3 rounded-lg border border-[var(--rp-border)] bg-white/80 p-3">
+                            <div className="text-xs font-semibold text-[var(--rp-text-800)]">Simple 3-step plan</div>
+                            <div className="mt-1 text-xs text-[var(--rp-text-600)]">1. Open the issue details.</div>
+                            <div className="text-xs text-[var(--rp-text-600)]">2. Copy the exact fix code.</div>
+                            <div className="text-xs text-[var(--rp-text-600)]">3. Publish and re-run audit.</div>
+                          </div>
+                          <div className="mt-3">
+                            <button
+                              type="button"
+                              className="rp-btn-primary rp-btn-sm h-8 px-3 text-xs"
+                              onClick={() => {
+                                const el = document.querySelector("[data-testid='key-issues']");
+                                if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+                              }}
+                            >
+                              Open issue and fix now
+                            </button>
+                          </div>
+                        </div>
+                      ) : null}
+                    </>
+                  );
+                })()}
+              </div>
+            </div>
+            <div className="grid gap-5 md:grid-cols-12">
+              <div className="hidden">
+                <div className="flex items-center gap-2 rp-section-title">
+                  <span>SEO Score</span>
+                  <span className="relative inline-flex group" aria-hidden="true">
+                    <span className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-[var(--rp-border)] bg-[var(--rp-gray-50)] text-[11px] text-[var(--rp-text-500)]">
+                      ?
+                    </span>
+                    <span className="pointer-events-none absolute left-0 top-7 z-10 w-64 rounded-xl border border-[var(--rp-border)] bg-white p-3 text-[11px] leading-relaxed text-[var(--rp-text-500)] opacity-0 shadow-lg transition group-hover:opacity-100">
+                      Scoring model factors in on-page basics, content depth, internal links, and Core Web Vitals when available.
+                    </span>
+                  </span>
+                </div>
+                <div className="mt-1 text-3xl font-semibold text-[var(--rp-text-900)] tabular-nums">
+                  {(result && result.ok === false)
+                    ? "-"
+                    : (typeof scoreValue === "number" ? scoreValue : "-")}
+                </div>
+                {typeof scoreValue === "number" && (
+                <div className="mt-3">
+                  {(() => {
+                    const clamped = Math.max(0, Math.min(100, scoreValue));
+                    const radius = 48;
+                    const cx = 60;
+                    const cy = 60;
+                    const circumference = 2 * Math.PI * radius;
+                    const offset = circumference * (1 - clamped / 100);
+                    const angleDeg = (clamped / 100) * 360 - 90;
+                    const angleRad = (Math.PI / 180) * angleDeg;
+                    const dotX = cx + Math.cos(angleRad) * radius;
+                    const dotY = cy + Math.sin(angleRad) * radius;
+                    return (
+                      <div className="flex items-center gap-3">
+                        <svg viewBox="0 0 120 120" className="h-24 w-24">
+                            <defs>
+                              <linearGradient id="donutGradient" x1="0" y1="0" x2="1" y2="1">
+                                <stop offset="0%" stopColor="#fb7185" />
+                                <stop offset="50%" stopColor="#facc15" />
+                                <stop offset="100%" stopColor="#34d399" />
+                              </linearGradient>
+                            </defs>
+                            <circle
+                              cx={cx}
+                              cy={cy}
+                              r={radius}
+                              stroke="rgba(148,163,184,0.25)"
+                              strokeWidth="10"
+                              fill="none"
+                            />
+                            <circle
+                              cx={cx}
+                              cy={cy}
+                              r={radius}
+                              stroke="url(#donutGradient)"
+                              strokeWidth="10"
+                              fill="none"
+                              className="rp-donut-progress"
+                              strokeDasharray={circumference}
+                              strokeDashoffset={offset}
+                              strokeLinecap="round"
+                              transform={`rotate(-90 ${cx} ${cy})`}
+                            />
+                            <circle cx={dotX} cy={dotY} r="4" fill="#ff642d" />
+                            <text x={cx} y={cy + 4} textAnchor="middle" fill="#0f172a" fontSize="14" fontWeight="600">
+                              {clamped}
+                            </text>
+                            <text x={cx} y={cy + 18} textAnchor="middle" fill="#64748b" fontSize="9">
+                              / 100
+                            </text>
+                          </svg>
+                        <div className="text-[11px] text-[var(--rp-text-500)] space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="inline-block h-2 w-2 rounded-full bg-rose-400"></span>
+                            <span>0–49 Low</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="inline-block h-2 w-2 rounded-full bg-amber-400"></span>
+                            <span>50–79 OK</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="inline-block h-2 w-2 rounded-full bg-emerald-400"></span>
+                            <span>80–100 Strong</span>
+                          </div>
+                          <div className="mt-1.5 rp-body-xsmall text-[var(--rp-text-400)]">
+                            Score recalculates with mode toggles.
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+                )}
+                <div className="mt-1.5 rp-body-small">
+                  {(typeof scoreValue === "number" ? scoreLabel(scoreValue) : "") || "Score is a directional signal, not a grade."}
+                </div>
+                <div className="mt-1.5 rp-body-xsmall">
+                  Mode: {scoreModeLabel()}
+                </div>
+                {scoreMode === "explain" && (
+                  <div className="mt-1.5 rp-body-xsmall">
+                    {explainScoreDetails(issues).length > 0
+                      ? `Top drivers: ${explainScoreDetails(issues).join(", ")}.`
+                      : "Score is based on critical SEO checks and page structure."}
+                  </div>
+                )}
+                <div className="mt-1.5 rp-body-xsmall">
+                  Fixing the top issues usually improves visibility and click-through rates.
+                </div>
+                <div className="mt-3 rounded-xl border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-4">
+                  <div className="flex items-center justify-between text-xs text-[var(--rp-text-500)]">
+                    <span>Projected score lift</span>
+                    <span>Next 4 fixes</span>
+                  </div>
+                  <svg viewBox="0 0 200 70" className="mt-2 h-16 w-full">
+                    <defs>
+                      <linearGradient id="liftLine" x1="0" y1="0" x2="1" y2="0">
+                        <stop offset="0%" stopColor="#22d3ee" />
+                        <stop offset="100%" stopColor="#34d399" />
+                      </linearGradient>
+                    </defs>
+                    {(() => {
+                      const baseScore = scoreValue ?? 0;
+                      const fixNowCount = issues.filter((it) => it?.priority === "fix_now").length;
+                      const fixNextCount = issues.filter((it) => it?.priority === "fix_next").length;
+                      const lift = Math.min(30, fixNowCount * 6 + fixNextCount * 3);
+                      const linePoints = buildLiftPoints(baseScore, lift);
+                      const areaPoints = `5,70 ${linePoints} 195,70`;
+                      return (
+                        <>
+                          <polyline
+                            fill="none"
+                            stroke="url(#liftLine)"
+                            strokeWidth="3"
+                            points={linePoints}
+                          />
+                          <polyline
+                            fill="url(#liftLine)"
+                            opacity="0.15"
+                            points={areaPoints}
+                          />
+                        </>
+                      );
+                    })()}
+                  </svg>
+                  <div className="mt-1 rp-body-xsmall">
+                    Fix top issues to unlock the next score lift.
+                  </div>
+                </div>
+                <div className="mt-4 rounded-xl border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-4">
+                  <div className="flex items-center justify-between text-xs text-[var(--rp-text-500)]">
+                    <span>Traffic & revenue impact (estimate)</span>
+                    <span className="rp-chip rp-chip-neutral">GSC-based</span>
+                  </div>
+                  {(() => {
+                    const uplift = estimateTrafficUplift();
+                    if (!uplift) {
+                      return (
+                        <div className="mt-2 text-xs text-[var(--rp-text-500)]">
+                          Connect Google Search Console to estimate potential traffic lift.
+                        </div>
+                      );
+                    }
+                    const value = Number(valuePerVisit || 0);
+                    const revenue = Math.round(uplift.lift * value);
+                    return (
+                      <div className="mt-2 space-y-2 text-xs text-[var(--rp-text-600)]">
+                        <div>
+                          Potential uplift: <span className="font-semibold text-[var(--rp-text-800)]">~{uplift.lift} visits / month</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <label className="text-[var(--rp-text-500)]" htmlFor="value-per-visit">
+                            Value per visit ($)
+                          </label>
+                          <input
+                            id="value-per-visit"
+                            className="rp-input h-8 w-20 text-xs"
+                            value={valuePerVisit}
+                            onChange={(e) => {
+                              const next = e.target.value;
+                              setValuePerVisit(next);
+                              try { localStorage.setItem("rp_value_per_visit", String(next)); } catch {}
+                            }}
+                          />
+                          <span className="text-[var(--rp-text-500)]">Estimated monthly impact:</span>
+                          <span className="font-semibold text-[var(--rp-text-800)]">${Number.isFinite(revenue) ? revenue : 0}</span>
+                        </div>
+                        <div className="text-[10px] text-[var(--rp-text-400)]">
+                          Assumes improvement toward a top‑3 CTR benchmark.
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+                <button
+                  onClick={() => setPricingOpen(true)}
+                  className="rp-btn-secondary mt-4 w-full text-sm"
+                >
+                  <IconArrowRight size={14} />
+                  Unlock Full Fix Plan
+                </button>
+              </div>
+
+              <div id="quick-wins" className="rp-card p-5 md:col-span-12 rp-fade-in bg-gradient-to-br from-white via-white to-[rgba(124,58,237,0.04)]">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <div className="rp-section-title">Quick Wins</div>
+                    <div className="mt-1 text-xs text-[var(--rp-text-500)]">
+                      Fast fixes your team can ship in minutes for immediate SEO lift.
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className="rp-btn-secondary rp-btn-sm h-9 px-3 text-xs"
+                    onClick={() => {
+                      const el = document.querySelector("[data-testid='key-issues']");
+                      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+                    }}
+                  >
+                    <IconArrowRight size={12} />
+                    Open full issue list
+                  </button>
+                </div>
+                <div className="mt-3">
+                  {quickWinNotice ? (
+                    <div className="mb-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700">
+                      {quickWinNotice}
+                    </div>
+                  ) : null}
+                  {prioritizedQuickWins.length > 0 ? (
+                    <div className="grid gap-4 md:grid-cols-2">
+                      {prioritizedQuickWins.map((x, i) => {
+                        const info = explainQuickWin(x);
+                        const impact = impactLabelForIssueName(info.title);
+                        const icon =
+                          info.title.toLowerCase().includes("meta")
+                            ? <IconDoc size={14} />
+                            : info.title.toLowerCase().includes("h1")
+                            ? <IconHeading size={14} />
+                            : info.title.toLowerCase().includes("title")
+                            ? <IconTitle size={14} />
+                            : <IconBolt size={14} />;
+                        const impactLabel = info.title.toLowerCase().includes("title") || info.title.toLowerCase().includes("meta")
+                          ? "High impact"
+                          : info.title.toLowerCase().includes("h1")
+                          ? "Medium impact"
+                          : "Medium impact";
+                        const timeLabel = info.title.toLowerCase().includes("meta") ? "10-15 min" : "5-10 min";
+                        const statusTone =
+                          overviewMetrics?.visibility >= 70
+                            ? "text-emerald-700 bg-emerald-50 border-emerald-200"
+                            : "text-amber-700 bg-amber-50 border-amber-200";
+                        return (
+                      <div key={i} className="rp-card-hover relative overflow-hidden rounded-2xl border border-[var(--rp-border)] bg-gradient-to-br from-white to-[var(--rp-gray-50)] p-4 shadow-sm">
+                            <div className="absolute -right-10 -top-10 h-20 w-20 rounded-full bg-[rgba(124,58,237,0.08)] blur-xl" />
+                            <div className="flex items-center gap-2 text-sm font-semibold text-[var(--rp-text-800)]">
+                              <span className="inline-flex h-6 w-6 items-center justify-center rounded-lg bg-[rgba(66,25,131,0.08)] text-[var(--rp-indigo-700)]">
+                                {icon}
+                              </span>
+                              {info.title}
+                            </div>
+                            <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-[var(--rp-text-500)]">
+                              <span className="rp-chip rp-chip-warning">
+                                {impactLabel}
+                              </span>
+                              <span className="rp-chip rp-chip-info">
+                                {timeLabel}
+                              </span>
+                              <span className={impact.tone}>
+                                {impact.label}
+                              </span>
+                            </div>
+                            <div className="mt-1 text-sm text-[var(--rp-text-600)]">{info.detail}</div>
+                            <div className="mt-2 text-xs text-[var(--rp-text-500)]">
+                              Why it helps clicks: clearer snippets and stronger page relevance.
+                            </div>
+                            <div className="mt-3 flex flex-wrap items-center gap-2">
+                              <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold ${statusTone}`}>
+                                {impactLabel}
+                              </span>
+                              <button
+                                type="button"
+                                className="rp-btn-primary rp-btn-sm h-8 px-3 text-xs"
+                                onClick={async () => {
+                                  const ok = await copyQuickWinPlan(info, String(result?.debug?.final_url || result?.final_url || ""));
+                                  setQuickWinNotice(ok ? "Quick-win steps copied." : "Copy blocked. Please allow clipboard access.");
+                                  setTimeout(() => setQuickWinNotice(""), 2000);
+                                }}
+                              >
+                                Copy fix steps
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                      {prioritizedQuickWins.length === 1 ? (
+                        <div className="rp-card-hover relative overflow-hidden rounded-2xl border border-[var(--rp-border)] bg-gradient-to-br from-[rgba(124,58,237,0.09)] via-white to-[rgba(45,212,191,0.08)] p-4 shadow-sm">
+                          <div className="absolute -right-10 -top-10 h-24 w-24 rounded-full bg-[rgba(124,58,237,0.14)] blur-xl" />
+                          <div className="relative">
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="text-sm font-semibold text-[var(--rp-text-800)]">Impact simulator</div>
+                              <span className="rp-chip rp-chip-info">Real-time estimate</span>
+                            </div>
+                            <div className="mt-2 grid grid-cols-3 gap-2">
+                              <div className="rounded-lg border border-[var(--rp-border)] bg-white/80 px-2 py-2">
+                                <div className="text-[10px] uppercase tracking-[0.08em] text-[var(--rp-text-500)]">Now</div>
+                                <div className="mt-1 text-lg font-semibold text-[var(--rp-text-800)]">{quickWinSimulator.baseScore || "-"}</div>
+                              </div>
+                              <div className="rounded-lg border border-[var(--rp-border)] bg-white/80 px-2 py-2">
+                                <div className="text-[10px] uppercase tracking-[0.08em] text-[var(--rp-text-500)]">Lift</div>
+                                <div className="mt-1 text-lg font-semibold text-emerald-700">+{quickWinSimulator.projectedLift}</div>
+                              </div>
+                              <div className="rounded-lg border border-[var(--rp-border)] bg-white/80 px-2 py-2">
+                                <div className="text-[10px] uppercase tracking-[0.08em] text-[var(--rp-text-500)]">Projected</div>
+                                <div className="mt-1 text-lg font-semibold text-[var(--rp-indigo-700)]">{quickWinSimulator.projectedScore}</div>
+                              </div>
+                            </div>
+                            <div className="mt-3 rounded-lg border border-[var(--rp-border)] bg-white/80 p-3">
+                              <div className="flex items-center justify-between text-xs text-[var(--rp-text-500)]">
+                                <span>Confidence after this fix</span>
+                                <span className="font-semibold text-[var(--rp-text-800)]">{quickWinSimulator.confidence}%</span>
+                              </div>
+                              <div className="mt-2 h-2 w-full rounded-full bg-[var(--rp-gray-100)]">
+                                <div
+                                  className="h-2 rounded-full bg-gradient-to-r from-[var(--rp-indigo-500)] to-emerald-400"
+                                  style={{ width: `${quickWinSimulator.confidence}%` }}
+                                />
+                              </div>
+                              <div className="mt-2 text-xs text-[var(--rp-text-600)]">
+                                Time to ship this fix: <span className="font-semibold">{quickWinSimulator.minutes} min</span>
+                              </div>
+                            </div>
+                            <div className="mt-3 flex flex-wrap items-center gap-2">
+                              <button
+                                type="button"
+                                className="rp-btn-primary rp-btn-sm h-8 px-3 text-xs"
+                                onClick={() => {
+                                  const el = document.querySelector("[data-testid='key-issues']");
+                                  if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+                                }}
+                              >
+                                Fix this now
+                              </button>
+                              <span className="text-xs text-[var(--rp-text-500)]">One action can improve score and visibility.</span>
+                            </div>
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <div className="text-[var(--rp-text-500)]">No major quick wins returned.</div>
+                  )}
+                </div>
+                <div className="mt-5 grid gap-4 md:grid-cols-3">
+                  {overviewMetrics && [
+                    { label: "Visibility", value: overviewMetrics.visibility, color: "bg-emerald-400", tone: "from-emerald-50 to-white", text: "Stronger rank presence" },
+                    { label: "CTR clarity", value: overviewMetrics.ctrClarity, color: "bg-cyan-400", tone: "from-cyan-50 to-white", text: "Snippet click quality" },
+                    { label: "Content depth", value: overviewMetrics.contentDepth, color: "bg-amber-400", tone: "from-amber-50 to-white", text: "Coverage and intent match" }
+                  ].map((metric) => (
+                    <div key={metric.label} className={`rp-metric-tile rounded-xl border border-[var(--rp-border)] bg-gradient-to-br ${metric.tone} p-4 shadow-sm`}>
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="text-xs text-[var(--rp-text-500)]">{metric.label}</div>
+                        <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold ${metric.value >= 70 ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-amber-200 bg-amber-50 text-amber-700"}`}>
+                          {metric.value >= 70 ? "On track" : "Needs work"}
+                        </span>
+                      </div>
+                      <div className="mt-1 text-sm font-semibold text-[var(--rp-text-800)] tabular-nums">{metric.value}%</div>
+                      <div className="mt-1 text-[11px] text-[var(--rp-text-500)]">{metric.text}</div>
+                      <div className="mt-2 h-1.5 w-full rounded-full bg-[var(--rp-gray-100)]">
+                        <div className={`rp-bar h-1.5 rounded-full ${metric.color}`} style={{ width: `${metric.value}%` }} />
+                      </div>
+                      <div className="mt-1 rp-body-xsmall text-[var(--rp-text-400)]">Benchmark: 70%+</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div data-testid="key-issues">
+              <Suspense fallback={null}>
+                <IssuesPanel
+                  issues={strictPrioritizeIssues(issues)}
+                  advanced={advancedView}
+                  finalUrl={String(result?.debug?.final_url || result?.final_url || "")}
+                  fixWebhookUrl={fixWebhookUrl}
+                  wpWebhookUrl={wpSiteUrl}
+                  shopifyWebhookUrl={shopifyShop}
+                  ownerId={anonId}
+                />
+              </Suspense>
+            </div>
+            <details id="score-insights" className="rp-card p-5">
+              <summary className="cursor-pointer list-none select-none">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <div className="rp-section-title">Score insights and projections</div>
+                    <div className="mt-1 text-xs text-[var(--rp-text-500)]">
+                      Optional context after issues and fixes.
+                    </div>
+                  </div>
+                  <span className="rp-btn-secondary rp-btn-sm h-8 px-3 text-xs inline-flex items-center">
+                    Show details
+                  </span>
+                </div>
+              </summary>
+              <div className="mt-4 grid gap-4 md:grid-cols-3">
+                <div className="rp-metric-tile rounded-xl border border-[var(--rp-border)] bg-white p-4 shadow-sm">
+                  <div className="text-xs text-[var(--rp-text-500)]">SEO score</div>
+                  <div className="mt-1 text-2xl font-semibold text-[var(--rp-text-900)] tabular-nums">
+                    {typeof scoreValue === "number" ? scoreValue : "-"}
+                  </div>
+                  <div className="mt-1 text-xs text-[var(--rp-text-500)]">
+                    {typeof scoreValue === "number" ? scoreLabel(scoreValue) : "Run an audit to calculate score."}
+                  </div>
+                </div>
+                <div className="rp-metric-tile rounded-xl border border-[var(--rp-border)] bg-white p-4 shadow-sm">
+                  <div className="text-xs text-[var(--rp-text-500)]">Projected score lift</div>
+                  <div className="mt-1 text-2xl font-semibold text-[var(--rp-text-900)] tabular-nums">
+                    +{Math.round(estimateScoreLiftFromIssues(issues))}
+                  </div>
+                  <div className="mt-1 text-xs text-[var(--rp-text-500)]">
+                    Based on current fix-now and fix-next items.
+                  </div>
+                </div>
+                <div className="rp-metric-tile rounded-xl border border-[var(--rp-border)] bg-white p-4 shadow-sm">
+                  <div className="text-xs text-[var(--rp-text-500)]">Traffic impact (estimate)</div>
+                  {(() => {
+                    const uplift = estimateTrafficUplift();
+                    if (!uplift) {
+                      return (
+                        <div className="mt-1 text-xs text-[var(--rp-text-500)]">
+                          Connect Google Search Console to estimate traffic lift.
+                        </div>
+                      );
+                    }
+                    const value = Number(valuePerVisit || 0);
+                    const revenue = Math.round(uplift.lift * value);
+                    return (
+                      <>
+                        <div className="mt-1 text-2xl font-semibold text-[var(--rp-text-900)] tabular-nums">
+                          +{uplift.lift} visits/mo
+                        </div>
+                        <div className="mt-1 text-xs text-[var(--rp-text-500)]">
+                          Estimated monthly impact: ${Number.isFinite(revenue) ? revenue : 0}
+                        </div>
+                      </>
+                    );
+                  })()}
+                </div>
+              </div>
+              {overviewMetrics && (
+                <div className="mt-4 grid gap-3 md:grid-cols-3">
+                  {[
+                    { label: "Visibility", value: overviewMetrics.visibility, color: "bg-emerald-400" },
+                    { label: "CTR clarity", value: overviewMetrics.ctrClarity, color: "bg-cyan-400" },
+                    { label: "Content depth", value: overviewMetrics.contentDepth, color: "bg-amber-400" }
+                  ].map((metric) => (
+                    <div key={metric.label} className="rp-metric-tile rounded-xl border border-[var(--rp-border)] bg-white p-4 shadow-sm">
+                      <div className="text-xs text-[var(--rp-text-500)]">{metric.label}</div>
+                      <div className="mt-1 text-sm font-semibold text-[var(--rp-text-800)] tabular-nums">{metric.value}%</div>
+                      <div className="mt-2 h-1.5 w-full rounded-full bg-[var(--rp-gray-100)]">
+                        <div className={`rp-bar h-1.5 rounded-full ${metric.color}`} style={{ width: `${metric.value}%` }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <button
+                onClick={() => setPricingOpen(true)}
+                className="rp-btn-secondary mt-4 w-full text-sm"
+              >
+                <IconArrowRight size={14} />
+                Unlock Full Fix Plan
+              </button>
+            </details>
+          </div>
+        )}
+
         {status === "success" && (
+          <div className="grid gap-5 md:grid-cols-3">
+            {showNextStep && (
+              <div className="md:col-span-3 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-5">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <div className="rp-section-title">Next step</div>
+                    <div className="mt-1 text-sm text-[var(--rp-text-600)]">
+                      Start with the highest‑impact fixes so you see improvement immediately.
+                    </div>
+                  </div>
+                  <button
+                    className="rp-btn-secondary rp-btn-sm h-9 px-3 text-xs"
+                    onClick={() => setShowNextStep(false)}
+                  >
+                    Dismiss
+                  </button>
+                </div>
+                <div className="mt-4 grid gap-3 md:grid-cols-[1.2fr_0.8fr]">
+                  <div className="rp-metric-tile rounded-xl border border-[var(--rp-border)] bg-white p-4">
+                    <div className="text-xs text-[var(--rp-text-500)]">Top fix to start with</div>
+                    {(() => {
+                      const fixNow = issues.filter((it) => it?.priority === "fix_now");
+                      const best = fixNow[0] || issues[0];
+                      return (
+                    <div className="mt-1 text-lg font-semibold text-[var(--rp-text-900)]">
+                      {best?.title || best?.issue_id || "Resolve the highest‑impact issue"}
+                    </div>
+                      );
+                    })()}
+                    <div className="mt-1 text-xs text-[var(--rp-text-500)]">
+                      This typically produces the fastest lift in visibility and click‑through rate.
+                    </div>
+                  </div>
+                  <div className="rp-metric-tile rounded-xl border border-[var(--rp-border)] bg-white p-4">
+                    <div className="text-xs text-[var(--rp-text-500)]">Recommended action</div>
+                    <button
+                      type="button"
+                      className="rp-btn-primary mt-2 w-full text-sm"
+                      onClick={() => {
+                        try {
+                          track("cta_next_step_click", {
+                            variant: ctaVariant,
+                            url: result?.url || url || ""
+                          });
+                        } catch {}
+                        const el = document.querySelector("[data-testid='key-issues']");
+                        if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+                      }}
+                    >
+                      {ctaVariant === "B" ? "Fix this in 1 click" : "Generate AI fixes"}
+                    </button>
+                    <div className="mt-2 text-xs text-[var(--rp-text-400)]">
+                      {ctaVariant === "B"
+                        ? "Instantly create fixes and push to WordPress or Shopify."
+                        : "You can copy or push fixes directly into your CMS."}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {status === "success" && (
+          <div className="rp-card p-5 rp-fade-in">
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="rp-section-title">Guided Fix Mode</div>
+              <span className="rp-section-subtitle">Step-by-step for non-technical teams</span>
+            </div>
+            <p className="mt-2 rp-body-small">
+              Start with the top 3 fixes. Each step is written in plain language so anyone can act on it.
+            </p>
+            <div className="mt-3 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-4 text-xs text-[var(--rp-text-600)]">
+              <div className="font-semibold text-[var(--rp-text-700)]">Progress across audits</div>
+              <div className="mt-3 grid gap-4 md:grid-cols-2">
+                {(() => {
+                  const keys = Object.keys(localStorage || {}).filter((k) => k.startsWith("rp_guided_done::"));
+                  if (!keys.length) {
+                    return <span>No saved progress yet.</span>;
+                  }
+                  return keys.slice(0, 4).map((key) => {
+                    const urlKey = key.replace("rp_guided_done::", "");
+                    let doneCount = 0;
+                    let totalCount = 0;
+                    let lastRun = "";
+                    try {
+                      const raw = localStorage.getItem(key);
+                      const obj = raw ? JSON.parse(raw) : {};
+                      doneCount = Object.values(obj).filter(Boolean).length;
+                      totalCount = Object.keys(obj).length;
+                    } catch {}
+                    try {
+                      const snapKey = `rp_audit_snapshot::${urlKey}`;
+                      const snapRaw = localStorage.getItem(snapKey);
+                      const snap = snapRaw ? JSON.parse(snapRaw) : null;
+                      const ts = snap?.ranAt || snap?.ran_at || snap?.created_at;
+                      if (ts) {
+                        const date = new Date(ts);
+                        if (!Number.isNaN(date.getTime())) {
+                          lastRun = date.toLocaleString();
+                        }
+                      }
+                    } catch {}
+                    return (
+                      <div key={key} className="flex items-center justify-between gap-2 rounded-xl border border-[var(--rp-border)] bg-white px-3 py-2 shadow-sm">
+                        <div className="min-w-0">
+                          <button
+                            type="button"
+                            className="truncate text-left text-xs font-semibold text-[var(--rp-indigo-700)] hover:text-[var(--rp-indigo-900)]"
+                            onClick={() => {
+                              if (!urlKey) return;
+                              navigate(`/audit?url=${encodeURIComponent(urlKey)}`);
+                            }}
+                            title={urlKey}
+                          >
+                            {urlKey || "Audit"}
+                          </button>
+                        <div className="rp-body-xsmall">
+                          {lastRun ? `Last run: ${lastRun}` : "Last run: N/A"}
+                        </div>
+                      </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-[var(--rp-text-500)]">{doneCount}/{totalCount || 0}</span>
+                          {(() => {
+                            const pct = totalCount ? Math.round((doneCount / totalCount) * 100) : 0;
+                            const badgeClass =
+                              pct >= 80
+                                ? "bg-emerald-100 text-emerald-700 border border-emerald-200"
+                                : pct >= 50
+                                ? "bg-amber-100 text-amber-700 border border-amber-200"
+                                : "bg-rose-100 text-rose-700 border border-rose-200";
+                            return (
+                              <span
+                                className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${badgeClass}`}
+                                title="Progress thresholds: Red <50%, Amber 50-79%, Green 80%+"
+                              >
+                                {pct}%
+                              </span>
+                            );
+                          })()}
+                        </div>
+                      </div>
+                    );
+                  });
+                })()}
+              </div>
+            </div>
+            {(() => {
+              const base = scoreValue ?? 0;
+              const remainingIssues = issues.filter((it) => !guidedDone[String(it?.issue_id || it?.title || "")]);
+              const lift = estimateScoreLiftFromIssues(remainingIssues);
+              const projected = Math.min(100, base + lift);
+              const totalSteps = guidedSteps(issues, true).length;
+              const completedSteps = totalSteps
+                ? guidedSteps(issues, true).filter((step) => guidedDone[step.id]).length
+                : 0;
+              return (
+                <div className="mt-4 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <div className="text-xs text-[var(--rp-text-500)]">Before / After preview</div>
+                      <div className="mt-1 text-lg font-semibold text-[var(--rp-text-800)]">
+                        {Math.round(base)} <span className="text-[var(--rp-text-400)]">→</span> {Math.round(projected)}
+                      </div>
+                    </div>
+                    <div className="text-xs text-[var(--rp-text-500)]">
+                      Estimated lift: +{Math.round(lift)}
+                    </div>
+                  </div>
+                  <div className="mt-2 text-xs text-[var(--rp-text-500)]">
+                    Progress: {completedSteps}/{totalSteps || 0} fixes completed
+                  </div>
+                  <div className="mt-2 inline-flex items-center rounded-full border border-emerald-200 bg-emerald-100 px-2 py-1 text-[11px] font-semibold text-emerald-700">
+                    Next step: Tackle the highest impact fix first
+                  </div>
+                  <div className="mt-2 text-xs text-[var(--rp-text-500)]">
+                    Estimated time to complete: {Math.max(10, (totalSteps || 3) * 6)} min
+                  </div>
+                  <div className="mt-3">
+                    <div className="flex items-center justify-between text-xs text-[var(--rp-text-500)]">
+                      <span>Fix-impact meter</span>
+                      <span>{Math.round(lift)} pts</span>
+                    </div>
+                    <div className="mt-2 h-2 w-full rounded-full bg-[var(--rp-gray-100)]">
+                      <div
+                        className="rp-bar h-2 rounded-full bg-gradient-to-r from-cyan-400 to-emerald-400"
+                        style={{ width: `${Math.min(100, Math.round((lift / 30) * 100))}%` }}
+                      />
+                    </div>
+                  </div>
+                  <div className="mt-4">
+                    <div className="flex items-center justify-between text-xs text-[var(--rp-text-500)]">
+                      <span>Progress trend</span>
+                      <span>Next steps</span>
+                    </div>
+                    <svg viewBox="0 0 200 70" className="mt-2 h-16 w-full">
+                      <defs>
+                        <linearGradient id="guidedTrend" x1="0" y1="0" x2="1" y2="0">
+                          <stop offset="0%" stopColor="#22d3ee" />
+                          <stop offset="100%" stopColor="#34d399" />
+                        </linearGradient>
+                      </defs>
+                      {(() => {
+                        const linePoints = buildLiftPoints(base, lift);
+                        const areaPoints = `5,70 ${linePoints} 195,70`;
+                        return (
+                          <>
+                            <polyline
+                              fill="none"
+                              stroke="url(#guidedTrend)"
+                              strokeWidth="3"
+                              points={linePoints}
+                            />
+                            <polyline
+                              fill="url(#guidedTrend)"
+                              opacity="0.15"
+                              points={areaPoints}
+                            />
+                          </>
+                        );
+                      })()}
+                    </svg>
+                  </div>
+                </div>
+              );
+            })()}
+            <div className="mt-3 flex flex-wrap items-center gap-4 text-xs text-[var(--rp-text-500)]">
+              <span className="whitespace-nowrap">{showAllGuidedFixes ? "Showing all fixes" : "Showing top 3 fixes"}</span>
+              <div className="flex items-center gap-2 text-[11px] text-[var(--rp-text-500)] whitespace-nowrap">
+                <span className="inline-flex items-center gap-1">
+                  <span className="inline-block h-2 w-2 rounded-full bg-rose-400"></span>
+                  <span>&lt;50%</span>
+                </span>
+                <span className="inline-flex items-center gap-1">
+                  <span className="inline-block h-2 w-2 rounded-full bg-amber-400"></span>
+                  <span>50-79%</span>
+                </span>
+                <span className="inline-flex items-center gap-1">
+                  <span className="inline-block h-2 w-2 rounded-full bg-emerald-400"></span>
+                  <span>80%+</span>
+                </span>
+              </div>
+              <div className="ml-auto flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+                <button
+                  type="button"
+                  className="rp-btn-secondary rp-btn-sm h-8 px-3 text-xs inline-flex items-center gap-2 whitespace-nowrap"
+                  onClick={() => setShowAllGuidedFixes((prev) => !prev)}
+                >
+                  {showAllGuidedFixes ? "Show top 3" : "Show all fixes"}
+                </button>
+                <button
+                  type="button"
+                  className="rp-btn-secondary rp-btn-sm h-8 px-3 text-xs inline-flex items-center gap-2 whitespace-nowrap"
+                  onClick={() => {
+                    const key = `rp_guided_done::${(result?.url || url || "").trim()}`;
+                    if (!key.trim()) return;
+                    try { localStorage.removeItem(key); } catch {}
+                    setGuidedDone({});
+                  }}
+                >
+                  <IconTrash size={14} />
+                  Reset progress
+                </button>
+              </div>
+            </div>
+            {guidedSteps(issues, showAllGuidedFixes).length > 0 ? (
+              <ol className="mt-4 grid gap-4 md:grid-cols-3">
+                {guidedSteps(issues, showAllGuidedFixes).map((step, idx) => (
+                  <li key={idx} className="rp-metric-tile rounded-xl border border-[var(--rp-border)] bg-white p-4 shadow-sm">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="text-xs font-semibold text-[var(--rp-indigo-700)]">Step {idx + 1}</div>
+                        <div className="mt-2 text-sm font-semibold text-[var(--rp-text-800)]">{step.title}</div>
+                      </div>
+                      <label className="flex items-center gap-2 text-xs text-[var(--rp-text-500)]">
+                        <input
+                          type="checkbox"
+                          checked={Boolean(guidedDone[step.id])}
+                          onChange={() => toggleGuidedDone(step.id)}
+                        />
+                        Mark as done
+                      </label>
+                    </div>
+                    <p className="mt-2 text-sm text-[var(--rp-text-600)]">
+                      {step.why || "This fix improves clarity for visitors and search engines."}
+                    </p>
+                    <p className="mt-2 text-sm text-[var(--rp-text-600)]">
+                      {step.fix || "Add the missing element and re-run the audit to confirm."}
+                    </p>
+                  </li>
+                ))}
+              </ol>
+            ) : (
+              <div className="mt-3 text-sm text-[var(--rp-text-500)]">Run an audit to see your guided fix steps.</div>
+            )}
+          </div>
+        )}
+
+        {status === "success" && !showDeepSections && (
+          <div className="rp-card p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="text-sm text-[var(--rp-text-600)]">
+                Deep diagnostics are hidden to keep this page focused on quick actions and fixes.
+              </div>
+              <button
+                type="button"
+                className="rp-btn-secondary rp-btn-sm h-9 px-3 text-xs"
+                onClick={() => setShowDeepSections(true)}
+              >
+                Show detailed analysis
+              </button>
+            </div>
+          </div>
+        )}
+
+        {status === "success" && result && showDeepSections && (
+          <div className="rp-card p-5 rp-fade-in" data-testid="observed-data">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-[rgba(66,25,131,0.08)] text-[var(--rp-indigo-700)]">
+                <IconBolt size={16} />
+              </span>
+              <div className="rp-section-title">What we found</div>
+            </div>
+            <p className="text-sm text-[var(--rp-text-500)] mb-4">
+              These details confirm what the page exposes to search engines and visitors.
+            </p>
+            <div className="rounded-xl border border-[var(--rp-border)] bg-white max-h-[360px] overflow-auto">
+              <table className="rp-table w-full text-sm">
+                <thead>
+                  <tr className="border-b border-[var(--rp-border)]">
+                      <th className="px-4 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-[var(--rp-text-500)]">
+                        Signal
+                      </th>
+                      <th className="px-4 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-[var(--rp-text-500)]">
+                        Value
+                      </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[
+                    { label: "Final URL", value: result?.debug?.final_url || result?.final_url || "-" },
+                    { label: "HTTP Status", value: result?.debug?.final_status ?? result?.debug?.fetch_status ?? result?.status ?? "-" },
+                    {
+                      label: "Title",
+                      value: result?.evidence?.title
+                        ? `${result.evidence.title}${result.evidence.title_char_count !== undefined ? ` (${result.evidence.title_char_count} chars)` : ""}`
+                        : "-"
+                    },
+                    {
+                      label: "Meta Description",
+                      value: result?.evidence?.meta_description
+                        ? `${result.evidence.meta_description}${result.evidence.meta_description_char_count !== undefined ? ` (${result.evidence.meta_description_char_count} chars)` : ""}`
+                        : "-"
+                    },
+                    {
+                      label: "H1",
+                      value: result?.evidence?.h1
+                        ? `${result.evidence.h1}${result.evidence.h1_count !== undefined ? ` (${result.evidence.h1_count} found)` : ""}`
+                        : "-"
+                    },
+                    { label: "Canonical", value: result?.evidence?.canonical || "-" },
+                    {
+                      label: "Word Count",
+                      value: result?.evidence?.word_count !== undefined
+                        ? `${result.evidence.word_count.toLocaleString()} words`
+                        : "-"
+                    },
+                    {
+                      label: "Internal Links",
+                      value: result?.evidence?.internal_links_count !== undefined
+                        ? String(result.evidence.internal_links_count)
+                        : "-"
+                    },
+                    {
+                      label: "External Links",
+                      value: result?.evidence?.external_links_count !== undefined
+                        ? String(result.evidence.external_links_count)
+                        : "-"
+                    }
+                  ].map((row, idx) => (
+                    <tr
+                      key={row.label}
+                      className={`rp-table-row ${idx !== 0 ? "border-t border-[var(--rp-border)]" : ""}`}
+                    >
+                      <th className="w-40 bg-[var(--rp-gray-50)] px-4 py-2 text-left text-xs font-semibold text-[var(--rp-text-500)]">
+                        {row.label}
+                      </th>
+                      <td className="px-4 py-2 text-[var(--rp-text-700)] break-all">{row.value}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {advancedView && (
+              <details className="mt-4 text-xs text-[var(--rp-text-500)]">
+                <summary className="cursor-pointer select-none text-[var(--rp-text-600)]">Show raw response</summary>
+                <pre className="mt-2 overflow-auto text-xs text-[var(--rp-text-600)]">
+                  {JSON.stringify(result?.evidence || {}, null, 2)}
+                </pre>
+              </details>
+            )}
+          </div>
+        )}
+
+        {status === "success" && showDeepSections && (
+          <div className="grid gap-5 md:grid-cols-3">
+            <div id="content-brief" className="md:col-span-3 rp-card p-5 rp-fade-in">
+              <div className="rp-section-title">Content Brief</div>
+              {brief ? (
+                <div className="mt-3 whitespace-pre-wrap text-[var(--rp-text-700)]">{brief}</div>
+              ) : (
+                <div className="mt-3 text-sm text-[var(--rp-text-600)]">
+                  <div className="text-[var(--rp-text-700)] font-semibold">Starter brief (auto-generated)</div>
+                  <ul className="mt-3 list-disc space-y-2 pl-5">
+                    <li>Goal: Explain what this page offers and who it is for.</li>
+                    <li>Angle: Lead with the main benefit and a clear outcome.</li>
+                    <li>Suggested sections: Problem, Solution, Proof, FAQs, Clear CTA.</li>
+                    <li>Target reader: People evaluating whether this page solves their need.</li>
+                    <li>CTA example: "Start a free audit" or "Book a demo".</li>
+                  </ul>
+                </div>
+              )}
+            </div>
+            <div className="md:col-span-1 rp-card p-5">
+              <div className="flex items-center gap-2 rp-section-title">
+                Page‑type guidance
+                <span className="rp-chip rp-chip-neutral">{pageType}</span>
+              </div>
+              {pageTypeAdvice.length ? (
+                <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-[var(--rp-text-600)]">
+                  {pageTypeAdvice.map((tip, idx) => (
+                    <li key={idx}>{tip}</li>
+                  ))}
+                </ul>
+              ) : (
+                <div className="mt-3 text-sm text-[var(--rp-text-500)]">No page‑type advice available.</div>
+              )}
+            </div>
+            <div className="md:col-span-2 rp-card p-5">
+              <div className="rp-section-title">Rewrite examples</div>
+              {rewriteExamples.length ? (
+                <div className="mt-3 grid gap-3 md:grid-cols-2">
+                  {rewriteExamples.slice(0, 6).map((ex, idx) => (
+                    <div key={idx} className="rounded-xl border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-4">
+                      <div className="text-xs font-semibold text-[var(--rp-text-600)]">{ex.label}</div>
+                      <div className="mt-2 text-xs text-[var(--rp-text-500)]">Before</div>
+                      <div className="text-sm text-[var(--rp-text-700)]">{ex.before || "-"}</div>
+                      <div className="mt-2 text-xs text-[var(--rp-text-500)]">After</div>
+                      <div className="text-sm font-semibold text-[var(--rp-text-900)]">{ex.after || "-"}</div>
+                      {ex.note ? (
+                        <div className="mt-2 text-xs text-[var(--rp-text-500)]">{ex.note}</div>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="mt-3 text-sm text-[var(--rp-text-500)]">No rewrite examples generated.</div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {status === "success" && showDeepSections && (
+          <div className="rp-card p-5 rp-fade-in">
+            <div className="rp-section-title">Signals & performance</div>
+            <div className="mt-4">
+              <div className="rp-section-title">Granular signals</div>
+              <div className="mt-3 grid gap-4 md:grid-cols-3">
+                {signalMetrics.length > 0 ? (
+                  signalMetrics.map((metric) => (
+                    <div key={metric.label} className="rp-metric-tile rounded-xl border border-[var(--rp-border)] bg-white p-4 shadow-sm">
+                      <div className="text-xs text-[var(--rp-text-500)]">{metric.label}</div>
+                      <div className="mt-2 text-sm font-semibold text-[var(--rp-text-800)] tabular-nums">{metric.value}</div>
+                      <div className="mt-2 h-1.5 w-full rounded-full bg-[var(--rp-gray-100)]">
+                        <div
+                          className={`rp-bar h-1.5 rounded-full ${metric.color}`}
+                          style={{ width: `${metric.percent}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="rounded-xl border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-4 text-sm text-[var(--rp-text-500)]">
+                    Signals will appear after the first audit completes.
+                  </div>
+                )}
+              </div>
+              <div className="mt-4 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-4">
+                <div className="flex items-center gap-2 rp-section-title">
+                  Core Web Vitals
+                  <span className="relative inline-flex group">
+                    <span className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-[var(--rp-border)] bg-white text-[11px] text-[var(--rp-text-500)]">
+                      i
+                    </span>
+                    <span className="pointer-events-none absolute left-0 top-7 z-10 w-56 rounded-xl border border-[var(--rp-border)] bg-white p-3 text-[11px] leading-relaxed text-[var(--rp-text-500)] opacity-0 shadow-lg transition group-hover:opacity-100">
+                      Field = real user data. Lab = simulated test in a controlled environment.
+                    </span>
+                  </span>
+                </div>
+                <p className="mt-1 text-xs leading-relaxed text-[var(--rp-text-500)]">
+                  Thresholds used by Google for a good user experience.
+                </p>
+                <div className="mt-3 grid gap-4 md:grid-cols-3 text-xs text-[var(--rp-text-600)]">
+                  <div className="rp-metric-tile rounded-xl border border-[var(--rp-border)] bg-white p-4">
+                    <div className="text-[var(--rp-text-700)] font-semibold">LCP</div>
+                    <div className="mt-1 text-xs text-[var(--rp-text-500)]">
+                      {(() => {
+                        const { field, lab } = getCwvPair(result, "lcp");
+                        const f = field !== null ? `${field}s` : "N/A";
+                        const l = lab !== null ? `${lab}s` : "N/A";
+                        return `Field: ${f} | Lab: ${l}`;
+                      })()}
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {(() => {
+                        const lcp = getCwvFieldValue(result, "lcp");
+                        return (
+                          <>
+                            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${cwvBadgeClass("lcp", lcp <= 2.5 ? lcp : null)}`}>
+                              Good: ≤ 2.5s
+                            </span>
+                            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${cwvBadgeClass("lcp", lcp > 2.5 && lcp <= 4 ? lcp : null)}`}>
+                              Needs work: 2.5-4.0s
+                            </span>
+                            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${cwvBadgeClass("lcp", lcp > 4 ? lcp : null)}`}>
+                              Poor: &gt; 4.0s
+                            </span>
+                          </>
+                        );
+                      })()}
+                    </div>
+                  </div>
+                  <div className="rp-metric-tile rounded-xl border border-[var(--rp-border)] bg-white p-4">
+                    <div className="text-[var(--rp-text-700)] font-semibold">INP</div>
+                    <div className="mt-1 text-xs text-[var(--rp-text-500)]">
+                      {(() => {
+                        const { field, lab } = getCwvPair(result, "inp");
+                        const f = field !== null ? `${field}ms` : "N/A";
+                        const l = lab !== null ? `${lab}ms` : "N/A";
+                        return `Field: ${f} | Lab: ${l}`;
+                      })()}
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {(() => {
+                        const inp = getCwvFieldValue(result, "inp");
+                        return (
+                          <>
+                            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${cwvBadgeClass("inp", inp <= 200 ? inp : null)}`}>
+                              Good: ≤ 200ms
+                            </span>
+                            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${cwvBadgeClass("inp", inp > 200 && inp <= 500 ? inp : null)}`}>
+                              Needs work: 200-500ms
+                            </span>
+                            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${cwvBadgeClass("inp", inp > 500 ? inp : null)}`}>
+                              Poor: &gt; 500ms
+                            </span>
+                          </>
+                        );
+                      })()}
+                    </div>
+                  </div>
+                  <div className="rp-metric-tile rounded-xl border border-[var(--rp-border)] bg-white p-4">
+                    <div className="text-[var(--rp-text-700)] font-semibold">CLS</div>
+                    <div className="mt-1 text-xs text-[var(--rp-text-500)]">
+                      {(() => {
+                        const { field, lab } = getCwvPair(result, "cls");
+                        const f = field !== null ? `${field}` : "N/A";
+                        const l = lab !== null ? `${lab}` : "N/A";
+                        return `Field: ${f} | Lab: ${l}`;
+                      })()}
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {(() => {
+                        const cls = getCwvFieldValue(result, "cls");
+                        return (
+                          <>
+                            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${cwvBadgeClass("cls", cls <= 0.1 ? cls : null)}`}>
+                              Good: ≤ 0.1
+                            </span>
+                            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${cwvBadgeClass("cls", cls > 0.1 && cls <= 0.25 ? cls : null)}`}>
+                              Needs work: 0.1-0.25
+                            </span>
+                            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${cwvBadgeClass("cls", cls > 0.25 ? cls : null)}`}>
+                              Poor: &gt; 0.25
+                            </span>
+                          </>
+                        );
+                      })()}
+                    </div>
+                  </div>
+                </div>
+                {!result?.cwv && (
+                <p className="mt-2 text-xs leading-relaxed text-[var(--rp-text-500)]">
+                  Core Web Vitals require a performance audit. Add a PageSpeed API key to populate LCP, INP, and CLS.
+                </p>
+                )}
+              </div>
+
+              <div className="mt-4 grid gap-4 md:grid-cols-2">
+                <div className="rounded-2xl border border-[var(--rp-border)] bg-white p-4 shadow-sm">
+                <div className="rp-section-title">Issue severity mix</div>
+                <div className="rp-section-subtitle">
+                  Severity overrides priority in this view.
+                </div>
+                  {(() => {
+                    const segments = buildSeveritySegments(issues);
+                    const total = segments.reduce((acc, seg) => acc + seg.value, 0) || 1;
+                    const radius = 36;
+                    const circumference = 2 * Math.PI * radius;
+                    let offset = 0;
+                    return (
+                <div className="mt-4 flex items-center gap-4">
+                  <svg width="96" height="96" viewBox="0 0 96 96">
+                    <circle cx="48" cy="48" r={radius} stroke="#E6EAF0" strokeWidth="10" fill="none" />
+                          {segments.map((seg) => {
+                            const dash = (seg.value / total) * circumference;
+                            const dashArray = `${dash} ${circumference - dash}`;
+                            const dashOffset = -offset;
+                            offset += dash;
+                            return (
+                              <circle
+                                key={seg.label}
+                                cx="48"
+                                cy="48"
+                                r={radius}
+                                stroke={seg.color}
+                                strokeWidth="10"
+                                fill="none"
+                                strokeDasharray={dashArray}
+                                strokeDashoffset={dashOffset}
+                                transform="rotate(-90 48 48)"
+                              />
+                            );
+                          })}
+                          <text x="48" y="46" textAnchor="middle" fontSize="13" fontWeight="700" fill="#111827">
+                            {total}
+                          </text>
+                          <text x="48" y="60" textAnchor="middle" fontSize="9" fill="#6B7280">
+                            issues
+                          </text>
+                        </svg>
+                        <div className="space-y-2 text-xs text-[var(--rp-text-500)]">
+                          {segments.map((seg) => (
+                            <div key={seg.label} className="flex items-center justify-between gap-3 tabular-nums">
+                              <span className="flex items-center gap-2">
+                                <span className="inline-block h-2 w-2 rounded-full" style={{ background: seg.color }} />
+                                {seg.label}
+                              </span>
+                              <span className="text-[var(--rp-text-700)]">
+                                {seg.value} • {Math.round(seg.percent)}%
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+                <div className="rounded-2xl border border-[var(--rp-border)] bg-white p-4 shadow-sm">
+                  <div className="rp-section-title">Fix pipeline</div>
+                  <div className="rp-section-subtitle">
+                    Prioritized queue based on impact.
+                  </div>
+                  {(() => {
+                    const stats = buildPriorityStats(issues);
+                    const total = Math.max(1, stats.fix_now + stats.fix_next + stats.fix_later);
+                    const rows = [
+                      { label: "Fix now", value: stats.fix_now, color: "#FF788F" },
+                      { label: "Fix next", value: stats.fix_next, color: "#F6C453" },
+                      { label: "Fix later", value: stats.fix_later, color: "#45E0A8" }
+                    ];
+                    return (
+                  <div className="mt-4 space-y-2 text-xs text-[var(--rp-text-500)]">
+                    {rows.map((row) => (
+                      <div key={row.label} className="tabular-nums">
+                        <div className="flex items-center justify-between">
+                          <span>{row.label}</span>
+                          <span className="text-[var(--rp-text-700)]">
+                            {row.value} • {Math.round((row.value / total) * 100)}%
+                              </span>
+                            </div>
+                            <div className="mt-1 h-2 w-full rounded-full bg-[var(--rp-gray-100)]">
+                              <div
+                                className="rp-bar h-2 rounded-full"
+                                style={{
+                                  width: `${Math.round((row.value / total) * 100)}%`,
+                                  background: row.color
+                                }}
+                              />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {status === "success" && showDeepSections && (
           <div className="grid gap-5 md:grid-cols-12">
             <div className="md:col-span-12 rp-card px-4 py-4">
               <div className="flex flex-wrap items-start justify-between gap-4">
@@ -1577,7 +3306,9 @@ try {
                     We’ll email a summary of fixes + regressions once per week.
                   </div>
                   <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <label className="sr-only" htmlFor="weekly-report-email">Weekly report email</label>
                     <input
+                      id="weekly-report-email"
                       className="rp-input h-9 flex-1 text-sm"
                       value={weeklyEmail}
                       onChange={(e) => {
@@ -1714,808 +3445,57 @@ try {
                 </div>
               </div>
             </div>
-            <div className="rp-card p-5 md:col-span-4 rp-fade-in">
-              <div className="flex items-center gap-2 rp-section-title">
-                <span>SEO Score</span>
-                <span className="relative inline-flex group" aria-hidden="true">
-                  <span className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-[var(--rp-border)] bg-[var(--rp-gray-50)] text-[11px] text-[var(--rp-text-500)]">
-                    ?
-                  </span>
-                  <span className="pointer-events-none absolute left-0 top-7 z-10 w-64 rounded-xl border border-[var(--rp-border)] bg-white p-3 text-[11px] leading-relaxed text-[var(--rp-text-500)] opacity-0 shadow-lg transition group-hover:opacity-100">
-                    Scoring model factors in on-page basics, content depth, internal links, and Core Web Vitals when available.
-                  </span>
-                </span>
-              </div>
-              <div className="mt-1 text-3xl font-semibold text-[var(--rp-text-900)] tabular-nums">
-                {(result && result.ok === false)
-                  ? "-"
-                  : (typeof scoreValue === "number" ? scoreValue : "-")}
-              </div>
-              {typeof scoreValue === "number" && (
-              <div className="mt-3">
-                {(() => {
-                  const clamped = Math.max(0, Math.min(100, scoreValue));
-                  const radius = 48;
-                  const cx = 60;
-                  const cy = 60;
-                  const circumference = 2 * Math.PI * radius;
-                  const offset = circumference * (1 - clamped / 100);
-                  const angleDeg = (clamped / 100) * 360 - 90;
-                  const angleRad = (Math.PI / 180) * angleDeg;
-                  const dotX = cx + Math.cos(angleRad) * radius;
-                  const dotY = cy + Math.sin(angleRad) * radius;
-                  return (
-                    <div className="flex items-center gap-3">
-                      <svg viewBox="0 0 120 120" className="h-24 w-24">
-                          <defs>
-                            <linearGradient id="donutGradient" x1="0" y1="0" x2="1" y2="1">
-                              <stop offset="0%" stopColor="#fb7185" />
-                              <stop offset="50%" stopColor="#facc15" />
-                              <stop offset="100%" stopColor="#34d399" />
-                            </linearGradient>
-                          </defs>
-                          <circle
-                            cx={cx}
-                            cy={cy}
-                            r={radius}
-                            stroke="rgba(148,163,184,0.25)"
-                            strokeWidth="10"
-                            fill="none"
-                          />
-                          <circle
-                            cx={cx}
-                            cy={cy}
-                            r={radius}
-                            stroke="url(#donutGradient)"
-                            strokeWidth="10"
-                            fill="none"
-                            className="rp-donut-progress"
-                            strokeDasharray={circumference}
-                            strokeDashoffset={offset}
-                            strokeLinecap="round"
-                            transform={`rotate(-90 ${cx} ${cy})`}
-                          />
-                          <circle cx={dotX} cy={dotY} r="4" fill="#ff642d" />
-                          <text x={cx} y={cy + 4} textAnchor="middle" fill="#0f172a" fontSize="14" fontWeight="600">
-                            {clamped}
-                          </text>
-                          <text x={cx} y={cy + 18} textAnchor="middle" fill="#64748b" fontSize="9">
-                            / 100
-                          </text>
-                        </svg>
-                      <div className="text-[11px] text-[var(--rp-text-500)] space-y-1">
-                        <div className="flex items-center gap-2">
-                          <span className="inline-block h-2 w-2 rounded-full bg-rose-400"></span>
-                          <span>0–49 Low</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="inline-block h-2 w-2 rounded-full bg-amber-400"></span>
-                          <span>50–79 OK</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="inline-block h-2 w-2 rounded-full bg-emerald-400"></span>
-                          <span>80–100 Strong</span>
-                        </div>
-                        <div className="mt-1.5 rp-body-xsmall text-[var(--rp-text-400)]">
-                          Score recalculates with mode toggles.
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })()}
-              </div>
-              )}
-              <div className="mt-1.5 rp-body-small">
-                {(typeof scoreValue === "number" ? scoreLabel(scoreValue) : "") || "Score is a directional signal, not a grade."}
-              </div>
-              <div className="mt-1.5 rp-body-xsmall">
-                Mode: {scoreModeLabel()}
-              </div>
-              {scoreMode === "explain" && (
-                <div className="mt-1.5 rp-body-xsmall">
-                  {explainScoreDetails(issues).length > 0
-                    ? `Top drivers: ${explainScoreDetails(issues).join(", ")}.`
-                    : "Score is based on critical SEO checks and page structure."}
-                </div>
-              )}
-              <div className="mt-1.5 rp-body-xsmall">
-                Fixing the top issues usually improves visibility and click-through rates.
-              </div>
-              <div className="mt-3 rounded-xl border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-4">
-                <div className="flex items-center justify-between text-xs text-[var(--rp-text-500)]">
-                  <span>Projected score lift</span>
-                  <span>Next 4 fixes</span>
-                </div>
-                <svg viewBox="0 0 200 70" className="mt-2 h-16 w-full">
-                  <defs>
-                    <linearGradient id="liftLine" x1="0" y1="0" x2="1" y2="0">
-                      <stop offset="0%" stopColor="#22d3ee" />
-                      <stop offset="100%" stopColor="#34d399" />
-                    </linearGradient>
-                  </defs>
-                  {(() => {
-                    const baseScore = scoreValue ?? 0;
-                    const fixNowCount = issues.filter((it) => it?.priority === "fix_now").length;
-                    const fixNextCount = issues.filter((it) => it?.priority === "fix_next").length;
-                    const lift = Math.min(30, fixNowCount * 6 + fixNextCount * 3);
-                    const linePoints = buildLiftPoints(baseScore, lift);
-                    const areaPoints = `5,70 ${linePoints} 195,70`;
-                    return (
-                      <>
-                        <polyline
-                          fill="none"
-                          stroke="url(#liftLine)"
-                          strokeWidth="3"
-                          points={linePoints}
-                        />
-                        <polyline
-                          fill="url(#liftLine)"
-                          opacity="0.15"
-                          points={areaPoints}
-                        />
-                      </>
-                    );
-                  })()}
-                </svg>
-                <div className="mt-1 rp-body-xsmall">
-                  Fix top issues to unlock the next score lift.
-                </div>
-              </div>
-              <div className="mt-4 rounded-xl border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-4">
-                <div className="flex items-center justify-between text-xs text-[var(--rp-text-500)]">
-                  <span>Traffic & revenue impact (estimate)</span>
-                  <span className="rp-chip rp-chip-neutral">GSC-based</span>
-                </div>
-                {(() => {
-                  const uplift = estimateTrafficUplift();
-                  if (!uplift) {
-                    return (
-                      <div className="mt-2 text-xs text-[var(--rp-text-500)]">
-                        Connect Google Search Console to estimate potential traffic lift.
-                      </div>
-                    );
-                  }
-                  const value = Number(valuePerVisit || 0);
-                  const revenue = Math.round(uplift.lift * value);
-                  return (
-                    <div className="mt-2 space-y-2 text-xs text-[var(--rp-text-600)]">
-                      <div>
-                        Potential uplift: <span className="font-semibold text-[var(--rp-text-800)]">~{uplift.lift} visits / month</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <label className="text-[var(--rp-text-500)]">Value per visit ($)</label>
-                        <input
-                          className="rp-input h-8 w-20 text-xs"
-                          value={valuePerVisit}
-                          onChange={(e) => {
-                            const next = e.target.value;
-                            setValuePerVisit(next);
-                            try { localStorage.setItem("rp_value_per_visit", String(next)); } catch {}
-                          }}
-                        />
-                        <span className="text-[var(--rp-text-500)]">Estimated monthly impact:</span>
-                        <span className="font-semibold text-[var(--rp-text-800)]">${Number.isFinite(revenue) ? revenue : 0}</span>
-                      </div>
-                      <div className="text-[10px] text-[var(--rp-text-400)]">
-                        Assumes improvement toward a top‑3 CTR benchmark.
-                      </div>
-                    </div>
-                  );
-                })()}
-              </div>
-              <button
-                onClick={() => setPricingOpen(true)}
-                className="rp-btn-secondary mt-4 w-full text-sm"
-              >
-                <IconArrowRight size={14} />
-                Unlock Full Fix Plan
-              </button>
-            </div>
-
-            <div id="quick-wins" className="rp-card p-5 md:col-span-8 rp-fade-in">
-              <div className="rp-section-title">Quick Wins</div>
-              <div className="mt-3">
-                {quickWins.length > 0 ? (
-                  <div className="grid gap-4 md:grid-cols-2">
-                    {strictPrioritizeQuickWins(quickWins).slice(0, 10).map((x, i) => {
-                      const info = explainQuickWin(x);
-                      const impact = impactLabelForIssueName(info.title);
-                      const icon =
-                        info.title.toLowerCase().includes("meta")
-                          ? <IconDoc size={14} />
-                          : info.title.toLowerCase().includes("h1")
-                          ? <IconHeading size={14} />
-                          : info.title.toLowerCase().includes("title")
-                          ? <IconTitle size={14} />
-                          : <IconBolt size={14} />;
-                      const impactLabel = info.title.toLowerCase().includes("title") || info.title.toLowerCase().includes("meta")
-                        ? "High impact"
-                        : info.title.toLowerCase().includes("h1")
-                        ? "Medium impact"
-                        : "Medium impact";
-                      const timeLabel = info.title.toLowerCase().includes("meta") ? "10-15 min" : "5-10 min";
-                      return (
-                    <div key={i} className="rp-card-hover rounded-xl border border-[var(--rp-border)] bg-white p-4 shadow-sm">
-                          <div className="flex items-center gap-2 text-sm font-semibold text-[var(--rp-text-800)]">
-                            <span className="inline-flex h-6 w-6 items-center justify-center rounded-lg bg-[rgba(66,25,131,0.08)] text-[var(--rp-indigo-700)]">
-                              {icon}
-                            </span>
-                            {info.title}
-                          </div>
-                          <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-[var(--rp-text-500)]">
-                            <span className="rp-chip rp-chip-warning">
-                              {impactLabel}
-                            </span>
-                            <span className="rp-chip rp-chip-info">
-                              {timeLabel}
-                            </span>
-                            <span className={impact.tone}>
-                              {impact.label}
-                            </span>
-                          </div>
-                          <div className="mt-1 text-sm text-[var(--rp-text-600)]">{info.detail}</div>
-                          <div className="mt-2 text-xs text-[var(--rp-text-500)]">
-                            Why it helps clicks: clearer snippets and stronger page relevance.
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="text-[var(--rp-text-500)]">No major quick wins returned.</div>
-                )}
-              </div>
-              <div className="mt-5 grid gap-4 md:grid-cols-3">
-                {overviewMetrics && [
-                  { label: "Visibility", value: overviewMetrics.visibility, color: "bg-emerald-400" },
-                  { label: "CTR clarity", value: overviewMetrics.ctrClarity, color: "bg-cyan-400" },
-                  { label: "Content depth", value: overviewMetrics.contentDepth, color: "bg-amber-400" }
-                ].map((metric) => (
-                  <div key={metric.label} className="rp-metric-tile rounded-xl border border-[var(--rp-border)] bg-white p-4 shadow-sm">
-                    <div className="text-xs text-[var(--rp-text-500)]">{metric.label}</div>
-                    <div className="mt-1 text-sm font-semibold text-[var(--rp-text-800)] tabular-nums">{metric.value}%</div>
-                    <div className="mt-2 h-1.5 w-full rounded-full bg-[var(--rp-gray-100)]">
-                      <div className={`rp-bar h-1.5 rounded-full ${metric.color}`} style={{ width: `${metric.value}%` }} />
-                    </div>
-                    <div className="mt-1 rp-body-xsmall text-[var(--rp-text-400)]">Benchmark: 70%+</div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="mt-6">
-                <div className="rp-section-title">Granular signals</div>
-                <div className="mt-3 grid gap-4 md:grid-cols-3">
-                  {signalMetrics.length > 0 ? (
-                    signalMetrics.map((metric) => (
-                      <div key={metric.label} className="rp-metric-tile rounded-xl border border-[var(--rp-border)] bg-white p-4 shadow-sm">
-                        <div className="text-xs text-[var(--rp-text-500)]">{metric.label}</div>
-                        <div className="mt-2 text-sm font-semibold text-[var(--rp-text-800)] tabular-nums">{metric.value}</div>
-                        <div className="mt-2 h-1.5 w-full rounded-full bg-[var(--rp-gray-100)]">
-                          <div
-                            className={`rp-bar h-1.5 rounded-full ${metric.color}`}
-                            style={{ width: `${metric.percent}%` }}
-                          />
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="rounded-xl border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-4 text-sm text-[var(--rp-text-500)]">
-                      Signals will appear after the first audit completes.
-                    </div>
-                  )}
-                </div>
-                <div className="mt-4 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-4">
-                  <div className="flex items-center gap-2 rp-section-title">
-                    Core Web Vitals
-                    <span className="relative inline-flex group">
-                      <span className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-[var(--rp-border)] bg-white text-[11px] text-[var(--rp-text-500)]">
-                        i
-                      </span>
-                      <span className="pointer-events-none absolute left-0 top-7 z-10 w-56 rounded-xl border border-[var(--rp-border)] bg-white p-3 text-[11px] leading-relaxed text-[var(--rp-text-500)] opacity-0 shadow-lg transition group-hover:opacity-100">
-                        Field = real user data. Lab = simulated test in a controlled environment.
-                      </span>
-                    </span>
-                  </div>
-                  <p className="mt-1 text-xs leading-relaxed text-[var(--rp-text-500)]">
-                    Thresholds used by Google for a good user experience.
-                  </p>
-                  <div className="mt-3 grid gap-4 md:grid-cols-3 text-xs text-[var(--rp-text-600)]">
-                    <div className="rp-metric-tile rounded-xl border border-[var(--rp-border)] bg-white p-4">
-                      <div className="text-[var(--rp-text-700)] font-semibold">LCP</div>
-                      <div className="mt-1 text-xs text-[var(--rp-text-500)]">
-                        {(() => {
-                          const { field, lab } = getCwvPair(result, "lcp");
-                          const f = field !== null ? `${field}s` : "N/A";
-                          const l = lab !== null ? `${lab}s` : "N/A";
-                          return `Field: ${f} | Lab: ${l}`;
-                        })()}
-                      </div>
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        {(() => {
-                          const lcp = getCwvFieldValue(result, "lcp");
-                          return (
-                            <>
-                              <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${cwvBadgeClass("lcp", lcp <= 2.5 ? lcp : null)}`}>
-                                Good: ≤ 2.5s
-                              </span>
-                              <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${cwvBadgeClass("lcp", lcp > 2.5 && lcp <= 4 ? lcp : null)}`}>
-                                Needs work: 2.5-4.0s
-                              </span>
-                              <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${cwvBadgeClass("lcp", lcp > 4 ? lcp : null)}`}>
-                                Poor: &gt; 4.0s
-                              </span>
-                            </>
-                          );
-                        })()}
-                      </div>
-                    </div>
-                    <div className="rp-metric-tile rounded-xl border border-[var(--rp-border)] bg-white p-4">
-                      <div className="text-[var(--rp-text-700)] font-semibold">INP</div>
-                      <div className="mt-1 text-xs text-[var(--rp-text-500)]">
-                        {(() => {
-                          const { field, lab } = getCwvPair(result, "inp");
-                          const f = field !== null ? `${field}ms` : "N/A";
-                          const l = lab !== null ? `${lab}ms` : "N/A";
-                          return `Field: ${f} | Lab: ${l}`;
-                        })()}
-                      </div>
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        {(() => {
-                          const inp = getCwvFieldValue(result, "inp");
-                          return (
-                            <>
-                              <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${cwvBadgeClass("inp", inp <= 200 ? inp : null)}`}>
-                                Good: ≤ 200ms
-                              </span>
-                              <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${cwvBadgeClass("inp", inp > 200 && inp <= 500 ? inp : null)}`}>
-                                Needs work: 200-500ms
-                              </span>
-                              <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${cwvBadgeClass("inp", inp > 500 ? inp : null)}`}>
-                                Poor: &gt; 500ms
-                              </span>
-                            </>
-                          );
-                        })()}
-                      </div>
-                    </div>
-                    <div className="rp-metric-tile rounded-xl border border-[var(--rp-border)] bg-white p-4">
-                      <div className="text-[var(--rp-text-700)] font-semibold">CLS</div>
-                      <div className="mt-1 text-xs text-[var(--rp-text-500)]">
-                        {(() => {
-                          const { field, lab } = getCwvPair(result, "cls");
-                          const f = field !== null ? `${field}` : "N/A";
-                          const l = lab !== null ? `${lab}` : "N/A";
-                          return `Field: ${f} | Lab: ${l}`;
-                        })()}
-                      </div>
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        {(() => {
-                          const cls = getCwvFieldValue(result, "cls");
-                          return (
-                            <>
-                              <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${cwvBadgeClass("cls", cls <= 0.1 ? cls : null)}`}>
-                                Good: ≤ 0.1
-                              </span>
-                              <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${cwvBadgeClass("cls", cls > 0.1 && cls <= 0.25 ? cls : null)}`}>
-                                Needs work: 0.1-0.25
-                              </span>
-                              <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${cwvBadgeClass("cls", cls > 0.25 ? cls : null)}`}>
-                                Poor: &gt; 0.25
-                              </span>
-                            </>
-                          );
-                        })()}
-                      </div>
-                    </div>
-                  </div>
-                  {!result?.cwv && (
-                  <p className="mt-2 text-xs leading-relaxed text-[var(--rp-text-500)]">
-                    Core Web Vitals require a performance audit. Add a PageSpeed API key to populate LCP, INP, and CLS.
-                  </p>
-                  )}
-                </div>
-
-                <div className="mt-4 grid gap-4 md:grid-cols-2">
-                  <div className="rounded-2xl border border-[var(--rp-border)] bg-white p-4 shadow-sm">
-                  <div className="rp-section-title">Issue severity mix</div>
-                  <div className="rp-section-subtitle">
-                    Severity overrides priority in this view.
-                  </div>
-                    {(() => {
-                      const segments = buildSeveritySegments(issues);
-                      const total = segments.reduce((acc, seg) => acc + seg.value, 0) || 1;
-                      const radius = 36;
-                      const circumference = 2 * Math.PI * radius;
-                      let offset = 0;
-                      return (
-                  <div className="mt-4 flex items-center gap-4">
-                    <svg width="96" height="96" viewBox="0 0 96 96">
-                      <circle cx="48" cy="48" r={radius} stroke="#E6EAF0" strokeWidth="10" fill="none" />
-                            {segments.map((seg) => {
-                              const dash = (seg.value / total) * circumference;
-                              const dashArray = `${dash} ${circumference - dash}`;
-                              const dashOffset = -offset;
-                              offset += dash;
-                              return (
-                                <circle
-                                  key={seg.label}
-                                  cx="48"
-                                  cy="48"
-                                  r={radius}
-                                  stroke={seg.color}
-                                  strokeWidth="10"
-                                  fill="none"
-                                  strokeDasharray={dashArray}
-                                  strokeDashoffset={dashOffset}
-                                  transform="rotate(-90 48 48)"
-                                />
-                              );
-                            })}
-                            <text x="48" y="46" textAnchor="middle" fontSize="13" fontWeight="700" fill="#111827">
-                              {total}
-                            </text>
-                            <text x="48" y="60" textAnchor="middle" fontSize="9" fill="#6B7280">
-                              issues
-                            </text>
-                          </svg>
-                          <div className="space-y-2 text-xs text-[var(--rp-text-500)]">
-                            {segments.map((seg) => (
-                              <div key={seg.label} className="flex items-center justify-between gap-3 tabular-nums">
-                                <span className="flex items-center gap-2">
-                                  <span className="inline-block h-2 w-2 rounded-full" style={{ background: seg.color }} />
-                                  {seg.label}
-                                </span>
-                                <span className="text-[var(--rp-text-700)]">
-                                  {seg.value} • {Math.round(seg.percent)}%
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      );
-                    })()}
-                  </div>
-                  <div className="rounded-2xl border border-[var(--rp-border)] bg-white p-4 shadow-sm">
-                    <div className="rp-section-title">Fix pipeline</div>
-                    <div className="rp-section-subtitle">
-                      Prioritized queue based on impact.
-                    </div>
-                    {(() => {
-                      const stats = buildPriorityStats(issues);
-                      const total = Math.max(1, stats.fix_now + stats.fix_next + stats.fix_later);
-                      const rows = [
-                        { label: "Fix now", value: stats.fix_now, color: "#FF788F" },
-                        { label: "Fix next", value: stats.fix_next, color: "#F6C453" },
-                        { label: "Fix later", value: stats.fix_later, color: "#45E0A8" }
-                      ];
-                      return (
-                    <div className="mt-4 space-y-2 text-xs text-[var(--rp-text-500)]">
-                      {rows.map((row) => (
-                        <div key={row.label} className="tabular-nums">
-                          <div className="flex items-center justify-between">
-                            <span>{row.label}</span>
-                            <span className="text-[var(--rp-text-700)]">
-                              {row.value} • {Math.round((row.value / total) * 100)}%
-                                </span>
-                              </div>
-                              <div className="mt-1 h-2 w-full rounded-full bg-[var(--rp-gray-100)]">
-                                <div
-                                  className="rp-bar h-2 rounded-full"
-                                  style={{
-                                    width: `${Math.round((row.value / total) * 100)}%`,
-                                    background: row.color
-                                  }}
-                                />
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      );
-                    })()}
-                  </div>
-                </div>
-              </div>
-            </div>
+            
           </div>
         )}
 
         {status === "success" && (
-          <div className="rp-card p-5 rp-fade-in">
-            <div className="rp-section-title">Services included in every audit</div>
-            <div className="rp-section-subtitle">
-              Proof-backed fixes, content direction, and client-ready deliverables.
-            </div>
-            <div className="mt-4 grid gap-4 md:grid-cols-4">
-              {[
-                { title: "Fix prioritization", icon: <IconBolt size={14} />, tone: "bg-cyan-100 text-cyan-700" },
-                { title: "Content brief", icon: <IconDoc size={14} />, tone: "bg-emerald-100 text-emerald-700" },
-                { title: "Shareable report", icon: <IconReport size={14} />, tone: "bg-amber-100 text-amber-700" },
-                { title: "Performance signals", icon: <IconShield size={14} />, tone: "bg-purple-100 text-purple-700" }
-              ].map((item) => (
-                <div key={item.title} className="rp-metric-tile rounded-xl border border-[var(--rp-border)] bg-white p-4 shadow-sm">
-                  <div className="flex items-center gap-2 text-sm font-semibold text-[var(--rp-text-800)]">
-                    <span className={`inline-flex h-6 w-6 items-center justify-center rounded-lg ${item.tone}`}>
-                      {item.icon}
-                    </span>
-                    {item.title}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {status === "success" && (
-          <div className="rp-card p-5 rp-fade-in">
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="rp-section-title">Guided Fix Mode</div>
-              <span className="rp-section-subtitle">Step-by-step for non-technical teams</span>
-            </div>
-            <p className="mt-2 rp-body-small">
-              Start with the top 3 fixes. Each step is written in plain language so anyone can act on it.
-            </p>
-            <div className="mt-3 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-4 text-xs text-[var(--rp-text-600)]">
-              <div className="font-semibold text-[var(--rp-text-700)]">Progress across audits</div>
-              <div className="mt-3 grid gap-4 md:grid-cols-2">
-                {(() => {
-                  const keys = Object.keys(localStorage || {}).filter((k) => k.startsWith("rp_guided_done::"));
-                  if (!keys.length) {
-                    return <span>No saved progress yet.</span>;
-                  }
-                  return keys.slice(0, 4).map((key) => {
-                    const urlKey = key.replace("rp_guided_done::", "");
-                    let doneCount = 0;
-                    let totalCount = 0;
-                    let lastRun = "";
-                    try {
-                      const raw = localStorage.getItem(key);
-                      const obj = raw ? JSON.parse(raw) : {};
-                      doneCount = Object.values(obj).filter(Boolean).length;
-                      totalCount = Object.keys(obj).length;
-                    } catch {}
-                    try {
-                      const snapKey = `rp_audit_snapshot::${urlKey}`;
-                      const snapRaw = localStorage.getItem(snapKey);
-                      const snap = snapRaw ? JSON.parse(snapRaw) : null;
-                      const ts = snap?.ranAt || snap?.ran_at || snap?.created_at;
-                      if (ts) {
-                        const date = new Date(ts);
-                        if (!Number.isNaN(date.getTime())) {
-                          lastRun = date.toLocaleString();
-                        }
-                      }
-                    } catch {}
-                    return (
-                      <div key={key} className="flex items-center justify-between gap-2 rounded-xl border border-[var(--rp-border)] bg-white px-3 py-2 shadow-sm">
-                        <div className="min-w-0">
-                          <button
-                            type="button"
-                            className="truncate text-left text-xs font-semibold text-[var(--rp-indigo-700)] hover:text-[var(--rp-indigo-900)]"
-                            onClick={() => {
-                              if (!urlKey) return;
-                              navigate(`/audit?url=${encodeURIComponent(urlKey)}`);
-                            }}
-                            title={urlKey}
-                          >
-                            {urlKey || "Audit"}
-                          </button>
-                        <div className="rp-body-xsmall">
-                          {lastRun ? `Last run: ${lastRun}` : "Last run: N/A"}
-                        </div>
-                      </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-[var(--rp-text-500)]">{doneCount}/{totalCount || 0}</span>
-                          {(() => {
-                            const pct = totalCount ? Math.round((doneCount / totalCount) * 100) : 0;
-                            const badgeClass =
-                              pct >= 80
-                                ? "bg-emerald-100 text-emerald-700 border border-emerald-200"
-                                : pct >= 50
-                                ? "bg-amber-100 text-amber-700 border border-amber-200"
-                                : "bg-rose-100 text-rose-700 border border-rose-200";
-                            return (
-                              <span
-                                className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${badgeClass}`}
-                                title="Progress thresholds: Red <50%, Amber 50-79%, Green 80%+"
-                              >
-                                {pct}%
-                              </span>
-                            );
-                          })()}
-                        </div>
-                      </div>
-                    );
-                  });
-                })()}
-              </div>
-            </div>
-            {(() => {
-              const base = scoreValue ?? 0;
-              const remainingIssues = issues.filter((it) => !guidedDone[String(it?.issue_id || it?.title || "")]);
-              const lift = estimateScoreLiftFromIssues(remainingIssues);
-              const projected = Math.min(100, base + lift);
-              const totalSteps = guidedSteps(issues, true).length;
-              const completedSteps = totalSteps
-                ? guidedSteps(issues, true).filter((step) => guidedDone[step.id]).length
-                : 0;
-              return (
-                <div className="mt-4 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-4">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <div className="text-xs text-[var(--rp-text-500)]">Before / After preview</div>
-                      <div className="mt-1 text-lg font-semibold text-[var(--rp-text-800)]">
-                        {Math.round(base)} <span className="text-[var(--rp-text-400)]">→</span> {Math.round(projected)}
-                      </div>
-                    </div>
-                    <div className="text-xs text-[var(--rp-text-500)]">
-                      Estimated lift: +{Math.round(lift)}
-                    </div>
-                  </div>
-                  <div className="mt-2 text-xs text-[var(--rp-text-500)]">
-                    Progress: {completedSteps}/{totalSteps || 0} fixes completed
-                  </div>
-                  <div className="mt-2 inline-flex items-center rounded-full border border-emerald-200 bg-emerald-100 px-2 py-1 text-[11px] font-semibold text-emerald-700">
-                    Next step: Tackle the highest impact fix first
-                  </div>
-                  <div className="mt-2 text-xs text-[var(--rp-text-500)]">
-                    Estimated time to complete: {Math.max(10, (totalSteps || 3) * 6)} min
-                  </div>
-                  <div className="mt-3">
-                    <div className="flex items-center justify-between text-xs text-[var(--rp-text-500)]">
-                      <span>Fix-impact meter</span>
-                      <span>{Math.round(lift)} pts</span>
-                    </div>
-                    <div className="mt-2 h-2 w-full rounded-full bg-[var(--rp-gray-100)]">
-                      <div
-                        className="rp-bar h-2 rounded-full bg-gradient-to-r from-cyan-400 to-emerald-400"
-                        style={{ width: `${Math.min(100, Math.round((lift / 30) * 100))}%` }}
-                      />
-                    </div>
-                  </div>
-                  <div className="mt-4">
-                    <div className="flex items-center justify-between text-xs text-[var(--rp-text-500)]">
-                      <span>Progress trend</span>
-                      <span>Next steps</span>
-                    </div>
-                    <svg viewBox="0 0 200 70" className="mt-2 h-16 w-full">
-                      <defs>
-                        <linearGradient id="guidedTrend" x1="0" y1="0" x2="1" y2="0">
-                          <stop offset="0%" stopColor="#22d3ee" />
-                          <stop offset="100%" stopColor="#34d399" />
-                        </linearGradient>
-                      </defs>
-                      {(() => {
-                        const linePoints = buildLiftPoints(base, lift);
-                        const areaPoints = `5,70 ${linePoints} 195,70`;
-                        return (
-                          <>
-                            <polyline
-                              fill="none"
-                              stroke="url(#guidedTrend)"
-                              strokeWidth="3"
-                              points={linePoints}
-                            />
-                            <polyline
-                              fill="url(#guidedTrend)"
-                              opacity="0.15"
-                              points={areaPoints}
-                            />
-                          </>
-                        );
-                      })()}
-                    </svg>
-                  </div>
-                </div>
-              );
-            })()}
-            <div className="mt-3 flex flex-wrap items-center gap-4 text-xs text-[var(--rp-text-500)]">
-              <span className="whitespace-nowrap">{showAllGuidedFixes ? "Showing all fixes" : "Showing top 3 fixes"}</span>
-              <div className="flex items-center gap-2 text-[11px] text-[var(--rp-text-500)] whitespace-nowrap">
-                <span className="inline-flex items-center gap-1">
-                  <span className="inline-block h-2 w-2 rounded-full bg-rose-400"></span>
-                  <span>&lt;50%</span>
-                </span>
-                <span className="inline-flex items-center gap-1">
-                  <span className="inline-block h-2 w-2 rounded-full bg-amber-400"></span>
-                  <span>50-79%</span>
-                </span>
-                <span className="inline-flex items-center gap-1">
-                  <span className="inline-block h-2 w-2 rounded-full bg-emerald-400"></span>
-                  <span>80%+</span>
-                </span>
-              </div>
-              <div className="ml-auto flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
-                <button
-                  type="button"
-                  className="rp-btn-secondary rp-btn-sm h-8 px-3 text-xs inline-flex items-center gap-2 whitespace-nowrap"
-                  onClick={() => setShowAllGuidedFixes((prev) => !prev)}
-                >
-                  {showAllGuidedFixes ? "Show top 3" : "Show all fixes"}
-                </button>
-                <button
-                  type="button"
-                  className="rp-btn-secondary rp-btn-sm h-8 px-3 text-xs inline-flex items-center gap-2 whitespace-nowrap"
-                  onClick={() => {
-                    const key = `rp_guided_done::${(result?.url || url || "").trim()}`;
-                    if (!key.trim()) return;
-                    try { localStorage.removeItem(key); } catch {}
-                    setGuidedDone({});
-                  }}
-                >
-                  <IconTrash size={14} />
-                  Reset progress
-                </button>
-              </div>
-            </div>
-            {guidedSteps(issues, showAllGuidedFixes).length > 0 ? (
-              <ol className="mt-4 grid gap-4 md:grid-cols-3">
-                {guidedSteps(issues, showAllGuidedFixes).map((step, idx) => (
-                  <li key={idx} className="rp-metric-tile rounded-xl border border-[var(--rp-border)] bg-white p-4 shadow-sm">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <div className="text-xs font-semibold text-[var(--rp-indigo-700)]">Step {idx + 1}</div>
-                        <div className="mt-2 text-sm font-semibold text-[var(--rp-text-800)]">{step.title}</div>
-                      </div>
-                      <label className="flex items-center gap-2 text-xs text-[var(--rp-text-500)]">
-                        <input
-                          type="checkbox"
-                          checked={Boolean(guidedDone[step.id])}
-                          onChange={() => toggleGuidedDone(step.id)}
-                        />
-                        Mark as done
-                      </label>
-                    </div>
-                    <p className="mt-2 text-sm text-[var(--rp-text-600)]">
-                      {step.why || "This fix improves clarity for visitors and search engines."}
-                    </p>
-                    <p className="mt-2 text-sm text-[var(--rp-text-600)]">
-                      {step.fix || "Add the missing element and re-run the audit to confirm."}
-                    </p>
-                  </li>
-                ))}
-              </ol>
-            ) : (
-              <div className="mt-3 text-sm text-[var(--rp-text-500)]">Run an audit to see your guided fix steps.</div>
-            )}
-          </div>
-        )}
-
-        {status === "success" && (
-          <div className="rp-card p-5 rp-fade-in">
-            <div className="flex flex-wrap items-center justify-between gap-3">
+          <div id="monitoring" className="rp-card p-5 rp-fade-in">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
-            <div className="rp-section-title">Pro services</div>
-            <div className="rp-section-subtitle">
-              Built for teams who want done-for-you clarity and recurring performance wins.
-            </div>
-              </div>
-              <div className="flex flex-col items-end">
-                <button className="rp-btn-primary text-sm">
-                  <IconArrowRight size={14} />
-                  Upgrade to Pro
-                </button>
+                <div className="rp-section-title">Light monitoring</div>
                 <div className="mt-1 text-xs text-[var(--rp-text-500)]">
-                  Instant access to fix plans, reports, and weekly tracking after checkout.
+                  Track your most important pages and see when it’s time to re‑audit.
                 </div>
               </div>
+              {result?.url && (
+                <button
+                  onClick={() => {
+                    const u = result?.url;
+                    if (!u) return;
+                    if (isMonitored(u)) {
+                      removeMonitor(u);
+                    } else {
+                      upsertMonitor({ url: u });
+                    }
+                    refreshMonitors();
+                  }}
+                  className="rp-btn-secondary rp-btn-sm h-9 px-3 text-xs"
+                >
+                  {isMonitored(result.url) ? "Stop monitoring" : "Monitor this page"}
+                </button>
+              )}
             </div>
-            <div className="mt-4 grid gap-4 md:grid-cols-4">
-              {[
-                { title: "Done-for-you fix plan", icon: <IconBolt size={14} />, tone: "bg-cyan-100 text-cyan-700" },
-                { title: "Client report branding", icon: <IconReport size={14} />, tone: "bg-emerald-100 text-emerald-700" },
-                { title: "Weekly monitoring", icon: <IconCompass size={14} />, tone: "bg-amber-100 text-amber-700" },
-                { title: "Priority support", icon: <IconShield size={14} />, tone: "bg-purple-100 text-purple-700" }
-              ].map((item) => (
-                <div key={item.title} className="rp-metric-tile rounded-xl border border-[var(--rp-border)] bg-white p-4 shadow-sm">
-                  <div className="flex items-center gap-2 text-sm font-semibold text-[var(--rp-text-800)]">
-                    <span className={`inline-flex h-6 w-6 items-center justify-center rounded-lg ${item.tone}`}>
-                      {item.icon}
-                    </span>
-                    {item.title}
+            {monitors.length ? (
+              <div className="mt-4 grid gap-3 md:grid-cols-3">
+                {monitors.map((m) => (
+                  <div key={m.url} className="rp-metric-tile rounded-xl border border-[var(--rp-border)] bg-white p-4 shadow-sm">
+                    <div className="text-xs text-[var(--rp-text-500)]">URL</div>
+                    <div className="mt-1 text-sm font-semibold text-[var(--rp-text-900)] break-all">{m.url}</div>
+                    <div className="mt-2 text-xs text-[var(--rp-text-500)]">Last score</div>
+                    <div className="text-lg font-semibold text-[var(--rp-text-900)]">{m.lastScore ?? "—"}</div>
+                    <div className="mt-2 text-xs text-[var(--rp-text-500)]">
+                      Last checked: {m.lastChecked ? new Date(m.lastChecked).toLocaleString() : "—"}
+                    </div>
+                    <div className="mt-1 text-xs text-[var(--rp-text-500)]">
+                      Next check: {m.nextCheck ? new Date(m.nextCheck).toLocaleDateString() : "—"}
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <div className="mt-4 text-sm text-[var(--rp-text-500)]">No pages monitored yet.</div>
+            )}
           </div>
         )}
 
@@ -2563,366 +3543,201 @@ try {
           </div>
         )}
 
-        {status === "success" && result && (
-          <div className="rp-card p-5 rp-fade-in" data-testid="observed-data">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-[rgba(66,25,131,0.08)] text-[var(--rp-indigo-700)]">
-                <IconBolt size={16} />
-              </span>
-              <div className="rp-section-title">What we found</div>
+        {status === "success" && (
+          <div className="rp-card p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="text-sm text-[var(--rp-text-600)]">
+                Optional growth tools are placed at the end so your fix workflow stays focused.
+              </div>
+              <button
+                type="button"
+                className="rp-btn-secondary rp-btn-sm h-9 px-3 text-xs"
+                onClick={() => setShowGrowthTools((prev) => !prev)}
+              >
+                {showGrowthTools ? "Hide growth tools" : "Show growth tools"}
+              </button>
             </div>
-            <p className="text-sm text-[var(--rp-text-500)] mb-4">
-              These details confirm what the page exposes to search engines and visitors.
-            </p>
-            <div className="rounded-xl border border-[var(--rp-border)] bg-white max-h-[360px] overflow-auto">
-              <table className="rp-table w-full text-sm">
-                <thead>
-                  <tr className="border-b border-[var(--rp-border)]">
-                      <th className="px-4 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-[var(--rp-text-500)]">
-                        Signal
-                      </th>
-                      <th className="px-4 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-[var(--rp-text-500)]">
-                        Value
-                      </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {[
-                    { label: "Final URL", value: result?.debug?.final_url || result?.final_url || "-" },
-                    { label: "HTTP Status", value: result?.debug?.final_status ?? result?.debug?.fetch_status ?? result?.status ?? "-" },
-                    {
-                      label: "Title",
-                      value: result?.evidence?.title
-                        ? `${result.evidence.title}${result.evidence.title_char_count !== undefined ? ` (${result.evidence.title_char_count} chars)` : ""}`
-                        : "-"
-                    },
-                    {
-                      label: "Meta Description",
-                      value: result?.evidence?.meta_description
-                        ? `${result.evidence.meta_description}${result.evidence.meta_description_char_count !== undefined ? ` (${result.evidence.meta_description_char_count} chars)` : ""}`
-                        : "-"
-                    },
-                    {
-                      label: "H1",
-                      value: result?.evidence?.h1
-                        ? `${result.evidence.h1}${result.evidence.h1_count !== undefined ? ` (${result.evidence.h1_count} found)` : ""}`
-                        : "-"
-                    },
-                    { label: "Canonical", value: result?.evidence?.canonical || "-" },
-                    {
-                      label: "Word Count",
-                      value: result?.evidence?.word_count !== undefined
-                        ? `${result.evidence.word_count.toLocaleString()} words`
-                        : "-"
-                    },
-                    {
-                      label: "Internal Links",
-                      value: result?.evidence?.internal_links_count !== undefined
-                        ? String(result.evidence.internal_links_count)
-                        : "-"
-                    },
-                    {
-                      label: "External Links",
-                      value: result?.evidence?.external_links_count !== undefined
-                        ? String(result.evidence.external_links_count)
-                        : "-"
+          </div>
+        )}
+
+        {status === "success" && showGrowthTools && (
+          <div id="competitor-compare" className="rp-card p-5 rp-fade-in">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <div className="rp-section-title">Competitor comparison</div>
+                <div className="mt-1 text-xs text-[var(--rp-text-500)]">
+                  Enter three competitors to benchmark your score.
+                </div>
+              </div>
+              <span className="rp-chip rp-chip-warning">Subscription driver</span>
+            </div>
+            <div className="mt-3 grid gap-3 md:grid-cols-3">
+              {competitorUrls.map((val, idx) => (
+                <input
+                  key={idx}
+                  className="rp-input"
+                  value={val}
+                  placeholder={`Competitor ${idx + 1} URL`}
+                  onChange={(e) => {
+                    const next = [...competitorUrls];
+                    next[idx] = e.target.value;
+                    setCompetitorUrls(next);
+                  }}
+                />
+              ))}
+            </div>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <button
+                className="rp-btn-secondary rp-btn-sm h-9 px-3 text-xs"
+                disabled={compareStatus === "loading"}
+                onClick={async () => {
+                  try {
+                    track("competitor_compare_run", {
+                      url: result?.url || url || "",
+                      count: competitorUrls.filter((u) => isValidUrl(u)).length
+                    });
+                  } catch {}
+                  const list = competitorUrls.filter((u) => isValidUrl(u));
+                  if (!list.length) return;
+                  setCompareStatus("loading");
+                  const results = [];
+                  for (const u of list.slice(0, 3)) {
+                    try {
+                      const res = await fetch(apiUrl("/api/page-report"), {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ url: u.trim() })
+                      });
+                      const data = await safeJson(res);
+                      results.push({
+                        url: u,
+                        score: typeof data?.score === "number" ? data.score : null
+                      });
+                    } catch {
+                      results.push({ url: u, score: null });
                     }
-                  ].map((row, idx) => (
-                    <tr
-                      key={row.label}
-                      className={`rp-table-row ${idx !== 0 ? "border-t border-[var(--rp-border)]" : ""}`}
-                    >
-                      <th className="w-40 bg-[var(--rp-gray-50)] px-4 py-2 text-left text-xs font-semibold text-[var(--rp-text-500)]">
-                        {row.label}
-                      </th>
-                      <td className="px-4 py-2 text-[var(--rp-text-700)] break-all">{row.value}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                  }
+                  setCompetitorScores(results);
+                  setCompareStatus("success");
+                }}
+              >
+                {compareStatus === "loading" ? "Comparing..." : "Compare scores"}
+              </button>
+              <button
+                className="rp-btn-primary rp-btn-sm h-9 px-3 text-xs"
+                onClick={() => {
+                  try { track("competitor_auto_upgrade_click", { url: result?.url || url || "" }); } catch {}
+                  setPricingOpen(true);
+                }}
+              >
+                Unlock auto‑competitors
+              </button>
+              <button
+                className="rp-btn-secondary rp-btn-sm h-9 px-3 text-xs"
+                onClick={() => {
+                  setCompetitorUrls(["", "", ""]);
+                  setCompetitorScores([]);
+                  setCompareStatus("idle");
+                }}
+              >
+                Reset
+              </button>
             </div>
-            {advancedView && (
-              <details className="mt-4 text-xs text-[var(--rp-text-500)]">
-                <summary className="cursor-pointer select-none text-[var(--rp-text-600)]">Show raw response</summary>
-                <pre className="mt-2 overflow-auto text-xs text-[var(--rp-text-600)]">
-                  {JSON.stringify(result?.evidence || {}, null, 2)}
-                </pre>
-              </details>
+            {competitorScores.length > 0 && (
+              <div className="mt-4 grid gap-3 md:grid-cols-2">
+                {[{ url: result?.url, score: typeof scoreValue === "number" ? scoreValue : null, label: "You" }, ...competitorScores].map((row, idx) => {
+                  const score = typeof row.score === "number" ? row.score : 0;
+                  const grade = gradeFromScore(score);
+                  return (
+                    <div key={`${row.url}-${idx}`} className="rp-metric-tile rounded-xl border border-[var(--rp-border)] bg-white p-4 shadow-sm">
+                      <div className="flex items-center justify-between">
+                        <div className="text-xs text-[var(--rp-text-500)]">{row.label || "Competitor"}</div>
+                        <span className="rp-chip rp-chip-neutral">Grade {grade}</span>
+                      </div>
+                      <div className="mt-2 text-sm font-semibold text-[var(--rp-text-800)] break-all">
+                        {row.url || "—"}
+                      </div>
+                      <div className="mt-2 flex items-center gap-3">
+                        <div className="text-2xl font-semibold text-[var(--rp-text-900)]">{score}</div>
+                        <div className="h-2 w-full rounded-full bg-[var(--rp-gray-100)]">
+                          <div className="rp-bar h-2 rounded-full bg-emerald-400" style={{ width: `${Math.max(0, Math.min(100, score))}%` }} />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             )}
           </div>
         )}
 
-        {status === "success" && (
-          <div className="grid gap-5 md:grid-cols-3">
-            {showNextStep && (
-              <div className="md:col-span-3 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-5">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <div className="rp-section-title">Next step</div>
-                    <div className="mt-1 text-sm text-[var(--rp-text-600)]">
-                      Start with the highest‑impact fixes so you see improvement immediately.
-                    </div>
-                  </div>
-                  <button
-                    className="rp-btn-secondary rp-btn-sm h-9 px-3 text-xs"
-                    onClick={() => setShowNextStep(false)}
-                  >
-                    Dismiss
-                  </button>
-                </div>
-                <div className="mt-4 grid gap-3 md:grid-cols-[1.2fr_0.8fr]">
-                  <div className="rp-metric-tile rounded-xl border border-[var(--rp-border)] bg-white p-4">
-                    <div className="text-xs text-[var(--rp-text-500)]">Top fix to start with</div>
-                    {(() => {
-                      const fixNow = issues.filter((it) => it?.priority === "fix_now");
-                      const best = fixNow[0] || issues[0];
-                      return (
-                    <div className="mt-1 text-lg font-semibold text-[var(--rp-text-900)]">
-                      {best?.title || best?.issue_id || "Resolve the highest‑impact issue"}
-                    </div>
-                      );
-                    })()}
-                    <div className="mt-1 text-xs text-[var(--rp-text-500)]">
-                      This typically produces the fastest lift in visibility and click‑through rate.
-                    </div>
-                  </div>
-                  <div className="rp-metric-tile rounded-xl border border-[var(--rp-border)] bg-white p-4">
-                    <div className="text-xs text-[var(--rp-text-500)]">Recommended action</div>
-                    <button
-                      type="button"
-                      className="rp-btn-primary mt-2 w-full text-sm"
-                      onClick={() => {
-                        try {
-                          track("cta_next_step_click", {
-                            variant: ctaVariant,
-                            url: result?.url || url || ""
-                          });
-                        } catch {}
-                        const el = document.querySelector("[data-testid='key-issues']");
-                        if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-                      }}
-                    >
-                      {ctaVariant === "B" ? "Fix this in 1 click" : "Generate AI fixes"}
-                    </button>
-                    <div className="mt-2 text-xs text-[var(--rp-text-400)]">
-                      {ctaVariant === "B"
-                        ? "Instantly create fixes and push to WordPress or Shopify."
-                        : "You can copy or push fixes directly into your CMS."}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-            <div className="md:col-span-3 rp-card p-5 rp-fade-in">
-              <div className="rp-section-title">Content Brief</div>
-              {brief ? (
-                <div className="mt-3 whitespace-pre-wrap text-[var(--rp-text-700)]">{brief}</div>
-              ) : (
-                <div className="mt-3 text-sm text-[var(--rp-text-600)]">
-                  <div className="text-[var(--rp-text-700)] font-semibold">Starter brief (auto-generated)</div>
-                  <ul className="mt-3 list-disc space-y-2 pl-5">
-                    <li>Goal: Explain what this page offers and who it is for.</li>
-                    <li>Angle: Lead with the main benefit and a clear outcome.</li>
-                    <li>Suggested sections: Problem, Solution, Proof, FAQs, Clear CTA.</li>
-                    <li>Target reader: People evaluating whether this page solves their need.</li>
-                    <li>CTA example: "Start a free audit" or "Book a demo".</li>
-                  </ul>
-                </div>
-              )}
+        {status === "success" && showGrowthTools && (
+          <div className="rp-card p-5 rp-fade-in">
+            <div className="rp-section-title">Services included in every audit</div>
+            <div className="rp-section-subtitle">
+              Proof-backed fixes, content direction, and client-ready deliverables.
             </div>
-            <div className="md:col-span-1 rp-card p-5">
-              <div className="flex items-center gap-2 rp-section-title">
-                Page‑type guidance
-                <span className="rp-chip rp-chip-neutral">{pageType}</span>
-              </div>
-              {pageTypeAdvice.length ? (
-                <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-[var(--rp-text-600)]">
-                  {pageTypeAdvice.map((tip, idx) => (
-                    <li key={idx}>{tip}</li>
-                  ))}
-                </ul>
-              ) : (
-                <div className="mt-3 text-sm text-[var(--rp-text-500)]">No page‑type advice available.</div>
-              )}
-            </div>
-            <div className="md:col-span-2 rp-card p-5">
-              <div className="rp-section-title">Rewrite examples</div>
-              {rewriteExamples.length ? (
-                <div className="mt-3 grid gap-3 md:grid-cols-2">
-                  {rewriteExamples.slice(0, 6).map((ex, idx) => (
-                    <div key={idx} className="rounded-xl border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-4">
-                      <div className="text-xs font-semibold text-[var(--rp-text-600)]">{ex.label}</div>
-                      <div className="mt-2 text-xs text-[var(--rp-text-500)]">Before</div>
-                      <div className="text-sm text-[var(--rp-text-700)]">{ex.before || "-"}</div>
-                      <div className="mt-2 text-xs text-[var(--rp-text-500)]">After</div>
-                      <div className="text-sm font-semibold text-[var(--rp-text-900)]">{ex.after || "-"}</div>
-                      {ex.note ? (
-                        <div className="mt-2 text-xs text-[var(--rp-text-500)]">{ex.note}</div>
-                      ) : null}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="mt-3 text-sm text-[var(--rp-text-500)]">No rewrite examples generated.</div>
-              )}
-            </div>
-            <div id="competitor-compare" className="md:col-span-3 rp-card p-5">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <div className="rp-section-title">Competitor comparison</div>
-                  <div className="mt-1 text-xs text-[var(--rp-text-500)]">
-                    Enter three competitors to benchmark your score.
+            <div className="mt-4 grid gap-4 md:grid-cols-4">
+              {[
+                { title: "Fix prioritization", icon: <IconBolt size={14} />, tone: "bg-cyan-100 text-cyan-700" },
+                { title: "Content brief", icon: <IconDoc size={14} />, tone: "bg-emerald-100 text-emerald-700" },
+                { title: "Shareable report", icon: <IconReport size={14} />, tone: "bg-amber-100 text-amber-700" },
+                { title: "Performance signals", icon: <IconShield size={14} />, tone: "bg-purple-100 text-purple-700" }
+              ].map((item) => (
+                <div key={item.title} className="rp-metric-tile rounded-xl border border-[var(--rp-border)] bg-white p-4 shadow-sm">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-[var(--rp-text-800)]">
+                    <span className={`inline-flex h-6 w-6 items-center justify-center rounded-lg ${item.tone}`}>
+                      {item.icon}
+                    </span>
+                    {item.title}
                   </div>
                 </div>
-                <span className="rp-chip rp-chip-warning">Subscription driver</span>
-              </div>
-              <div className="mt-3 grid gap-3 md:grid-cols-3">
-                {competitorUrls.map((val, idx) => (
-                  <input
-                    key={idx}
-                    className="rp-input"
-                    value={val}
-                    placeholder={`Competitor ${idx + 1} URL`}
-                    onChange={(e) => {
-                      const next = [...competitorUrls];
-                      next[idx] = e.target.value;
-                      setCompetitorUrls(next);
-                    }}
-                  />
-                ))}
-              </div>
-              <div className="mt-3 flex flex-wrap items-center gap-2">
-                <button
-                  className="rp-btn-secondary rp-btn-sm h-9 px-3 text-xs"
-                  disabled={compareStatus === "loading"}
-                  onClick={async () => {
-                    try {
-                      track("competitor_compare_run", {
-                        url: result?.url || url || "",
-                        count: competitorUrls.filter((u) => isValidUrl(u)).length
-                      });
-                    } catch {}
-                    const list = competitorUrls.filter((u) => isValidUrl(u));
-                    if (!list.length) return;
-                    setCompareStatus("loading");
-                    const results = [];
-                    for (const u of list.slice(0, 3)) {
-                      try {
-                        const res = await fetch(apiUrl("/api/page-report"), {
-                          method: "POST",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({ url: u.trim() })
-                        });
-                        const data = await safeJson(res);
-                        results.push({
-                          url: u,
-                          score: typeof data?.score === "number" ? data.score : null
-                        });
-                      } catch {
-                        results.push({ url: u, score: null });
-                      }
-                    }
-                    setCompetitorScores(results);
-                    setCompareStatus("success");
-                  }}
-                >
-                  {compareStatus === "loading" ? "Comparing..." : "Compare scores"}
-                </button>
-                <button
-                  className="rp-btn-primary rp-btn-sm h-9 px-3 text-xs"
-                  onClick={() => {
-                    try { track("competitor_auto_upgrade_click", { url: result?.url || url || "" }); } catch {}
-                    setPricingOpen(true);
-                  }}
-                >
-                  Unlock auto‑competitors
-                </button>
-                <button
-                  className="rp-btn-secondary rp-btn-sm h-9 px-3 text-xs"
-                  onClick={() => {
-                    setCompetitorUrls(["", "", ""]);
-                    setCompetitorScores([]);
-                    setCompareStatus("idle");
-                  }}
-                >
-                  Reset
-                </button>
-              </div>
-              {competitorScores.length > 0 && (
-                <div className="mt-4 grid gap-3 md:grid-cols-2">
-                  {[{ url: result?.url, score: typeof scoreValue === "number" ? scoreValue : null, label: "You" }, ...competitorScores].map((row, idx) => {
-                    const score = typeof row.score === "number" ? row.score : 0;
-                    const grade = gradeFromScore(score);
-                    return (
-                      <div key={`${row.url}-${idx}`} className="rp-metric-tile rounded-xl border border-[var(--rp-border)] bg-white p-4 shadow-sm">
-                        <div className="flex items-center justify-between">
-                          <div className="text-xs text-[var(--rp-text-500)]">{row.label || "Competitor"}</div>
-                          <span className="rp-chip rp-chip-neutral">Grade {grade}</span>
-                        </div>
-                        <div className="mt-2 text-sm font-semibold text-[var(--rp-text-800)] break-all">
-                          {row.url || "—"}
-                        </div>
-                        <div className="mt-2 flex items-center gap-3">
-                          <div className="text-2xl font-semibold text-[var(--rp-text-900)]">{score}</div>
-                          <div className="h-2 w-full rounded-full bg-[var(--rp-gray-100)]">
-                            <div className="rp-bar h-2 rounded-full bg-emerald-400" style={{ width: `${Math.max(0, Math.min(100, score))}%` }} />
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-            <div className="md:col-span-3 rp-card p-5">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div>
-                  <div className="rp-section-title">Light monitoring</div>
-                  <div className="mt-1 text-xs text-[var(--rp-text-500)]">
-                    Track your most important pages and see when it’s time to re‑audit.
-                  </div>
-                </div>
-                {result?.url && (
-                  <button
-                    onClick={() => {
-                      const u = result?.url;
-                      if (!u) return;
-                      if (isMonitored(u)) {
-                        removeMonitor(u);
-                      } else {
-                        upsertMonitor({ url: u });
-                      }
-                      refreshMonitors();
-                    }}
-                    className="rp-btn-secondary rp-btn-sm h-9 px-3 text-xs"
-                  >
-                    {isMonitored(result.url) ? "Stop monitoring" : "Monitor this page"}
-                  </button>
-                )}
-              </div>
-              {monitors.length ? (
-                <div className="mt-4 grid gap-3 md:grid-cols-3">
-                  {monitors.map((m) => (
-                    <div key={m.url} className="rp-metric-tile rounded-xl border border-[var(--rp-border)] bg-white p-4 shadow-sm">
-                      <div className="text-xs text-[var(--rp-text-500)]">URL</div>
-                      <div className="mt-1 text-sm font-semibold text-[var(--rp-text-900)] break-all">{m.url}</div>
-                      <div className="mt-2 text-xs text-[var(--rp-text-500)]">Last score</div>
-                      <div className="text-lg font-semibold text-[var(--rp-text-900)]">{m.lastScore ?? "—"}</div>
-                      <div className="mt-2 text-xs text-[var(--rp-text-500)]">
-                        Last checked: {m.lastChecked ? new Date(m.lastChecked).toLocaleString() : "—"}
-                      </div>
-                      <div className="mt-1 text-xs text-[var(--rp-text-500)]">
-                        Next check: {m.nextCheck ? new Date(m.nextCheck).toLocaleDateString() : "—"}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="mt-4 text-sm text-[var(--rp-text-500)]">No pages monitored yet.</div>
-              )}
+              ))}
             </div>
           </div>
         )}
+
+        
+
+        {status === "success" && showGrowthTools && (
+          <div className="rp-card p-5 rp-fade-in">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+            <div className="rp-section-title">Pro services</div>
+            <div className="rp-section-subtitle">
+              Built for teams who want done-for-you clarity and recurring performance wins.
+            </div>
+              </div>
+              <div className="flex flex-col items-end">
+                <button className="rp-btn-primary text-sm">
+                  <IconArrowRight size={14} />
+                  Upgrade to Pro
+                </button>
+                <div className="mt-1 text-xs text-[var(--rp-text-500)]">
+                  Instant access to fix plans, reports, and weekly tracking after checkout.
+                </div>
+              </div>
+            </div>
+            <div className="mt-4 grid gap-4 md:grid-cols-4">
+              {[
+                { title: "Done-for-you fix plan", icon: <IconBolt size={14} />, tone: "bg-cyan-100 text-cyan-700" },
+                { title: "Client report branding", icon: <IconReport size={14} />, tone: "bg-emerald-100 text-emerald-700" },
+                { title: "Weekly monitoring", icon: <IconCompass size={14} />, tone: "bg-amber-100 text-amber-700" },
+                { title: "Priority support", icon: <IconShield size={14} />, tone: "bg-purple-100 text-purple-700" }
+              ].map((item) => (
+                <div key={item.title} className="rp-metric-tile rounded-xl border border-[var(--rp-border)] bg-white p-4 shadow-sm">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-[var(--rp-text-800)]">
+                    <span className={`inline-flex h-6 w-6 items-center justify-center rounded-lg ${item.tone}`}>
+                      {item.icon}
+                    </span>
+                    {item.title}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
       </div>
       {pricingOpen ? (
         <Suspense fallback={null}>
@@ -2934,22 +3749,6 @@ try {
               navigate("/pricing");
             }}
           />
-        </Suspense>
-      ) : null}
-      {result ? (
-        <Suspense fallback={null}>
-          <AuditImpactBanner score={typeof scoreValue === "number" ? scoreValue : result?.score} issues={issues} />
-          <div data-testid="key-issues">
-            <IssuesPanel
-              issues={strictPrioritizeIssues(issues)}
-              advanced={advancedView}
-              finalUrl={String(result?.debug?.final_url || result?.final_url || "")}
-              fixWebhookUrl={fixWebhookUrl}
-              wpWebhookUrl={wpSiteUrl}
-              shopifyWebhookUrl={shopifyShop}
-              ownerId={anonId}
-            />
-          </div>
         </Suspense>
       ) : null}
       {import.meta.env.DEV && debug && (

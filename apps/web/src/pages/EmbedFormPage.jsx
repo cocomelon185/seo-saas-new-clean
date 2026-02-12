@@ -2,6 +2,7 @@ import React, { useMemo, useState } from "react";
 import { IconPlay, IconMail, IconLink } from "../components/Icons.jsx";
 import { safeJson } from "../lib/safeJson.js";
 import { apiUrl } from "../lib/api.js";
+import Seo from "../components/Seo.jsx";
 
 function readParam(name) {
   if (typeof window === "undefined") return "";
@@ -10,6 +11,7 @@ function readParam(name) {
 }
 
 export default function EmbedFormPage() {
+  const base = typeof window !== "undefined" ? window.location.origin : "https://rankypulse.com";
   const ownerId = readParam("owner");
   const webhook = readParam("webhook");
   const redirectUrl = readParam("redirect");
@@ -68,8 +70,16 @@ export default function EmbedFormPage() {
   }
 
   return (
-    <div className="min-h-screen p-4 text-[var(--rp-text-900)]" style={{ background: themeBg }}>
-      <div className="mx-auto w-full max-w-md rounded-2xl border border-[var(--rp-border)] p-5 shadow-[0_12px_30px_rgba(15,23,42,0.12)]" style={{ background: cardBg }}>
+    <>
+      <Seo
+        title="Free SEO Audit Embed | RankyPulse"
+        description="Embed a lightweight SEO audit form to capture leads."
+        canonical={`${base}/embed/form`}
+        robots="noindex,nofollow"
+      />
+      <div className="min-h-screen p-4 text-[var(--rp-text-900)]" style={{ background: themeBg }}>
+        <h1 className="sr-only">Free SEO Audit Form</h1>
+        <div className="mx-auto w-full max-w-md rounded-2xl border border-[var(--rp-border)] p-5 shadow-[0_12px_30px_rgba(15,23,42,0.12)]" style={{ background: cardBg }}>
         <div className="flex items-center gap-3">
           {logo ? (
             <img src={logo} alt={brand} className="h-8 w-8 rounded-lg object-contain" />
@@ -81,10 +91,11 @@ export default function EmbedFormPage() {
           Enter your URL and we’ll send a short audit summary.
         </p>
         <form onSubmit={submit} className="mt-4 grid gap-3">
-          <label className="text-xs font-semibold text-[var(--rp-text-500)]">Website URL</label>
+          <label className="text-xs font-semibold text-[var(--rp-text-500)]" htmlFor="embed-url">Website URL</label>
           <div className="flex items-center gap-2 rounded-xl border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-2">
             <IconLink size={14} className="text-[var(--rp-text-400)]" />
             <input
+              id="embed-url"
               className="w-full bg-transparent text-sm outline-none"
               placeholder="https://example.com"
               value={url}
@@ -92,10 +103,11 @@ export default function EmbedFormPage() {
             />
           </div>
 
-          <label className="text-xs font-semibold text-[var(--rp-text-500)]">Work email</label>
+          <label className="text-xs font-semibold text-[var(--rp-text-500)]" htmlFor="embed-email">Work email</label>
           <div className="flex items-center gap-2 rounded-xl border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-2">
             <IconMail size={14} className="text-[var(--rp-text-400)]" />
             <input
+              id="embed-email"
               className="w-full bg-transparent text-sm outline-none"
               placeholder="you@company.com"
               value={email}
@@ -103,8 +115,9 @@ export default function EmbedFormPage() {
             />
           </div>
 
-          <label className="text-xs font-semibold text-[var(--rp-text-500)]">Name (optional)</label>
+          <label className="text-xs font-semibold text-[var(--rp-text-500)]" htmlFor="embed-name">Name (optional)</label>
           <input
+            id="embed-name"
             className="rp-input text-sm"
             placeholder="Avery Patel"
             value={name}
@@ -130,6 +143,7 @@ export default function EmbedFormPage() {
           )}
         </form>
       </div>
-    </div>
+      </div>
+    </>
   );
 }

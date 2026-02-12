@@ -1,9 +1,26 @@
 import StartAuditExtras from "../marketing/components/StartAuditExtras.jsx";
 import { IconPlay } from "../components/Icons.jsx";
+import Seo from "../components/Seo.jsx";
+import { useNavigate } from "react-router-dom";
 
 export default function StartAuditPage() {
+  const navigate = useNavigate();
+  const base = typeof window !== "undefined" ? window.location.origin : "https://rankypulse.com";
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const fd = new FormData(form);
+    const url = String(fd.get("url") || "").trim();
+    if (!url) return;
+    navigate(`/audit?url=${encodeURIComponent(url)}`);
+  };
   return (
     <main className="rp-page rp-premium-bg flex items-center justify-center px-4" role="main">
+      <Seo
+        title="Start a Free SEO Audit | RankyPulse"
+        description="Run a free SEO audit in 30 seconds. Get your score, quick wins, and a clear fix plan."
+        canonical={`${base}/start`}
+      />
       <div className="relative w-full max-w-2xl">
         <div className="rp-surface p-6 md:p-10">
           <p className="rp-kicker text-center">Instant Audit</p>
@@ -14,7 +31,7 @@ export default function StartAuditPage() {
             Get your score, quick wins, and a clear fix plan.
           </p>
 
-          <form action="/audit" method="GET" className="mt-6 space-y-3">
+          <form onSubmit={handleSubmit} className="mt-6 space-y-3">
             <div>
               <label className="sr-only" htmlFor="start-audit-url">Website URL</label>
               <input
@@ -42,6 +59,15 @@ export default function StartAuditPage() {
             <p className="text-xs text-center">
               <a className="text-[var(--rp-indigo-700)] hover:underline" href="/shared">
                 View a sample results report
+              </a>
+            </p>
+            <p className="text-xs text-center">
+              <a className="text-[var(--rp-text-500)] hover:text-[var(--rp-text-700)] hover:underline" href="/shared">
+                Results
+              </a>
+              <span className="text-[var(--rp-text-400)]"> · </span>
+              <a className="text-[var(--rp-text-500)] hover:text-[var(--rp-text-700)] hover:underline" href="/audit">
+                Go to audit
               </a>
             </p>
           </form>

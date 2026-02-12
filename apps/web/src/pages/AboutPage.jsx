@@ -2,14 +2,22 @@ import React from "react";
 import { Link } from "react-router-dom";
 import MarketingShell from "../marketing/components/MarketingShell.jsx";
 import { IconArrowRight, IconShield } from "../components/Icons.jsx";
+import Seo from "../components/Seo.jsx";
 
 export default function AboutPage() {
+  const base = typeof window !== "undefined" ? window.location.origin : "https://rankypulse.com";
   return (
-    <MarketingShell
-      title="About RankyPulse"
-      subtitle="We help growth teams convert SEO insights into revenue-ready actions."
-    >
-      <div className="grid gap-6 md:grid-cols-2">
+    <>
+      <Seo
+        title="About RankyPulse | RankyPulse"
+        description="We help growth teams convert SEO insights into revenue-ready actions."
+        canonical={`${base}/about`}
+      />
+      <MarketingShell
+        title="About RankyPulse"
+        subtitle="We help growth teams convert SEO insights into revenue-ready actions."
+      >
+        <div className="grid gap-6 md:grid-cols-2">
         <div className="rp-card p-6">
           <h2 className="rp-section-title flex items-center gap-2">
             <span className="inline-flex h-7 w-7 items-center justify-center rounded-xl bg-cyan-100 text-cyan-700">
@@ -41,7 +49,8 @@ export default function AboutPage() {
             <div>HQ: Remote-first, global team</div>
           </div>
         </div>
-      </div>
-    </MarketingShell>
+        </div>
+      </MarketingShell>
+    </>
   );
 }

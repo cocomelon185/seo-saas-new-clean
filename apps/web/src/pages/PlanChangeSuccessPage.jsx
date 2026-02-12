@@ -4,10 +4,15 @@ import AppShell from "../components/AppShell.jsx";
 import { IconArrowRight, IconCheck } from "../components/Icons.jsx";
 
 export default function PlanChangeSuccessPage() {
+  const base = typeof window !== "undefined" ? window.location.origin : "https://rankypulse.com";
   return (
     <AppShell
       title="Plan updated"
       subtitle="Your subscription has been updated. The new limits are active now."
+      seoTitle="Plan Updated | RankyPulse"
+      seoDescription="Your subscription has been updated."
+      seoCanonical={`${base}/plan-change/success`}
+      seoRobots="noindex,nofollow"
     >
       <div className="rp-card p-6 text-center">
         <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-cyan-100 text-cyan-700">

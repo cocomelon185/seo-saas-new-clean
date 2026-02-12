@@ -5,9 +5,56 @@ import MarketingShell from "../marketing/components/MarketingShell.jsx";
 import { IconArrowRight } from "../components/Icons.jsx";
 import { getAuthUser } from "../lib/authClient.js";
 import { startSubscriptionCheckout } from "../lib/billingClient.js";
+import Seo from "../components/Seo.jsx";
 
 export default function PricingPage() {
   const isServer = typeof window === "undefined";
+  const base = typeof window !== "undefined" ? window.location.origin : "https://rankypulse.com";
+  const structuredData = [
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      name: "RankyPulse",
+      applicationCategory: "BusinessApplication",
+      operatingSystem: "Web",
+      url: `${base}/pricing`,
+      description: "Simple pricing for clear SEO decisions. Unlock full fix plans, examples, content briefs, and audit history.",
+      brand: {
+        "@type": "Brand",
+        name: "RankyPulse"
+      }
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      mainEntity: [
+        {
+          "@type": "Question",
+          name: "Is there a free trial?",
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: "Yes. Each plan starts with a 7-day trial so you can run audits before committing."
+          }
+        },
+        {
+          "@type": "Question",
+          name: "Can I cancel anytime?",
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: "Yes. You can upgrade, downgrade, or cancel at any time from Account Settings."
+          }
+        },
+        {
+          "@type": "Question",
+          name: "What happens after the trial?",
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: "Your plan continues on monthly or annual billing, and you keep full access to audits and reports."
+          }
+        }
+      ]
+    }
+  ];
   const [open, setOpen] = useState(false);
   const [billing, setBilling] = useState("monthly");
   const [checkoutError, setCheckoutError] = useState("");
@@ -103,11 +150,18 @@ export default function PricingPage() {
   };
 
   return (
-    <MarketingShell
-      title="Pricing"
-      subtitle="Simple pricing for clear SEO decisions. Unlock full fix plans, examples, content briefs, and audit history."
-    >
-      <div className="mt-2">
+    <>
+      <Seo
+        title="Pricing | RankyPulse"
+        description="Simple pricing for clear SEO decisions. Unlock full fix plans, examples, content briefs, and audit history."
+        canonical={`${base}/pricing`}
+        jsonLd={structuredData}
+      />
+      <MarketingShell
+        title="Pricing"
+        subtitle="Simple pricing for clear SEO decisions. Unlock full fix plans, examples, content briefs, and audit history."
+      >
+        <div className="mt-2">
         <div className="mb-5">
           <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[var(--rp-text-500)]">Premium pricing</p>
           <h2 className="mt-2 text-3xl font-semibold text-[var(--rp-text-900)]">
@@ -290,6 +344,7 @@ export default function PricingPage() {
           }}
         />
       ) : null}
-    </MarketingShell>
+      </MarketingShell>
+    </>
   );
 }

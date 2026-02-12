@@ -6,6 +6,7 @@ import { safeJson } from "../lib/safeJson.js";
 import { apiUrl } from "../lib/api.js";
 
 export default function ImprovePage() {
+  const base = typeof window !== "undefined" ? window.location.origin : "https://rankypulse.com";
   const [url, setUrl] = useState("");
   const [status, setStatus] = useState("idle"); // idle | loading | success | error
   const [error, setError] = useState("");
@@ -96,6 +97,10 @@ export default function ImprovePage() {
     <AppShell
       title="Improve Existing Page"
       subtitle="Turn one URL into an actionable plan: content brief, keyword ideas, and practical next steps."
+      seoTitle="Improve Existing Page | RankyPulse"
+      seoDescription="Turn one URL into an actionable plan: content brief, keyword ideas, and practical next steps."
+      seoCanonical={`${base}/improve`}
+      seoRobots="noindex,nofollow"
     >
       <div className="mb-4 grid gap-4 md:grid-cols-3">
         {[
@@ -141,8 +146,11 @@ export default function ImprovePage() {
       <div className="flex flex-col gap-4">
         <div className="grid gap-4 md:grid-cols-[1fr_auto] md:items-end">
           <div>
-            <label className="mb-2 block text-sm font-medium text-[var(--rp-text-600)]">Page URL</label>
+            <label className="mb-2 block text-sm font-medium text-[var(--rp-text-600)]" htmlFor="improve-page-url">
+              Page URL
+            </label>
             <input
+              id="improve-page-url"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               placeholder="https://example.com/blog/post"

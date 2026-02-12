@@ -10,6 +10,9 @@ const SharePage = React.lazy(() => import("../pages/SharePage.jsx"));
 const SaasLandingAuditPage = React.lazy(() => import("../pages/SaasLandingAuditPage.jsx"));
 const BlogAuditChecklistPage = React.lazy(() => import("../pages/BlogAuditChecklistPage.jsx"));
 const AgencyAuditWorkflowPage = React.lazy(() => import("../pages/AgencyAuditWorkflowPage.jsx"));
+const SignInPage = React.lazy(() => import("../pages/SignInPage.jsx"));
+const SignUpPage = React.lazy(() => import("../pages/SignUpPage.jsx"));
+const AuditPage = React.lazy(() => import("../pages/AuditPage.jsx"));
 
 const suspenseWrap = (element) => (
   <React.Suspense
@@ -30,6 +33,9 @@ const routes = [
   { path: "/about", element: suspenseWrap(<AboutPage />) },
   { path: "/changelog", element: suspenseWrap(<ChangelogPage />) },
   { path: "/shared", element: suspenseWrap(<SharePage />) },
+  { path: "/audit", element: suspenseWrap(<AuditPage />) },
+  { path: "/auth/signin", element: suspenseWrap(<SignInPage />) },
+  { path: "/auth/signup", element: suspenseWrap(<SignUpPage />) },
   { path: "/use-cases/saas-landing-audit", element: suspenseWrap(<SaasLandingAuditPage />) },
   { path: "/use-cases/blog-audit-checklist", element: suspenseWrap(<BlogAuditChecklistPage />) },
   { path: "/use-cases/agency-audit-workflow", element: suspenseWrap(<AgencyAuditWorkflowPage />) },

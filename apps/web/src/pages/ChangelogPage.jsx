@@ -2,6 +2,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 import MarketingShell from "../marketing/components/MarketingShell.jsx";
 import { IconClock, IconArrowRight } from "../components/Icons.jsx";
+import Seo from "../components/Seo.jsx";
 
 const updates = [
   {
@@ -22,12 +23,19 @@ const updates = [
 ];
 
 export default function ChangelogPage() {
+  const base = typeof window !== "undefined" ? window.location.origin : "https://rankypulse.com";
   return (
-    <MarketingShell
-      title="Changelog"
-      subtitle="Track product improvements, release notes, and platform updates."
-    >
-      <div className="space-y-5">
+    <>
+      <Seo
+        title="Changelog | RankyPulse"
+        description="Track product improvements, release notes, and platform updates."
+        canonical={`${base}/changelog`}
+      />
+      <MarketingShell
+        title="Changelog"
+        subtitle="Track product improvements, release notes, and platform updates."
+      >
+        <div className="space-y-5">
         {updates.map((item) => (
           <div key={item.title} className="rp-card p-5">
             <div className="flex items-center justify-between">
@@ -49,7 +57,8 @@ export default function ChangelogPage() {
             <Link to="/audit" className="rp-btn-primary"><IconArrowRight size={14} />Run audit</Link>
           </div>
         </div>
-      </div>
-    </MarketingShell>
+        </div>
+      </MarketingShell>
+    </>
   );
 }

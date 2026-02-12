@@ -1,11 +1,12 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import logo from "../assets/rankypulse-logo.svg";
 import { IconPlay, IconSearch, IconUser, IconCompass, IconChart } from "./Icons.jsx";
-import { clearAuthSession, getAuthToken, getAuthUser } from "../lib/authClient.js";
+import { clearAuthSession, getAuthToken, getAuthUser, setAuthSession } from "../lib/authClient.js";
 import { useEffect, useState } from "react";
 import { safeJson } from "../lib/safeJson.js";
 import { apiUrl } from "../lib/api.js";
 import CookieConsent from "./CookieConsent.jsx";
+import Seo from "./Seo.jsx";
 
 function NavItem({ to, label }) {
   const { pathname } = useLocation();
@@ -31,7 +32,7 @@ function NavItem({ to, label }) {
   );
 }
 
-export default function AppShell({ title, subtitle, children }) {
+export default function AppShell({ title, subtitle, seoTitle, seoDescription, seoCanonical, seoRobots, seoJsonLd, children }) {
   const navigate = useNavigate();
   const [authUser, setAuthUser] = useState(getAuthUser());
   const [authed, setAuthed] = useState(Boolean(getAuthToken()));
@@ -60,18 +61,48 @@ export default function AppShell({ title, subtitle, children }) {
       .then((r) => safeJson(r))
       .then((data) => {
         if (data?.ok && data?.settings) {
+          const settings = data.settings || {};
+          const current = getAuthUser() || {};
+          const hasVerified = typeof settings.verified === "boolean";
+          const nextUser = {
+            ...current,
+            ...(settings.email ? { email: settings.email } : {}),
+            ...(settings.name ? { name: settings.name } : {}),
+            ...(settings.role ? { role: settings.role } : {}),
+            ...(settings.team_id ? { team_id: settings.team_id } : {}),
+            ...(hasVerified ? { verified: settings.verified } : {})
+          };
+          setAuthUser(nextUser);
+          setAuthSession({ token, user: nextUser });
           setToolAccess({
-            allow_audit: data.settings.allow_audit !== false,
-            allow_rank: data.settings.allow_rank !== false,
-            allow_improve: data.settings.allow_improve !== false
+            allow_audit: settings.allow_audit !== false,
+            allow_rank: settings.allow_rank !== false,
+            allow_improve: settings.allow_improve !== false
           });
         }
       })
       .catch(() => {});
   }, [authed]);
 
+  const shouldRenderSeo = Boolean(seoTitle || seoDescription || seoCanonical || seoRobots || seoJsonLd);
+  const verificationStatus =
+    authUser?.verified === true
+      ? "verified"
+      : authUser?.verified === false
+        ? "unverified"
+        : "unknown";
+
   return (
     <div className="rp-page rp-premium-bg">
+      {shouldRenderSeo ? (
+        <Seo
+          title={seoTitle}
+          description={seoDescription}
+          canonical={seoCanonical}
+          robots={seoRobots}
+          jsonLd={seoJsonLd}
+        />
+      ) : null}
       <a href="#main-content" className="rp-skip">Skip to content</a>
       <div className="flex min-h-screen">
         <aside className="rp-sidebar hidden w-72 flex-col gap-8 bg-[var(--rp-indigo-900)] px-6 py-6 text-white md:flex">
@@ -154,7 +185,7 @@ export default function AppShell({ title, subtitle, children }) {
 
         <div className="flex min-w-0 flex-1 flex-col bg-[var(--rp-bg)]">
           <header className="rp-topbar sticky top-0 z-20 border-b border-[var(--rp-gray-200)] bg-white/95 backdrop-blur">
-            <div className="rp-topbar-inner mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3">
+            <div className="rp-topbar-inner flex w-full items-center justify-between gap-4 px-4 py-3 xl:px-6">
               <div className="flex items-center gap-3 md:hidden">
                 <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--rp-indigo-900)] text-white">
                   <img src={logo} alt="RankyPulse" className="h-7 w-7" />
@@ -190,20 +221,22 @@ export default function AppShell({ title, subtitle, children }) {
                           Admin
                         </span>
                       )}
-                      {authUser?.verified ? (
+                      {verificationStatus === "verified" ? (
                         <span className="ml-2 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
                           Verified
                         </span>
-                      ) : (
+                      ) : verificationStatus === "unverified" ? (
                         <span className="ml-2 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
                           Unverified
                         </span>
-                      )}
+                      ) : null}
                     </button>
                     <div className="pointer-events-none absolute right-0 top-10 z-10 w-56 rounded-xl border border-[var(--rp-border)] bg-white p-3 text-[11px] text-[var(--rp-text-500)] opacity-0 shadow-lg transition group-hover:opacity-100">
-                      {authUser?.verified
+                      {verificationStatus === "verified"
                         ? "Your email is verified. You can access full features and notifications."
-                        : "Verify your email to unlock full audit and notifications."}
+                        : verificationStatus === "unverified"
+                          ? "Verify your email to unlock full audit and notifications."
+                          : "Account verification status is updating."}
                     </div>
                     </div>
                     <button
@@ -240,7 +273,7 @@ export default function AppShell({ title, subtitle, children }) {
             </div>
           </header>
 
-          <main id="main-content" className="mx-auto w-full max-w-7xl px-4 py-10">
+          <main id="main-content" className="w-full px-4 py-10 xl:px-6">
             {title ? (
               <div className="mb-7">
                 <p className="rp-kicker">RankyPulse</p>

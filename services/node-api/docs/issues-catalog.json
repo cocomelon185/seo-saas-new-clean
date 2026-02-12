@@ -1,0 +1,40 @@
+{
+  "issues": [
+    {
+      "issue_id": "missing_title",
+      "title": "Missing title tag",
+      "priority": "fix_now",
+      "why": "Search engines and users rely on the title tag to understand the page topic."
+    },
+    {
+      "issue_id": "title_too_long",
+      "title": "Title tag is too long",
+      "priority": "fix_next",
+      "why": "Overly long titles may be truncated in search results."
+    },
+    {
+      "issue_id": "missing_meta_description",
+      "title": "Missing meta description",
+      "priority": "fix_next",
+      "why": "A good meta description improves snippet quality and click-through rate."
+    },
+    {
+      "issue_id": "missing_h1",
+      "title": "Missing H1 heading",
+      "priority": "fix_next",
+      "why": "The H1 helps clarify the primary topic of the page."
+    },
+    {
+      "issue_id": "multiple_h1",
+      "title": "Multiple H1 headings",
+      "priority": "fix_later",
+      "why": "Multiple H1s can dilute topical focus."
+    },
+    {
+      "issue_id": "no_canonical",
+      "title": "Missing canonical tag",
+      "priority": "fix_later",
+      "why": "Canonical tags help prevent duplicate-content confusion."
+    }
+  ]
+}

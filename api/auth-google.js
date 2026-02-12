@@ -14,7 +14,11 @@ const {
 } = store;
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key-12345";
-const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || "";
+const GOOGLE_CLIENT_ID =
+  process.env.GOOGLE_CLIENT_ID ||
+  process.env.GSC_CLIENT_ID ||
+  process.env.VITE_GOOGLE_CLIENT_ID ||
+  "";
 
 async function verifyGoogleCredential(credential) {
   const url = `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(credential)}`;

@@ -4,6 +4,7 @@ import AppShell from "../components/AppShell.jsx";
 import { safeJson } from "../lib/safeJson.js";
 
 export default function InviteAcceptPage() {
+  const base = typeof window !== "undefined" ? window.location.origin : "https://rankypulse.com";
   const [invite, setInvite] = useState(null);
   const [status, setStatus] = useState("loading");
   const navigate = useNavigate();
@@ -33,7 +34,14 @@ export default function InviteAcceptPage() {
   }, []);
 
   return (
-    <AppShell title="Team invitation" subtitle="You’ve been invited to join a RankyPulse workspace.">
+    <AppShell
+      title="Team invitation"
+      subtitle="You’ve been invited to join a RankyPulse workspace."
+      seoTitle="Team Invitation | RankyPulse"
+      seoDescription="Accept your RankyPulse team invitation."
+      seoCanonical={`${base}/auth/invite`}
+      seoRobots="noindex,nofollow"
+    >
       <div className="mx-auto max-w-md">
         <div className="rp-card p-6">
           {status === "loading" && <div className="text-sm text-[var(--rp-text-500)]">Loading invite…</div>}

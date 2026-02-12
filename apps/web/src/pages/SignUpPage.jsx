@@ -6,8 +6,35 @@ import { track } from "../lib/eventsClient.js";
 import { safeJson } from "../lib/safeJson.js";
 import { apiUrl } from "../lib/api.js";
 
+function getApiErrorMessage(data, fallback) {
+  if (!data) return fallback;
+  if (typeof data === "string") return data;
+  if (typeof data?.error === "string") return data.error;
+  if (data?.error && typeof data.error === "object") {
+    if (typeof data.error.message === "string" && data.error.message.trim()) return data.error.message;
+    if (typeof data.error.code === "string" && data.error.code.trim()) return data.error.code;
+  }
+  if (typeof data?.message === "string" && data.message.trim()) return data.message;
+  return fallback;
+}
+
+function getCaughtErrorMessage(err, fallback) {
+  if (!err) return fallback;
+  if (typeof err === "string" && err.trim()) return err;
+  if (typeof err === "object") {
+    if (typeof err.message === "string" && err.message.trim()) return err.message;
+    if (err.error && typeof err.error === "object") {
+      if (typeof err.error.message === "string" && err.error.message.trim()) return err.error.message;
+      if (typeof err.error.code === "string" && err.error.code.trim()) return err.error.code;
+    }
+    if (typeof err.error === "string" && err.error.trim()) return err.error;
+  }
+  return fallback;
+}
+
 export default function SignUpPage() {
   const navigate = useNavigate();
+  const base = typeof window !== "undefined" ? window.location.origin : "https://rankypulse.com";
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -16,7 +43,7 @@ export default function SignUpPage() {
   const [verifyToken, setVerifyToken] = useState("");
   const [inviteToken, setInviteToken] = useState("");
   const googleButtonRef = useRef(null);
-  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
+  const [googleClientId, setGoogleClientId] = useState(() => import.meta.env.VITE_GOOGLE_CLIENT_ID || "");
   const [provider, setProvider] = useState("");
   const [planParam, setPlanParam] = useState("");
   const googlePromptedRef = useRef(false);
@@ -33,9 +60,16 @@ export default function SignUpPage() {
       });
       const data = await safeJson(res);
       if (!res.ok || !data?.token) {
-        throw new Error(data?.error || "Sign up failed");
+        throw new Error(getApiErrorMessage(data, "Sign up failed"));
       }
-      setAuthSession({ token: data.token, user: data.user });
+      const submittedName = String(name || "").trim();
+      setAuthSession({
+        token: data.token,
+        user: {
+          ...(data.user || {}),
+          ...(submittedName ? { name: submittedName } : {})
+        }
+      });
       if (data.verifyToken) setVerifyToken(data.verifyToken);
       try {
         const anon = localStorage.getItem("rp_anon_id") || "";
@@ -59,7 +93,7 @@ export default function SignUpPage() {
         navigate("/auth/verify");
       }
     } catch (e2) {
-      setError(String(e2?.message || "Sign up failed"));
+      setError(getCaughtErrorMessage(e2, "Sign up failed"));
       setStatus("idle");
     }
   }
@@ -75,7 +109,7 @@ export default function SignUpPage() {
       });
       const data = await safeJson(res);
       if (!res.ok || !data?.token) {
-        throw new Error(data?.error || "Google sign up failed");
+        throw new Error(getApiErrorMessage(data, "Google sign up failed"));
       }
       setAuthSession({ token: data.token, user: data.user });
       try {
@@ -108,7 +142,7 @@ export default function SignUpPage() {
         navigate("/audit");
       }
     } catch (e2) {
-      setError(String(e2?.message || "Google sign up failed"));
+      setError(getCaughtErrorMessage(e2, "Google sign up failed"));
       setStatus("idle");
     }
   }
@@ -126,6 +160,29 @@ export default function SignUpPage() {
       if (plan) setPlanParam(plan);
     } catch {}
   }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (window.location.hostname !== "127.0.0.1") return;
+    const nextHost = "localhost";
+    const nextUrl = `${window.location.protocol}//${nextHost}${window.location.port ? `:${window.location.port}` : ""}${window.location.pathname}${window.location.search}${window.location.hash}`;
+    window.location.replace(nextUrl);
+  }, []);
+
+  useEffect(() => {
+    if (googleClientId) return;
+    let cancelled = false;
+    fetch(apiUrl("/api/auth/google-config"))
+      .then((r) => safeJson(r))
+      .then((data) => {
+        if (cancelled) return;
+        if (data?.enabled && data?.client_id) {
+          setGoogleClientId(String(data.client_id));
+        }
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [googleClientId]);
 
   useEffect(() => {
     if (!googleClientId) return;
@@ -173,7 +230,14 @@ export default function SignUpPage() {
   }, [googleClientId, inviteToken, provider]);
 
   return (
-    <AppShell title="Create account" subtitle="Start with a free audit, then verify your email to unlock full access.">
+    <AppShell
+      title="Create account"
+      subtitle="Start with a free audit, then verify your email to unlock full access."
+      seoTitle="Create Account | RankyPulse"
+      seoDescription="Create a RankyPulse account to save audits, track fixes, and share reports."
+      seoCanonical={`${base}/auth/signup`}
+      seoRobots="noindex,nofollow"
+    >
       <div className="mx-auto max-w-md rp-auth-shell">
         <form onSubmit={submit} className="rp-card rp-auth-card p-6">
           <div className="rp-auth-title text-sm font-semibold text-[var(--rp-text-700)]">Create your RankyPulse account</div>

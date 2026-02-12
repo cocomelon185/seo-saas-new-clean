@@ -1,8 +1,27 @@
 import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
 import logo from "../../assets/rankypulse-logo.svg";
 import CookieConsent from "../../components/CookieConsent.jsx";
+import { clearAuthSession, getAuthDisplayName, getAuthToken, getAuthUser } from "../../lib/authClient.js";
 
 export default function MarketingShell({ title, subtitle, children }) {
+  const [authUser, setAuthUser] = useState(getAuthUser());
+  const [authed, setAuthed] = useState(Boolean(getAuthToken()));
+
+  useEffect(() => {
+    const sync = () => {
+      setAuthUser(getAuthUser());
+      setAuthed(Boolean(getAuthToken()));
+    };
+    sync();
+    window.addEventListener("storage", sync);
+    window.addEventListener("focus", sync);
+    return () => {
+      window.removeEventListener("storage", sync);
+      window.removeEventListener("focus", sync);
+    };
+  }, []);
+
   return (
     <div className="rp-page rp-premium-bg">
       <a href="#main" className="rp-skip">Skip to content</a>
@@ -22,18 +41,42 @@ export default function MarketingShell({ title, subtitle, children }) {
             <Link to="/shared" className="hover:text-[var(--rp-text-900)]">Sample report</Link>
           </nav>
           <div className="flex items-center gap-2">
-            <Link
-              to="/auth/signin"
-              className="rounded-xl border border-[var(--rp-border)] px-4 py-2 text-xs font-semibold text-[var(--rp-text-600)] hover:border-[var(--rp-text-400)]"
-            >
-              Sign in
-            </Link>
-            <Link
-              to="/auth/signup"
-              className="rounded-xl bg-[var(--rp-indigo-700)] px-4 py-2 text-xs font-semibold text-white shadow-[0_14px_30px_rgba(109,40,217,0.25)] hover:bg-[var(--rp-indigo-800)]"
-            >
-              Create account
-            </Link>
+            {authed ? (
+              <>
+                <Link
+                  to="/audit"
+                  className="rounded-xl border border-[var(--rp-border)] px-4 py-2 text-xs font-semibold text-[var(--rp-text-600)] hover:border-[var(--rp-text-400)]"
+                >
+                  {getAuthDisplayName(authUser) || "My account"}
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => {
+                    clearAuthSession();
+                    setAuthed(false);
+                    window.location.assign("/");
+                  }}
+                  className="rounded-xl border border-[var(--rp-border)] px-4 py-2 text-xs font-semibold text-[var(--rp-text-600)] hover:border-[var(--rp-text-400)]"
+                >
+                  Sign out
+                </button>
+              </>
+            ) : (
+              <>
+                <Link
+                  to="/auth/signin"
+                  className="rounded-xl border border-[var(--rp-border)] px-4 py-2 text-xs font-semibold text-[var(--rp-text-600)] hover:border-[var(--rp-text-400)]"
+                >
+                  Sign in
+                </Link>
+                <Link
+                  to="/auth/signup"
+                  className="rounded-xl bg-[var(--rp-indigo-700)] px-4 py-2 text-xs font-semibold text-white shadow-[0_14px_30px_rgba(109,40,217,0.25)] hover:bg-[var(--rp-indigo-800)]"
+                >
+                  Create account
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </header>

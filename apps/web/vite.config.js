@@ -3,14 +3,27 @@ import { fileURLToPath } from "node:url";
 import react from "@vitejs/plugin-react";
 
 export default defineConfig(({ mode }) => {
-  const isAppBuild = mode === "app";
+  const isAppBuild = mode === "app" || mode === "app-public";
+  const isAppPublicBuild = mode === "app-public";
   return {
     plugins: [react()],
+    ...(isAppPublicBuild
+      ? {
+          ssgOptions: {
+            entry: "src/main-app-ssg.jsx",
+            htmlEntry: "app-public.html",
+            mock: true
+          }
+        }
+      : {}),
     build: {
       modulePreload: false,
       emptyOutDir: !isAppBuild,
       rollupOptions: {
-        input: fileURLToPath(new URL(isAppBuild ? "./app.html" : "./index.html", import.meta.url)),
+        input: fileURLToPath(new URL(
+          isAppPublicBuild ? "./app-public.html" : isAppBuild ? "./app.html" : "./index.html",
+          import.meta.url
+        )),
         output: {
           manualChunks(id) {
             if (id.includes("node_modules")) {

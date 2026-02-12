@@ -1,8 +1,25 @@
 import React from "react";
 import { Link } from "react-router-dom";
+import { clearAuthSession, getAuthDisplayName, getAuthToken, getAuthUser } from "../../../lib/authClient.js";
 
 export default function IndexNavbar() {
   const [navbarOpen, setNavbarOpen] = React.useState(false);
+  const [authUser, setAuthUser] = React.useState(getAuthUser());
+  const [authed, setAuthed] = React.useState(Boolean(getAuthToken()));
+
+  React.useEffect(() => {
+    const sync = () => {
+      setAuthUser(getAuthUser());
+      setAuthed(Boolean(getAuthToken()));
+    };
+    sync();
+    window.addEventListener("storage", sync);
+    window.addEventListener("focus", sync);
+    return () => {
+      window.removeEventListener("storage", sync);
+      window.removeEventListener("focus", sync);
+    };
+  }, []);
 
   return (
     <nav className="top-0 fixed z-50 w-full border-b border-white/10 bg-[#120a22]/90 backdrop-blur">
@@ -27,15 +44,36 @@ export default function IndexNavbar() {
             <Link to="/pricing" className="text-sm text-white/85 hover:text-white">
               Pricing
             </Link>
-            <Link to="/auth/signin" className="text-sm text-white/85 hover:text-white">
-              Sign in
-            </Link>
-            <Link
-              to="/auth/signup"
-              className="rounded-full border border-violet-400/40 bg-violet-500/20 px-4 py-2 text-sm font-semibold text-white hover:border-violet-300"
-            >
-              Create account
-            </Link>
+            {authed ? (
+              <>
+                <Link to="/audit" className="text-sm text-white/85 hover:text-white">
+                  {getAuthDisplayName(authUser) || "My account"}
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => {
+                    clearAuthSession();
+                    setAuthed(false);
+                    window.location.assign("/");
+                  }}
+                  className="rounded-full border border-white/20 px-4 py-2 text-sm font-semibold text-white hover:border-white/40"
+                >
+                  Sign out
+                </button>
+              </>
+            ) : (
+              <>
+                <Link to="/auth/signin" className="text-sm text-white/85 hover:text-white">
+                  Sign in
+                </Link>
+                <Link
+                  to="/auth/signup"
+                  className="rounded-full border border-violet-400/40 bg-violet-500/20 px-4 py-2 text-sm font-semibold text-white hover:border-violet-300"
+                >
+                  Create account
+                </Link>
+              </>
+            )}
             <Link
               to="/start"
               className="rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 px-4 py-2 text-sm font-semibold text-white shadow"

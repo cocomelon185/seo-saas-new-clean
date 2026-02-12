@@ -8,6 +8,7 @@ import { safeJson } from "../lib/safeJson.js";
 import { apiUrl } from "../lib/api.js";
 
 export default function AccountSettingsPage() {
+  const base = typeof window !== "undefined" ? window.location.origin : "https://rankypulse.com";
   const [gscStatus, setGscStatus] = useState("idle");
   const [gscConnected, setGscConnected] = useState(false);
   const [gscExpiry, setGscExpiry] = useState(null);
@@ -146,6 +147,10 @@ export default function AccountSettingsPage() {
     <AppShell
       title="Account settings"
       subtitle="Update your profile, billing email, and notification preferences."
+      seoTitle="Account Settings | RankyPulse"
+      seoDescription="Update your profile, billing email, and notification preferences."
+      seoCanonical={`${base}/account/settings`}
+      seoRobots="noindex,nofollow"
     >
       {showDisconnectConfirm && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 px-4 py-6">
@@ -185,17 +190,17 @@ export default function AccountSettingsPage() {
       <div className="grid gap-6 md:grid-cols-[2fr_1fr]">
         <div className="rp-card p-6">
           <div className="grid gap-4 md:grid-cols-2">
-            <label className="flex flex-col gap-2 text-sm text-[var(--rp-text-600)]">
+            <label className="flex flex-col gap-2 text-sm text-[var(--rp-text-600)]" htmlFor="account-full-name">
               Full name
-              <input className="rp-input" placeholder="Avery Patel" value={fullName} onChange={(e) => setFullName(e.target.value)} />
+              <input id="account-full-name" className="rp-input" placeholder="Avery Patel" value={fullName} onChange={(e) => setFullName(e.target.value)} />
             </label>
-            <label className="flex flex-col gap-2 text-sm text-[var(--rp-text-600)]">
+            <label className="flex flex-col gap-2 text-sm text-[var(--rp-text-600)]" htmlFor="account-work-email">
               Work email
-              <input className="rp-input" placeholder="you@company.com" value={workEmail} onChange={(e) => setWorkEmail(e.target.value)} />
+              <input id="account-work-email" className="rp-input" placeholder="you@company.com" value={workEmail} onChange={(e) => setWorkEmail(e.target.value)} />
             </label>
-            <label className="flex flex-col gap-2 text-sm text-[var(--rp-text-600)] md:col-span-2">
+            <label className="flex flex-col gap-2 text-sm text-[var(--rp-text-600)] md:col-span-2" htmlFor="account-notify-summary">
               Notification summary
-              <select className="rp-input">
+              <select id="account-notify-summary" className="rp-input">
                 <option>Weekly digest</option>
                 <option>Monthly digest</option>
                 <option>Only critical alerts</option>

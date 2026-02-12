@@ -1,14 +1,22 @@
 import MarketingShell from "../marketing/components/MarketingShell.jsx";
 import { Link } from "react-router-dom";
 import { IconDoc, IconBolt, IconReport, IconArrowRight } from "../components/Icons.jsx";
+import Seo from "../components/Seo.jsx";
 
 export default function BlogAuditChecklistPage() {
+  const base = typeof window !== "undefined" ? window.location.origin : "https://rankypulse.com";
   return (
-    <MarketingShell
-      title="Blog Post Audit Checklist"
-      subtitle="Use RankyPulse audits to catch thin content, weak structure, and missing search intent coverage."
-    >
-      <div className="space-y-8 text-[var(--rp-text-600)]">
+    <>
+      <Seo
+        title="Blog Post Audit Checklist | RankyPulse"
+        description="Use RankyPulse audits to catch thin content, weak structure, and missing search intent coverage."
+        canonical={`${base}/use-cases/blog-audit-checklist`}
+      />
+      <MarketingShell
+        title="Blog Post Audit Checklist"
+        subtitle="Use RankyPulse audits to catch thin content, weak structure, and missing search intent coverage."
+      >
+        <div className="space-y-8 text-[var(--rp-text-600)]">
         <section>
           <h2 className="rp-section-title flex items-center gap-2">
             <span className="inline-flex h-7 w-7 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
@@ -78,7 +86,8 @@ export default function BlogAuditChecklistPage() {
             </Link>
           </div>
         </section>
-      </div>
-    </MarketingShell>
+        </div>
+      </MarketingShell>
+    </>
   );
 }

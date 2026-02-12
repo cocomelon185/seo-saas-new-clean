@@ -4,10 +4,15 @@ import AppShell from "../components/AppShell.jsx";
 import { IconArrowRight } from "../components/Icons.jsx";
 
 export default function PaymentFailurePage() {
+  const base = typeof window !== "undefined" ? window.location.origin : "https://rankypulse.com";
   return (
     <AppShell
       title="Payment failed"
       subtitle="We could not complete the upgrade. Please try again or use a different payment method."
+      seoTitle="Payment Failed | RankyPulse"
+      seoDescription="We could not complete the upgrade. Please try again or use a different payment method."
+      seoCanonical={`${base}/upgrade/failure`}
+      seoRobots="noindex,nofollow"
     >
       <div className="grid gap-6 md:grid-cols-2">
         <div className="rp-card p-6">

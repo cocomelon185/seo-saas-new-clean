@@ -4,10 +4,15 @@ import AppShell from "../components/AppShell.jsx";
 import { IconArrowRight, IconTrash } from "../components/Icons.jsx";
 
 export default function AccountDeletedPage() {
+  const base = typeof window !== "undefined" ? window.location.origin : "https://rankypulse.com";
   return (
     <AppShell
       title="Account deleted"
       subtitle="Your RankyPulse workspace has been removed. We are sorry to see you go."
+      seoTitle="Account Deleted | RankyPulse"
+      seoDescription="Your RankyPulse workspace has been removed."
+      seoCanonical={`${base}/account/deleted`}
+      seoRobots="noindex,nofollow"
     >
       <div className="rp-card p-6 text-center">
         <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-rose-100 text-rose-700">

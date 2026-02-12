@@ -56,6 +56,7 @@ function latestKeywordIdeasForDomain(domain) {
 export default function RankPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const base = typeof window !== "undefined" ? window.location.origin : "https://rankypulse.com";
 
   const [pricingOpen, setPricingOpen] = useState(false);
 
@@ -200,6 +201,10 @@ export default function RankPage() {
     <AppShell
       title="Rank Checker"
       subtitle="Check where your domain ranks for a keyword. Keep it fast and simple - history comes later."
+      seoTitle="Rank Checker | RankyPulse"
+      seoDescription="Check where your domain ranks for a keyword."
+      seoCanonical={`${base}/rank`}
+      seoRobots="noindex,nofollow"
     >
       {pricingOpen ? (
         <Suspense fallback={null}>
@@ -281,8 +286,11 @@ export default function RankPage() {
 
         <div className="grid gap-4 md:grid-cols-3 md:items-end">
           <div>
-            <label className="mb-2 block text-sm font-medium text-[var(--rp-text-600)]">Keyword</label>
+            <label className="mb-2 block text-sm font-medium text-[var(--rp-text-600)]" htmlFor="rank-keyword">
+              Keyword
+            </label>
             <input
+              id="rank-keyword"
               value={keyword}
               onChange={(e) => setKeyword(e.target.value)}
               placeholder="seo audit tool"
@@ -305,8 +313,11 @@ export default function RankPage() {
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-medium text-[var(--rp-text-600)]">Domain</label>
+            <label className="mb-2 block text-sm font-medium text-[var(--rp-text-600)]" htmlFor="rank-domain">
+              Domain
+            </label>
             <input
+              id="rank-domain"
               value={domain}
               onChange={(e) => setDomain(e.target.value)}
               placeholder="rankypulse.com"

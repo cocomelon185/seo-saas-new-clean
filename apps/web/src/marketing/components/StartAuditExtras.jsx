@@ -81,9 +81,9 @@ export default function StartAuditExtras() {
         </div>
         <div className="mt-4 grid gap-3 md:grid-cols-3">
           {[
-            { label: "Core Web Vitals", value: "High", tone: "text-rose-600" },
-            { label: "On-page gaps", value: "Medium", tone: "text-amber-600" },
-            { label: "Internal linking", value: "Quick win", tone: "text-emerald-600" }
+            { label: "Core Web Vitals", value: "High", tone: "text-rose-700" },
+            { label: "On-page gaps", value: "Medium", tone: "text-amber-700" },
+            { label: "Internal linking", value: "Quick win", tone: "text-emerald-700" }
           ].map((item) => (
             <div key={item.label} className="rounded-xl border border-[var(--rp-border)] bg-white p-4">
               <div className="text-xs text-[var(--rp-text-500)]">{item.label}</div>

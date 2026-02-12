@@ -2,7 +2,8 @@ import { chromium } from "@playwright/test";
 import path from "node:path";
 import fs from "node:fs/promises";
 
-const baseUrl = "http://localhost:5173";
+const baseUrl = process.env.BASE_URL || "http://localhost:5173";
+const guestSigninUrl = `${baseUrl}/api/guest-signin`;
 const routes = [
   "/",
   "/pricing",
@@ -37,16 +38,44 @@ async function main() {
   const reportPath = path.join(reportDir, "click-validate.json");
   const results = [];
 
-  const browser = await chromium.launch();
+  let guestSession = null;
+  try {
+    const res = await fetch(guestSigninUrl, { method: "POST" });
+    const data = await res.json().catch(() => null);
+    if (res.ok && data?.token && data?.user) {
+      guestSession = data;
+    }
+  } catch {}
+
+  if (!guestSession) {
+    console.error("[click-validate] guest signin failed. Set GUEST_LOGIN_ENABLED and guest env vars.");
+    process.exit(1);
+  }
+
+  try {
+    await fetch(`${baseUrl}/api/embed/lead`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: "RankyPulse QA",
+        email: "qa+lead@rankypulse.com",
+        url: "https://example.com",
+        source: "click-validate"
+      })
+    });
+  } catch {}
+
+  const executablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || undefined;
+  const browser = await chromium.launch(executablePath ? { executablePath } : {});
   const context = await browser.newContext({ viewport: { width: 1600, height: 1000 } });
 
-  await context.addInitScript(() => {
-    localStorage.setItem("rp_auth_token", "demo-token");
-    localStorage.setItem(
-      "rp_auth_user",
-      JSON.stringify({ name: "Demo User", role: "admin", verified: true })
-    );
-  });
+  await context.addInitScript(
+    ({ token, user }) => {
+      localStorage.setItem("rp_auth_token", token);
+      localStorage.setItem("rp_auth_user", JSON.stringify(user));
+    },
+    { token: guestSession.token, user: guestSession.user }
+  );
 
   const page = await context.newPage();
   page.on("pageerror", (err) => {
@@ -57,8 +86,29 @@ async function main() {
     const url = `${baseUrl}${route}`;
     const routeResult = { route, url, buttons: 0, links: 0, issues: [] };
     try {
-      await page.goto(url, { waitUntil: "networkidle" });
+      console.log(`[click-validate] visiting ${url}`);
+      await page.goto(url, { waitUntil: "networkidle", timeout: 20000 });
       await page.waitForTimeout(800);
+
+      if (route === "/audit") {
+        await page.fill("#audit-page-url", "https://example.com").catch(() => {});
+      }
+      if (route === "/embed/form") {
+        await page.fill("#embed-url", "https://example.com").catch(() => {});
+        await page.fill("#embed-email", "qa+lead@rankypulse.com").catch(() => {});
+      }
+      if (route === "/rank") {
+        await page.fill("#rank-keyword", "seo audit tool").catch(() => {});
+        await page.fill("#rank-domain", "rankypulse.com").catch(() => {});
+        const check = page.getByRole("button", { name: /check rank/i });
+        if (await check.isVisible().catch(() => false)) {
+          await check.click().catch(() => {});
+          await page.waitForTimeout(1500);
+        }
+      }
+      if (route === "/admin/team") {
+        await page.fill("#invite-email", "qa+invite@rankypulse.com").catch(() => {});
+      }
 
       const buttons = await page.locator("button").all();
       routeResult.buttons = buttons.length;
@@ -66,7 +116,16 @@ async function main() {
         const disabled = await btn.isDisabled().catch(() => false);
         const visible = await btn.isVisible().catch(() => false);
         if (visible && disabled) {
-          routeResult.issues.push({ type: "button-disabled", text: await btn.innerText().catch(() => "") });
+          const title = await btn.getAttribute("title").catch(() => "");
+          const text = await btn.innerText().catch(() => "");
+          const expected =
+            title?.includes("No active subscription") ||
+            title?.includes("No leads yet") ||
+            title?.includes("Run a check first") ||
+            title?.includes("Admins only");
+          if (!expected) {
+            routeResult.issues.push({ type: "button-disabled", text, title });
+          }
         }
       }
 
@@ -83,6 +142,7 @@ async function main() {
       routeResult.issues.push({ type: "route-error", message: err?.message || String(err) });
     }
     results.push(routeResult);
+    console.log(`[click-validate] done ${route} (buttons=${routeResult.buttons}, links=${routeResult.links}, issues=${routeResult.issues.length})`);
   }
 
   await fs.writeFile(reportPath, JSON.stringify(results, null, 2), "utf-8");

@@ -4,6 +4,7 @@ import { safeJson } from "../lib/safeJson.js";
 import { apiUrl } from "../lib/api.js";
 
 export default function AnalyticsPage() {
+  const base = typeof window !== "undefined" ? window.location.origin : "https://rankypulse.com";
   const [status, setStatus] = useState("loading");
   const [counts, setCounts] = useState(null);
   const [error, setError] = useState("");
@@ -40,6 +41,10 @@ export default function AnalyticsPage() {
     <AppShell
       title="Conversion Analytics"
       subtitle="Track the signup → audit → upgrade → subscribe funnel (last 30 days)."
+      seoTitle="Conversion Analytics | RankyPulse"
+      seoDescription="Track the signup → audit → upgrade → subscribe funnel."
+      seoCanonical={`${base}/admin/analytics`}
+      seoRobots="noindex,nofollow"
     >
       {status === "error" && (
         <div className="mb-4 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">

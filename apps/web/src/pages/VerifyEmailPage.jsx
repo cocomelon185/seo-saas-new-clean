@@ -6,6 +6,7 @@ import { apiUrl } from "../lib/api.js";
 import { getAuthUser } from "../lib/authClient.js";
 
 export default function VerifyEmailPage() {
+  const base = typeof window !== "undefined" ? window.location.origin : "https://rankypulse.com";
   const [token, setToken] = useState("");
   const [status, setStatus] = useState("idle");
   const [message, setMessage] = useState("");
@@ -83,7 +84,14 @@ export default function VerifyEmailPage() {
   }
 
   return (
-    <AppShell title="Verify your email" subtitle="Verification is required before running audits or upgrading.">
+    <AppShell
+      title="Verify your email"
+      subtitle="Verification is required before running audits or upgrading."
+      seoTitle="Verify Email | RankyPulse"
+      seoDescription="Verify your email to unlock full access to RankyPulse."
+      seoCanonical={`${base}/auth/verify`}
+      seoRobots="noindex,nofollow"
+    >
       <div className="mx-auto max-w-md space-y-4">
         <div className="rp-card p-5">
           <div className="text-xs font-semibold uppercase tracking-[0.3em] text-[var(--rp-text-500)]">How it works</div>

@@ -1,9 +1,26 @@
 import { Navigate, useLocation } from "react-router-dom";
 import { getAuthToken, getAuthUser } from "../lib/authClient.js";
+import AppShell from "../components/AppShell.jsx";
 
 export default function RequireAuth({ children, role }) {
   const location = useLocation();
   const token = getAuthToken();
+  const isSsg =
+    typeof window === "undefined" ||
+    (typeof import.meta !== "undefined" && import.meta.env && (import.meta.env.SSR || import.meta.env.MODE === "app-public"));
+
+  if (isSsg) {
+    return (
+      <AppShell
+        title="Sign in required"
+        subtitle="Please sign in to access this page."
+      >
+        <div className="rp-card p-6 text-sm text-[var(--rp-text-500)]">
+          Sign in to continue.
+        </div>
+      </AppShell>
+    );
+  }
   if (!token) {
     return <Navigate to={`/auth/signin?next=${encodeURIComponent(location.pathname)}`} replace />;
   }

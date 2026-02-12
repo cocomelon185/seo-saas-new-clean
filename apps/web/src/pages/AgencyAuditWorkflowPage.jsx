@@ -1,14 +1,22 @@
 import MarketingShell from "../marketing/components/MarketingShell.jsx";
 import { Link } from "react-router-dom";
 import { IconShield, IconReport, IconBolt, IconArrowRight } from "../components/Icons.jsx";
+import Seo from "../components/Seo.jsx";
 
 export default function AgencyAuditWorkflowPage() {
+  const base = typeof window !== "undefined" ? window.location.origin : "https://rankypulse.com";
   return (
-    <MarketingShell
-      title="Agency Client Audit Workflow"
-      subtitle="Deliver shareable audits, align stakeholders, and turn fixes into client-ready action plans."
-    >
-      <div className="space-y-8 text-[var(--rp-text-600)]">
+    <>
+      <Seo
+        title="Agency Client Audit Workflow | RankyPulse"
+        description="Deliver shareable audits, align stakeholders, and turn fixes into client-ready action plans."
+        canonical={`${base}/use-cases/agency-audit-workflow`}
+      />
+      <MarketingShell
+        title="Agency Client Audit Workflow"
+        subtitle="Deliver shareable audits, align stakeholders, and turn fixes into client-ready action plans."
+      >
+        <div className="space-y-8 text-[var(--rp-text-600)]">
         <section>
           <h2 className="rp-section-title flex items-center gap-2">
             <span className="inline-flex h-7 w-7 items-center justify-center rounded-xl bg-purple-100 text-purple-700">
@@ -78,7 +86,8 @@ export default function AgencyAuditWorkflowPage() {
             </Link>
           </div>
         </section>
-      </div>
-    </MarketingShell>
+        </div>
+      </MarketingShell>
+    </>
   );
 }

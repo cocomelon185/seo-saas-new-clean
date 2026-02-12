@@ -6,6 +6,7 @@ import { safeJson } from "../lib/safeJson.js";
 import { apiUrl } from "../lib/api.js";
 
 export default function EmbedWidgetPage() {
+  const base = typeof window !== "undefined" ? window.location.origin : "https://rankypulse.com";
   const anonId = getAnonId();
   const [webhook, setWebhook] = useState("");
   const [redirectUrl, setRedirectUrl] = useState("");
@@ -60,6 +61,10 @@ export default function EmbedWidgetPage() {
     <AppShell
       title="Embeddable Audit Widget"
       subtitle="Capture leads on your site with a lightweight audit form. Send leads to your webhook in real time."
+      seoTitle="Embeddable Audit Widget | RankyPulse"
+      seoDescription="Capture leads on your site with a lightweight audit form."
+      seoCanonical={`${base}/embed`}
+      seoRobots="noindex,nofollow"
     >
       <div className="mb-4 grid gap-4 md:grid-cols-4">
         {[

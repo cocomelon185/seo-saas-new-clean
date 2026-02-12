@@ -2,8 +2,16 @@ import { Link } from "react-router-dom";
 import AppShell from "../components/AppShell.jsx";
 
 export default function InviteAcceptedPage() {
+  const base = typeof window !== "undefined" ? window.location.origin : "https://rankypulse.com";
   return (
-    <AppShell title="Invite accepted" subtitle="Welcome to the team. Verify your email to access full features.">
+    <AppShell
+      title="Invite accepted"
+      subtitle="Welcome to the team. Verify your email to access full features."
+      seoTitle="Invite Accepted | RankyPulse"
+      seoDescription="Your team invite was accepted. Verify your email to unlock full access."
+      seoCanonical={`${base}/auth/invite-accepted`}
+      seoRobots="noindex,nofollow"
+    >
       <div className="mx-auto max-w-md">
         <div className="rp-card p-6">
           <div className="text-lg font-semibold text-[var(--rp-text-900)]">You’re in</div>

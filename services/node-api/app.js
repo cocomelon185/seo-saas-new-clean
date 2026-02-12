@@ -1,6 +1,6 @@
 import express from "express"
 import cors from "cors";
-import pageReport from "../../api/page-report.js";
+import pageReport from "./api/page-report.js";
 
 const __DEMO_AUDIT_URL = "https://httpstat.us";
 
@@ -35,7 +35,17 @@ import { Worker } from "worker_threads";
 import { normalizeUrl, TTLCache, RateLimiter, jsonError } from "./api_hardening.js";
 
 const app = express();
-app.use(cors({ origin: ["https://www.rankypulse.com","https://rankypulse.com","http://localhost:5173"], credentials: true }));
+app.use(
+  cors({
+    origin: [
+      "https://www.rankypulse.com",
+      "https://rankypulse.com",
+      "http://localhost:5173",
+      "http://127.0.0.1:5173"
+    ],
+    credentials: true
+  })
+);
 
 
 
@@ -349,6 +359,147 @@ app.get("/api/audit/:jobId", (req, res) => {
 
 
 // ===== Auth (F2) =====
+app.post("/api/guest-signin", (req, res) => {
+  const enabled = String(process.env.GUEST_LOGIN_ENABLED || "false").toLowerCase() === "true";
+  if (!enabled) return jsonError(res, 404, "NOT_FOUND", "Guest login disabled.");
+
+  const email = String(process.env.GUEST_EMAIL || "").trim().toLowerCase();
+  const password = String(process.env.GUEST_PASSWORD || "");
+
+  if (!email || !email.includes("@") || !password) {
+    return jsonError(res, 500, "GUEST_NOT_CONFIGURED", "Guest login not configured.");
+  }
+
+  let user = getUserByEmail(email);
+  const created_at = new Date().toISOString();
+  const hashed_password = bcrypt.hashSync(password, 10);
+
+  if (!user) {
+    db.prepare('INSERT INTO users (email, hashed_password, "plan", created_at) VALUES (?, ?, ?, ?)').run(
+      email,
+      hashed_password,
+      "free",
+      created_at
+    );
+    user = getUserByEmail(email);
+  } else if (!bcrypt.compareSync(password, user.hashed_password)) {
+    db.prepare('UPDATE users SET hashed_password = ? WHERE email = ?').run(hashed_password, email);
+    user = getUserByEmail(email);
+  }
+
+  const token = signToken(user);
+  res.json({ ok: true, token, user: { id: user.id, email: user.email, plan: user.plan } });
+});
+
+app.post("/api/signin", (req, res) => {
+  const email = String(req.body?.email || "").trim().toLowerCase();
+  const password = String(req.body?.password || "");
+
+  if (!email || !password) return jsonError(res, 400, "INVALID_LOGIN", "Email and password required.");
+
+  const guestEmail = String(process.env.GUEST_EMAIL || "").trim().toLowerCase();
+  const guestPassword = String(process.env.GUEST_PASSWORD || "");
+  if (guestEmail && guestPassword && email === guestEmail && password === guestPassword) {
+    let user = getUserByEmail(email);
+    if (!user) {
+      const hashed_password = bcrypt.hashSync(password, 10);
+      const created_at = new Date().toISOString();
+      const info = db.prepare('INSERT INTO users (email, hashed_password, "plan", created_at) VALUES (?, ?, ?, ?)').run(
+        email, hashed_password, "free", created_at
+      );
+      user = getUserById(info.lastInsertRowid);
+    } else if (!bcrypt.compareSync(password, user.hashed_password)) {
+      const hashed_password = bcrypt.hashSync(password, 10);
+      db.prepare('UPDATE users SET hashed_password = ? WHERE email = ?').run(hashed_password, email);
+      user = getUserByEmail(email);
+    }
+    const token = signToken(user);
+    return res.json({ ok: true, token, user: { id: user.id, email: user.email, plan: user.plan } });
+  }
+
+  const user = getUserByEmail(email);
+  if (!user) return jsonError(res, 401, "INVALID_LOGIN", "Invalid email or password.");
+
+  const ok = bcrypt.compareSync(password, user.hashed_password);
+  if (!ok) return jsonError(res, 401, "INVALID_LOGIN", "Invalid email or password.");
+
+  const token = signToken(user);
+  res.json({ ok: true, token, user: { id: user.id, email: user.email, plan: user.plan } });
+});
+
+app.post("/api/signup", (req, res) => {
+  const email = String(req.body?.email || "").trim().toLowerCase();
+  const password = String(req.body?.password || "");
+  const plan = String(req.body?.plan || "free").trim().toLowerCase();
+
+  if (!email || !email.includes("@")) return jsonError(res, 400, "BAD_EMAIL", "Valid email required.");
+  if (!password || password.length < 6) return jsonError(res, 400, "BAD_PASSWORD", "Password must be at least 6 characters.");
+
+  const existing = getUserByEmail(email);
+  if (existing) return jsonError(res, 409, "EMAIL_EXISTS", "Email already registered.");
+
+  const hashed_password = bcrypt.hashSync(password, 10);
+  const created_at = new Date().toISOString();
+  const info = db.prepare('INSERT INTO users (email, hashed_password, "plan", created_at) VALUES (?, ?, ?, ?)').run(
+    email, hashed_password, plan, created_at
+  );
+  const user = getUserById(info.lastInsertRowid);
+
+  const token = signToken(user);
+  res.json({ ok: true, token, user: { id: user.id, email: user.email, plan: user.plan } });
+});
+
+app.post("/api/auth/google", async (req, res) => {
+  const clientId =
+    process.env.GOOGLE_CLIENT_ID ||
+    process.env.GSC_CLIENT_ID ||
+    process.env.VITE_GOOGLE_CLIENT_ID ||
+    "";
+  if (!clientId) return jsonError(res, 500, "GOOGLE_NOT_CONFIGURED", "Google auth not configured.");
+
+  const credential = String(req.body?.credential || "");
+  if (!credential) return jsonError(res, 400, "MISSING_CREDENTIAL", "Missing credential.");
+
+  try {
+    const url = `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(credential)}`;
+    const resp = await fetch(url);
+    if (!resp.ok) return jsonError(res, 401, "INVALID_GOOGLE_TOKEN", "Invalid Google token.");
+    const data = await resp.json();
+    if (!data?.email) return jsonError(res, 400, "MISSING_EMAIL", "Missing email.");
+    if (data.aud && clientId && data.aud !== clientId) {
+      return jsonError(res, 401, "INVALID_AUD", "Invalid Google audience.");
+    }
+    if (!(data.email_verified === true || data.email_verified === "true")) {
+      return jsonError(res, 401, "EMAIL_NOT_VERIFIED", "Email not verified.");
+    }
+
+    const email = String(data.email).trim().toLowerCase();
+    let user = getUserByEmail(email);
+    if (!user) {
+      const randomPassword = crypto.randomBytes(24).toString("hex");
+      const hashed_password = bcrypt.hashSync(randomPassword, 10);
+      const created_at = new Date().toISOString();
+      const info = db.prepare('INSERT INTO users (email, hashed_password, "plan", created_at) VALUES (?, ?, ?, ?)').run(
+        email, hashed_password, "free", created_at
+      );
+      user = getUserById(info.lastInsertRowid);
+    }
+    const token = signToken(user);
+    return res.json({ ok: true, token, user: { id: user.id, email: user.email, plan: user.plan } });
+  } catch (e) {
+    return jsonError(res, 500, "GOOGLE_AUTH_FAILED", "Google auth failed.");
+  }
+});
+
+app.get("/api/auth/google-config", (req, res) => {
+  const clientId =
+    process.env.GOOGLE_CLIENT_ID ||
+    process.env.GSC_CLIENT_ID ||
+    process.env.VITE_GOOGLE_CLIENT_ID ||
+    "";
+  res.json({ ok: true, enabled: Boolean(clientId), client_id: clientId || "" });
+});
+
 app.post("/api/auth/register", (req, res) => {
   const email = String(req.body?.email || "").trim().toLowerCase();
   const password = String(req.body?.password || "");

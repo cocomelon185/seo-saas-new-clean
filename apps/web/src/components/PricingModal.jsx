@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { IconArrowRight } from "./Icons.jsx";
 import { track } from "../lib/eventsClient.js";
@@ -10,6 +10,7 @@ export default function PricingModal({ open, onClose, onSelectPlan }) {
   const navigate = useNavigate();
   const [activePlan, setActivePlan] = useState("");
   const [checkoutError, setCheckoutError] = useState("");
+  const modalRef = useRef(null);
   const formatInr = (value) =>
     new Intl.NumberFormat("en-IN", {
       style: "currency",
@@ -89,6 +90,69 @@ export default function PricingModal({ open, onClose, onSelectPlan }) {
   useEffect(() => {
     try { track("pricing_modal_open", {}); } catch {}
   }, []);
+  useEffect(() => {
+    if (!open) return;
+    if (typeof document === "undefined") return;
+
+    const previouslyFocused = document.activeElement;
+    const getFocusable = () => {
+      if (!modalRef.current) return [];
+      const selectors = [
+        "a[href]",
+        "button:not([disabled])",
+        "input:not([disabled])",
+        "select:not([disabled])",
+        "textarea:not([disabled])",
+        "[tabindex]:not([tabindex='-1'])"
+      ];
+      return Array.from(modalRef.current.querySelectorAll(selectors.join(",")));
+    };
+
+    const focusFirst = () => {
+      const focusables = getFocusable();
+      const target = focusables[0] || modalRef.current;
+      if (target && typeof target.focus === "function") target.focus();
+    };
+
+    const onKeyDown = (event) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onClose?.();
+        return;
+      }
+      if (event.key !== "Tab") return;
+
+      const focusables = getFocusable();
+      if (focusables.length === 0) {
+        event.preventDefault();
+        return;
+      }
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      const active = document.activeElement;
+
+      if (event.shiftKey) {
+        if (active === first || !modalRef.current.contains(active)) {
+          event.preventDefault();
+          last.focus();
+        }
+      } else if (active === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    const raf = requestAnimationFrame(focusFirst);
+    document.addEventListener("keydown", onKeyDown);
+
+    return () => {
+      cancelAnimationFrame(raf);
+      document.removeEventListener("keydown", onKeyDown);
+      if (previouslyFocused && typeof previouslyFocused.focus === "function") {
+        previouslyFocused.focus();
+      }
+    };
+  }, [open, onClose]);
   if (!open) return null;
 
   const price = (p) => (billing === "yearly" ? p.yearly : p.monthly);
@@ -96,15 +160,17 @@ export default function PricingModal({ open, onClose, onSelectPlan }) {
   const saveLabel = billing === "yearly" ? "25% Off" : "";
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 px-4 py-6 backdrop-blur-sm"
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onClose?.();
-      }}
-    >
       <div
+        role="dialog"
+        aria-modal="true"
+        className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 px-4 py-6 backdrop-blur-sm"
+        onMouseDown={(e) => {
+          if (e.target === e.currentTarget) onClose?.();
+        }}
+      >
+        <div
+        ref={modalRef}
+        tabIndex={-1}
         className="rp-card w-full max-w-5xl overflow-hidden"
       >
         <div className="border-b border-[var(--rp-border)] px-6 py-5">

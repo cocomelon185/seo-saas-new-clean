@@ -1,14 +1,22 @@
 import MarketingShell from "../marketing/components/MarketingShell.jsx";
 import { Link } from "react-router-dom";
 import { IconCompass, IconShield, IconBolt, IconArrowRight } from "../components/Icons.jsx";
+import Seo from "../components/Seo.jsx";
 
 export default function SaasLandingAuditPage() {
+  const base = typeof window !== "undefined" ? window.location.origin : "https://rankypulse.com";
   return (
-    <MarketingShell
-      title="SaaS Landing Page Audit"
-      subtitle="Use this audit to validate clarity, proof, and conversion signals before you scale traffic."
-    >
-      <div className="space-y-8 text-[var(--rp-text-600)]">
+    <>
+      <Seo
+        title="SaaS Landing Page Audit | RankyPulse"
+        description="Use this audit to validate clarity, proof, and conversion signals before you scale traffic."
+        canonical={`${base}/use-cases/saas-landing-audit`}
+      />
+      <MarketingShell
+        title="SaaS Landing Page Audit"
+        subtitle="Use this audit to validate clarity, proof, and conversion signals before you scale traffic."
+      >
+        <div className="space-y-8 text-[var(--rp-text-600)]">
         <section>
           <h2 className="rp-section-title flex items-center gap-2">
             <span className="inline-flex h-7 w-7 items-center justify-center rounded-xl bg-cyan-100 text-cyan-700">
@@ -78,7 +86,8 @@ export default function SaasLandingAuditPage() {
             </Link>
           </div>
         </section>
-      </div>
-    </MarketingShell>
+        </div>
+      </MarketingShell>
+    </>
   );
 }

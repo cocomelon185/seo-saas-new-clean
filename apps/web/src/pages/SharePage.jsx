@@ -4,10 +4,12 @@ import IssuesPanel from "../components/IssuesPanel.jsx";
 import AuditImpactBanner from "../components/AuditImpactBanner.jsx";
 import { decodeSharePayload } from "../utils/shareCodec.js";
 import { IconReport } from "../components/Icons.jsx";
+import Seo from "../components/Seo.jsx";
 
 export default function SharePage() {
   const [data, setData] = useState(null);
   const [err, setErr] = useState("");
+  const base = typeof window !== "undefined" ? window.location.origin : "https://rankypulse.com";
 
   useEffect(() => {
     const token = (window.location.hash || "").replace(/^#/, "").trim();
@@ -31,8 +33,15 @@ export default function SharePage() {
   }, [data]);
 
   return (
-    <MarketingShell title="Shared Audit" subtitle={subtitle}>
-      <div className="flex flex-col gap-4">
+    <>
+      <Seo
+        title="Shared Audit | RankyPulse"
+        description="View a read-only SEO audit shared from RankyPulse."
+        canonical={`${base}/shared`}
+        robots="index,follow"
+      />
+      <MarketingShell title="Shared Audit" subtitle={subtitle}>
+        <div className="flex flex-col gap-4">
         {err && (
           <div className="rounded-2xl border border-rose-300/60 bg-rose-100/70 p-5 text-rose-700">
             {err}
@@ -84,7 +93,8 @@ export default function SharePage() {
             <IssuesPanel issues={data.issues} />
           </>
         )}
-      </div>
-    </MarketingShell>
+        </div>
+      </MarketingShell>
+    </>
   );
 }

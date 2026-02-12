@@ -18,6 +18,7 @@ import events from "./api/events.js";
 import migrateAnon from "./api/migrate-anon.js";
 import signUp from "./api/signup.js";
 import signIn from "./api/signin.js";
+import guestSignIn from "./api/guest-signin.js";
 import resetPassword from "./api/reset-password.js";
 import resetPasswordConfirm from "./api/reset-password-confirm.js";
 import verifyEmail from "./api/verify-email.js";
@@ -122,6 +123,7 @@ app.use(
 );
 
 seedTesterAccount();
+seedGuestAccount();
 
 async function seedTesterAccount() {
   const email = process.env.TESTER_EMAIL || "";
@@ -142,6 +144,28 @@ async function seedTesterAccount() {
     console.log(`[tester] ready ${email} team=${teamId} verified=${autoVerify}`);
   } catch (e) {
     console.log("[tester] seed failed:", String(e?.message || e));
+  }
+}
+
+async function seedGuestAccount() {
+  const email = process.env.GUEST_EMAIL || "";
+  const password = process.env.GUEST_PASSWORD || "";
+  if (!email || !password) return;
+  const name = process.env.GUEST_NAME || "RankyPulse Guest";
+  const teamId = process.env.GUEST_TEAM_ID || "guests";
+  const role = process.env.GUEST_ROLE || "viewer";
+  const autoVerify = String(process.env.GUEST_AUTO_VERIFY || "true").toLowerCase() !== "false";
+  try {
+    const existing = await getUserByEmail(email);
+    if (!existing) {
+      const password_hash = await bcrypt.hash(password, 10);
+      await createUser({ email, name, password_hash, team_id: teamId, role, verified: autoVerify });
+    } else if (autoVerify && !existing.verified) {
+      await setVerified(email, true);
+    }
+    console.log(`[guest] ready ${email} team=${teamId} verified=${autoVerify}`);
+  } catch (e) {
+    console.log("[guest] seed failed:", String(e?.message || e));
   }
 }
 
@@ -388,6 +412,7 @@ app.post("/api/migrate-anon", migrateAnon);
 
 app.post("/api/signup", signUp);
 app.post("/api/signin", signIn);
+app.post("/api/guest-signin", guestSignIn);
 app.post("/api/reset-password", resetPassword);
 app.post("/api/reset-password/confirm", resetPasswordConfirm);
 app.post("/api/verify-email", verifyEmail);

@@ -329,10 +329,8 @@
   }
 
   .rp-hero {
-    background:
-      radial-gradient(circle at 12% 18%, rgba(255, 255, 255, 0.18), transparent 40%),
-      radial-gradient(circle at 82% 20%, rgba(255, 255, 255, 0.12), transparent 45%),
-      linear-gradient(135deg, var(--rp-indigo-900), #5A2CA0 52%, #7A3FB8 100%);
+    background-color: #1b0b34;
+    background-image: none;
   }
 
   .rp-purple-box {

@@ -316,6 +316,8 @@ export async function buildPageReport(url, debug = null) {
   let internalLinks = 0;
   let externalLinks = 0;
   const internalLinkPaths = [];
+  var internalLinkDepthAvg = null;
+  var internalLinkDepthMax = null;
   try {
     const baseUrlObj = new URL(final_url);
     for (const linkTag of allLinks) {
@@ -414,6 +416,15 @@ export async function buildPageReport(url, debug = null) {
     issues.push(mkIssue("http_status_error", { status, final_url }, { title: `HTTP status ${status}`, priority: "fix_now" }));
   }
 
+  const depthValues = internalLinkPaths.map((p) => {
+    const parts = String(p || "").split("/").filter(Boolean);
+    return parts.length;
+  });
+  internalLinkDepthAvg = depthValues.length
+    ? Math.round((depthValues.reduce((a, b) => a + b, 0) / depthValues.length) * 10) / 10
+    : null;
+  internalLinkDepthMax = depthValues.length ? Math.max(...depthValues) : null;
+
   const weightMap = {
     missing_title: 25,
     missing_meta_description: 20,
@@ -483,7 +494,7 @@ export async function buildPageReport(url, debug = null) {
       }
     }
 
-    if (!metaDesc) {
+  if (!metaDesc) {
       const pBlocks = html.match(/<p\b[^>]*>[\s\S]*?<\/p>/gi) || [];
       for (const pb of pBlocks) {
         const inner = pb.replace(/^<p\b[^>]*>/i, "").replace(/<\/p>$/i, "");
@@ -499,15 +510,6 @@ export async function buildPageReport(url, debug = null) {
       }
     }
   }
-
-  const depthValues = internalLinkPaths.map((p) => {
-    const parts = String(p || "").split("/").filter(Boolean);
-    return parts.length;
-  });
-  const internalLinkDepthAvg = depthValues.length
-    ? Math.round((depthValues.reduce((a, b) => a + b, 0) / depthValues.length) * 10) / 10
-    : null;
-  const internalLinkDepthMax = depthValues.length ? Math.max(...depthValues) : null;
 
   return {
     ok: true,

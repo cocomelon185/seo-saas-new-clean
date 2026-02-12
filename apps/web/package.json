@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "NODE_OPTIONS=--no-warnings npm run images:opt && NODE_OPTIONS=--no-warnings TAILWIND_CONFIG=./tailwind.marketing.config.cjs vite-react-ssg build && NODE_OPTIONS=--no-warnings TAILWIND_CONFIG=./tailwind.app.config.cjs vite build --mode app",
+    "build": "NODE_OPTIONS=--no-warnings npm run images:opt && NODE_OPTIONS=--no-warnings TAILWIND_CONFIG=./tailwind.marketing.config.cjs vite-react-ssg build && NODE_OPTIONS=--no-warnings TAILWIND_CONFIG=./tailwind.app.config.cjs vite-react-ssg build --mode app-public && NODE_OPTIONS=--no-warnings TAILWIND_CONFIG=./tailwind.app.config.cjs vite build --mode app",
     "lint": "eslint .",
     "preview": "vite preview",
     "start": "vite preview --host 0.0.0.0 --port $PORT",
@@ -18,8 +18,11 @@
   "dependencies": {
     "@fortawesome/fontawesome-free": "^7.1.0",
     "@popperjs/core": "^2.11.8",
+    "beasties": "^0.1.0",
     "chart.js": "^4.5.1",
     "clsx": "^2.1.1",
+    "critical": "^7.2.1",
+    "critters": "^0.0.24",
     "gulp": "^5.0.1",
     "gulp-append-prepend": "^1.0.9",
     "react": "^18.3.1",

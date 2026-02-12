@@ -6,6 +6,7 @@ import { safeJson } from "../lib/safeJson.js";
 import { apiUrl } from "../lib/api.js";
 
 export default function LeadsPage() {
+  const base = typeof window !== "undefined" ? window.location.origin : "https://rankypulse.com";
   const anonId = getAnonId();
   const [status, setStatus] = useState("loading");
   const [leads, setLeads] = useState([]);
@@ -77,6 +78,10 @@ export default function LeadsPage() {
     <AppShell
       title="Leads Inbox"
       subtitle="Leads captured from your embeddable audit widget."
+      seoTitle="Leads Inbox | RankyPulse"
+      seoDescription="Leads captured from your embeddable audit widget."
+      seoCanonical={`${base}/leads`}
+      seoRobots="noindex,nofollow"
     >
       {csvToast && (
         <div className="fixed right-6 top-6 z-[9999] rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 shadow-lg">

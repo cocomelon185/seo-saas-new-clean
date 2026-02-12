@@ -7,6 +7,7 @@ import { getAuthUser } from "../lib/authClient.js";
 
 export default function UpgradePage() {
   const navigate = useNavigate();
+  const base = typeof window !== "undefined" ? window.location.origin : "https://rankypulse.com";
   const authUser = getAuthUser();
   const [checkoutError, setCheckoutError] = useState("");
   const [checkoutLoading, setCheckoutLoading] = useState(false);
@@ -37,6 +38,10 @@ export default function UpgradePage() {
     <AppShell
       title="Upgrade to RankyPulse Pro"
       subtitle="Unlock automated audits, shareable reports, and premium SEO insights for every client."
+      seoTitle="Upgrade to RankyPulse Pro | RankyPulse"
+      seoDescription="Unlock automated audits, shareable reports, and premium SEO insights for every client."
+      seoCanonical={`${base}/upgrade`}
+      seoRobots="index,follow"
     >
       <div className="grid gap-6 md:grid-cols-2">
         <div className="rp-card p-6">

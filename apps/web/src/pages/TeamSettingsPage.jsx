@@ -5,6 +5,7 @@ import { safeJson } from "../lib/safeJson.js";
 import { apiUrl } from "../lib/api.js";
 
 export default function TeamSettingsPage() {
+  const base = typeof window !== "undefined" ? window.location.origin : "https://rankypulse.com";
   const [members, setMembers] = useState([]);
   const [invites, setInvites] = useState([]);
   const [email, setEmail] = useState("");
@@ -48,7 +49,14 @@ export default function TeamSettingsPage() {
   }, [token]);
 
   return (
-    <AppShell title="Team Settings" subtitle="Manage team members, roles, and audit rules.">
+    <AppShell
+      title="Team Settings"
+      subtitle="Manage team members, roles, and audit rules."
+      seoTitle="Team Settings | RankyPulse"
+      seoDescription="Manage team members, roles, and audit rules."
+      seoCanonical={`${base}/admin/team`}
+      seoRobots="noindex,nofollow"
+    >
       {toast && (
         <div className="mb-4 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-xs font-semibold text-emerald-700">
           {toast}
@@ -89,22 +97,26 @@ export default function TeamSettingsPage() {
                     <td className="px-3 py-2">{m.email}</td>
                     <td className="px-3 py-2">
                       {isAdmin && m.email !== authUser?.email ? (
-                        <select
-                          className="rp-input h-8 text-xs"
-                          value={m.role || "member"}
-                          onChange={async (e) => {
-                            const next = e.target.value;
-                            await fetch(apiUrl("/api/team/members"), {
-                              method: "POST",
-                              headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-                              body: JSON.stringify({ email: m.email, role: next })
-                            });
-                            setMembers((prev) => prev.map((x) => (x.email === m.email ? { ...x, role: next } : x)));
-                          }}
-                        >
-                          <option value="member">Member</option>
-                          <option value="admin">Admin</option>
-                        </select>
+                        <>
+                          <label className="sr-only" htmlFor={`team-role-${m.email}`}>Member role</label>
+                          <select
+                            id={`team-role-${m.email}`}
+                            className="rp-input h-8 text-xs"
+                            value={m.role || "member"}
+                            onChange={async (e) => {
+                              const next = e.target.value;
+                              await fetch(apiUrl("/api/team/members"), {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                                body: JSON.stringify({ email: m.email, role: next })
+                              });
+                              setMembers((prev) => prev.map((x) => (x.email === m.email ? { ...x, role: next } : x)));
+                            }}
+                          >
+                            <option value="member">Member</option>
+                            <option value="admin">Admin</option>
+                          </select>
+                        </>
                       ) : (
                         <span className="rp-chip rp-chip-neutral">{m.role || "member"}</span>
                       )}
@@ -160,8 +172,10 @@ export default function TeamSettingsPage() {
           <div className="rp-card p-6">
             <div className="rp-section-title">Invite user</div>
             <div className="mt-3 grid gap-3">
-              <input className="rp-input" placeholder="email@company.com" value={email} onChange={(e) => setEmail(e.target.value)} />
-              <select className="rp-input" value={role} onChange={(e) => setRole(e.target.value)}>
+              <label className="sr-only" htmlFor="invite-email">Invite email</label>
+              <input id="invite-email" className="rp-input" placeholder="email@company.com" value={email} onChange={(e) => setEmail(e.target.value)} />
+              <label className="sr-only" htmlFor="invite-role">Invite role</label>
+              <select id="invite-role" className="rp-input" value={role} onChange={(e) => setRole(e.target.value)}>
                 <option value="member">Member</option>
                 <option value="admin">Admin</option>
               </select>

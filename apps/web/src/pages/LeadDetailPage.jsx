@@ -6,6 +6,7 @@ import { safeJson } from "../lib/safeJson.js";
 
 export default function LeadDetailPage() {
   const { id } = useParams();
+  const base = typeof window !== "undefined" ? window.location.origin : "https://rankypulse.com";
   const anonId = getAnonId();
   const [status, setStatus] = useState("loading");
   const [lead, setLead] = useState(null);
@@ -50,7 +51,14 @@ export default function LeadDetailPage() {
   }, [id]);
 
   return (
-    <AppShell title="Lead Details" subtitle="Review a single lead captured by your widget.">
+    <AppShell
+      title="Lead Details"
+      subtitle="Review a single lead captured by your widget."
+      seoTitle="Lead Details | RankyPulse"
+      seoDescription="Review a single lead captured by your widget."
+      seoCanonical={id ? `${base}/leads/${id}` : `${base}/leads`}
+      seoRobots="noindex,nofollow"
+    >
       <div className="rp-card p-5">
         <div className="mb-4 flex items-center justify-between">
           <Link to="/leads" className="text-sm text-[var(--rp-text-500)] hover:text-[var(--rp-text-900)]">
@@ -78,8 +86,9 @@ export default function LeadDetailPage() {
               <div className="text-[var(--rp-text-700)]">{lead.created_at ? new Date(lead.created_at).toLocaleString() : "-"}</div>
             </div>
             <div>
-              <div className="text-xs text-[var(--rp-text-500)]">Status</div>
+              <label className="text-xs text-[var(--rp-text-500)]" htmlFor="lead-status">Status</label>
               <select
+                id="lead-status"
                 className="rp-input mt-2"
                 value={leadStatus}
                 onChange={(e) => setLeadStatus(e.target.value)}
@@ -90,8 +99,9 @@ export default function LeadDetailPage() {
               </select>
             </div>
             <div className="md:col-span-2">
-              <div className="text-xs text-[var(--rp-text-500)]">Tags (comma separated)</div>
+              <label className="text-xs text-[var(--rp-text-500)]" htmlFor="lead-tags">Tags (comma separated)</label>
               <input
+                id="lead-tags"
                 className="rp-input mt-2"
                 value={tags}
                 onChange={(e) => setTags(e.target.value)}
@@ -99,8 +109,9 @@ export default function LeadDetailPage() {
               />
             </div>
             <div className="md:col-span-2">
-              <div className="text-xs text-[var(--rp-text-500)]">Notes</div>
+              <label className="text-xs text-[var(--rp-text-500)]" htmlFor="lead-notes">Notes</label>
               <textarea
+                id="lead-notes"
                 className="rp-input mt-2 min-h-[120px]"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}

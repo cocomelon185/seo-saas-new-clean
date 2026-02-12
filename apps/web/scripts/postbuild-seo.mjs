@@ -1,5 +1,6 @@
 import fs from "fs/promises";
 import path from "path";
+import Beasties from "beasties";
 
 const distDir = path.resolve(process.cwd(), "dist");
 const baseUrl = "https://rankypulse.com";
@@ -36,10 +37,19 @@ const publicMeta = [
     description: "Explore a sample audit report with prioritized fixes, visuals, and next steps."
   },
   {
+    test: (pathName) => pathName === "/audit",
+    title: "SEO Audit | RankyPulse",
+    description: "Run a full-site SEO audit, get prioritized fixes, and export a client-ready report in minutes."
+  },
+  {
+    test: (pathName) => pathName === "/upgrade",
+    title: "Upgrade to RankyPulse Pro | RankyPulse",
+    description: "Unlock automated audits, shareable reports, and premium SEO insights for every client."
+  },
+  {
     test: (pathName) => pathName.startsWith("/r/"),
     title: "SEO Audit Report | RankyPulse",
-    description: "Shared SEO audit report with prioritized issues and actionable recommendations.",
-    robots: "noindex, nofollow"
+    description: "Shared SEO audit report with prioritized issues and actionable recommendations."
   },
   {
     test: (pathName) => pathName.startsWith("/use-cases/saas-landing-audit"),
@@ -66,9 +76,6 @@ const noindexPrefixes = [
   "/leads",
   "/rank",
   "/improve",
-  "/audit",
-  "/r/",
-  "/upgrade",
   "/plan-change"
 ];
 
@@ -95,6 +102,13 @@ const appStaticRoutes = [
   "/admin/team",
   "/admin/analytics"
 ];
+
+const appPublicStaticRoutes = new Set([
+  "/audit",
+  "/upgrade",
+  "/upgrade/success",
+  "/upgrade/failure"
+]);
 
 function getMetaForPath(pathName) {
   const match = publicMeta.find((entry) => entry.test(pathName));
@@ -180,6 +194,53 @@ function stripHydrationScripts(html) {
   return output;
 }
 
+async function inlineCriticalCss(html) {
+  const stylesheetMatches = Array.from(html.matchAll(/<link\b[^>]*rel=["']stylesheet["'][^>]*>/gi));
+  if (!stylesheetMatches.length) {
+    return html;
+  }
+  const critters = new Beasties({
+    path: distDir,
+    publicPath: "/",
+    compress: true,
+    pruneSource: false,
+    preload: "swap",
+    inlineFonts: true
+  });
+
+  const inlined = await critters.process(html);
+  return inlined || html;
+}
+
+function deferStylesheets(html) {
+  let output = html.replace(/<link\b[^>]*rel=["']preload["'][^>]*as=["']style["'][^>]*>/gi, "");
+  output = output.replace(/<link\b[^>]*rel=["']stylesheet["'][^>]*>/gi, (match) => {
+    const hrefMatch = match.match(/href=["']([^"']+)["']/i);
+    if (!hrefMatch) return match;
+    const href = hrefMatch[1];
+    return [
+      `<link rel="stylesheet" href="${href}">`
+    ].join("\n    ");
+  });
+  return output;
+}
+
+function ensureStylesheetInHead(html) {
+  const headMatch = html.match(/<\/head>/i);
+  if (!headMatch) return html;
+
+  const links = Array.from(html.matchAll(/<link\b[^>]*rel=["']stylesheet["'][^>]*>/gi)).map((m) => m[0]);
+  if (!links.length) return html;
+
+  let output = html.replace(/<link\b[^>]*rel=["']stylesheet["'][^>]*>/gi, "");
+  output = output.replace(/<noscript>\s*<link\b[^>]*rel=["']stylesheet["'][^>]*>\s*<\/noscript>/gi, "");
+
+  const uniqueLinks = Array.from(new Set(links));
+  const insertion = `\n    ${uniqueLinks.join("\n    ")}\n`;
+  output = output.replace(/<\/head>/i, `${insertion}</head>`);
+  return output;
+}
+
 async function collectHtmlFiles(dir) {
   const entries = await fs.readdir(dir, { withFileTypes: true });
   const files = [];
@@ -208,6 +269,12 @@ async function main() {
     if (!isAppRoute) {
       updated = stripHydrationScripts(updated);
     }
+    const needsCritical = rel === "index.html" || rel === path.join("start", "index.html");
+    if (needsCritical) {
+      updated = await inlineCriticalCss(updated);
+      updated = deferStylesheets(updated);
+      updated = ensureStylesheetInHead(updated);
+    }
     if (updated !== html) {
       await fs.writeFile(file, updated, "utf8");
     }
@@ -225,10 +292,15 @@ async function main() {
     await Promise.all(appStaticRoutes.map(async (routePath) => {
       const targetPath = path.join(distDir, routePath.replace(/^\//, ""), "index.html");
       await fs.mkdir(path.dirname(targetPath), { recursive: true });
+      try {
+        await fs.access(targetPath);
+        return;
+      } catch {}
       const updated = injectMeta(appHtml, routePath);
       await fs.writeFile(targetPath, updated, "utf8");
     }));
   }
+
 }
 
 main().catch((err) => {
