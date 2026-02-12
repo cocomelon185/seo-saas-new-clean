@@ -5,7 +5,9 @@ import AppShell from "../components/AppShell.jsx";
 export default function RequireAuth({ children, role }) {
   const location = useLocation();
   const token = getAuthToken();
-  const isSsg = typeof window === "undefined" || (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.SSR);
+  // Only treat true server render as SSR fallback.
+  // In browser, import.meta.env.SSR can be misleading in some build modes.
+  const isSsg = typeof window === "undefined";
 
   if (isSsg) {
     return (
