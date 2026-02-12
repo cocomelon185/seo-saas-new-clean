@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import AppShell from "../components/AppShell.jsx";
 import { safeJson } from "../lib/safeJson.js";
 import { apiUrl } from "../lib/api.js";
+import ApexFunnelBars from "../components/charts/ApexFunnelBars.jsx";
+import ApexMetricBars from "../components/charts/ApexMetricBars.jsx";
 
 export default function AnalyticsPage() {
   const base = typeof window !== "undefined" ? window.location.origin : "https://rankypulse.com";
@@ -66,6 +68,16 @@ export default function AnalyticsPage() {
       </div>
       <div className="mt-6 rp-card p-6">
         <div className="rp-section-title">Funnel conversion</div>
+        <div className="mt-4">
+          <ApexFunnelBars
+            series={[
+              { label: "Signups", value: funnel.signup || 0 },
+              { label: "Audits run", value: funnel.audit_run || 0 },
+              { label: "Upgrade clicks", value: funnel.upgrade_clicked || 0 },
+              { label: "Subscribers", value: funnel.subscribed || 0 }
+            ]}
+          />
+        </div>
         <div className="mt-4 grid gap-4 md:grid-cols-3 text-sm text-[var(--rp-text-600)]">
           <div className="rounded-xl border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-4">
             <div className="text-xs text-[var(--rp-text-500)]">Signup → Audit</div>
@@ -78,6 +90,30 @@ export default function AnalyticsPage() {
           <div className="rounded-xl border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-4">
             <div className="text-xs text-[var(--rp-text-500)]">Upgrade → Subscribe</div>
             <div className="mt-2 text-lg font-semibold text-[var(--rp-text-900)]">{pct(funnel.subscribed, funnel.upgrade_clicked)}</div>
+          </div>
+        </div>
+        <div className="mt-4 rounded-xl border border-[var(--rp-border)] bg-white p-4">
+          <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--rp-text-500)]">
+            Conversion rates
+          </div>
+          <div className="mt-3">
+            <ApexMetricBars
+              height={180}
+              metrics={[
+                {
+                  label: "Signup → Audit",
+                  value: funnel.signup ? (funnel.audit_run / funnel.signup) * 100 : 0
+                },
+                {
+                  label: "Audit → Upgrade",
+                  value: funnel.audit_run ? (funnel.upgrade_clicked / funnel.audit_run) * 100 : 0
+                },
+                {
+                  label: "Upgrade → Subscribe",
+                  value: funnel.upgrade_clicked ? (funnel.subscribed / funnel.upgrade_clicked) * 100 : 0
+                }
+              ]}
+            />
           </div>
         </div>
       </div>

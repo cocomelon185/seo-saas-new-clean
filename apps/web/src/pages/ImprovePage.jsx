@@ -4,6 +4,8 @@ import { getAuthToken, getAuthUser } from "../lib/authClient.js";
 import { IconBolt, IconDoc, IconReport, IconCompass } from "../components/Icons.jsx";
 import { safeJson } from "../lib/safeJson.js";
 import { apiUrl } from "../lib/api.js";
+import ApexMetricBars from "../components/charts/ApexMetricBars.jsx";
+import ApexSemiDonutScore from "../components/charts/ApexSemiDonutScore.jsx";
 
 export default function ImprovePage() {
   const base = typeof window !== "undefined" ? window.location.origin : "https://rankypulse.com";
@@ -238,6 +240,31 @@ export default function ImprovePage() {
                 </div>
                 <div className="mt-2 h-1.5 w-full rounded-full bg-[var(--rp-gray-100)]">
                   <div className="rp-bar h-1.5 rounded-full bg-emerald-400" style={{ width: `${planScore}%` }} />
+                </div>
+              </div>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-[1.2fr_0.8fr]">
+              <div className="rp-card p-4">
+                <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--rp-text-500)]">
+                  Improvement signals
+                </div>
+                <div className="mt-3">
+                  <ApexMetricBars
+                    metrics={[
+                      { label: "Brief depth", value: Math.min(100, Math.round(briefLength / 8)) },
+                      { label: "Keyword coverage", value: Math.min(100, keywordCount * 8) },
+                      { label: "Quick-win volume", value: Math.min(100, quickWinCount * 10) }
+                    ]}
+                  />
+                </div>
+              </div>
+              <div className="rp-card p-4">
+                <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--rp-text-500)]">
+                  Plan readiness
+                </div>
+                <div className="mt-3">
+                  <ApexSemiDonutScore value={planScore} />
                 </div>
               </div>
             </div>

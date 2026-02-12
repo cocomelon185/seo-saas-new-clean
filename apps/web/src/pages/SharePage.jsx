@@ -5,6 +5,8 @@ import AuditImpactBanner from "../components/AuditImpactBanner.jsx";
 import { decodeSharePayload } from "../utils/shareCodec.js";
 import { IconReport } from "../components/Icons.jsx";
 import Seo from "../components/Seo.jsx";
+import ApexDonutScore from "../components/charts/ApexDonutScore.jsx";
+import ApexMetricBars from "../components/charts/ApexMetricBars.jsx";
 
 export default function SharePage() {
   const [data, setData] = useState(null);
@@ -31,6 +33,14 @@ export default function SharePage() {
     if (!data) return "Read-only shared audit.";
     return data.url ? `Read-only audit for ${data.url}` : "Read-only shared audit.";
   }, [data]);
+  const score = typeof data?.score === "number" ? data.score : 0;
+  const issueCount = Array.isArray(data?.issues) ? data.issues.length : 0;
+  const winCount = Array.isArray(data?.quick_wins) ? data.quick_wins.length : 0;
+  const shareMetrics = [
+    { label: "SEO health", value: score },
+    { label: "Quick wins", value: Math.min(100, winCount * 10) },
+    { label: "Issue control", value: Math.max(0, 100 - issueCount * 8) }
+  ];
 
   return (
     <>
@@ -57,7 +67,9 @@ export default function SharePage() {
                 </span>
                 Score
               </div>
-              <div className="mt-1 text-3xl font-semibold text-[var(--rp-text-900)]">{data.score ?? "N/A"}</div>
+              <div className="mt-2 flex items-center justify-center">
+                <ApexDonutScore value={score} size={150} />
+              </div>
               <div className="mt-2 rp-body-xsmall">Shared at: {data.shared_at}</div>
             </div>
 
@@ -86,6 +98,15 @@ export default function SharePage() {
                 <div className="mt-2 rp-body-xsmall text-[var(--rp-text-500)]">
                   Shareable audits highlight the top fixes first.
                 </div>
+              </div>
+            </div>
+
+            <div className="rp-card p-4">
+              <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--rp-text-500)]">
+                Shared report performance mix
+              </div>
+              <div className="mt-3">
+                <ApexMetricBars metrics={shareMetrics} />
               </div>
             </div>
 

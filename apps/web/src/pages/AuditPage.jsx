@@ -3666,7 +3666,24 @@ function AuditPageInner() {
               </button>
             </div>
             {competitorScores.length > 0 && (
-              <div className="mt-4 grid gap-3 md:grid-cols-2">
+              <div className="mt-4">
+                <div className="rounded-xl border border-[var(--rp-border)] bg-white p-4 shadow-sm">
+                  <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--rp-text-500)]">
+                    Score comparison chart
+                  </div>
+                  <div className="mt-3">
+                    <ApexMetricBars
+                      metrics={[{ url: result?.url, score: typeof scoreValue === "number" ? scoreValue : null, label: "You" }, ...competitorScores].map((row) => ({
+                        label: row.label || "Competitor",
+                        value: Math.max(0, Math.min(100, Number(row.score || 0)))
+                      }))}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+            {competitorScores.length > 0 && (
+              <div className="mt-3 grid gap-3 md:grid-cols-2">
                 {[{ url: result?.url, score: typeof scoreValue === "number" ? scoreValue : null, label: "You" }, ...competitorScores].map((row, idx) => {
                   const score = typeof row.score === "number" ? row.score : 0;
                   const grade = gradeFromScore(score);

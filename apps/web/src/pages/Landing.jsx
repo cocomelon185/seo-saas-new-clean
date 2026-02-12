@@ -7,6 +7,8 @@ import CookieConsent from "../components/CookieConsent.jsx";
 import Seo from "../components/Seo.jsx";
 import { clearAuthSession, getAuthDisplayName, getAuthToken, getAuthUser } from "../lib/authClient.js";
 import { getSignupAuditHref } from "../lib/auditGate.js";
+import ApexSparkline from "../components/charts/ApexSparkline.jsx";
+import ApexSemiDonutScore from "../components/charts/ApexSemiDonutScore.jsx";
 
 const HERO_POINTS = [
   "Prioritized fixes, not a wall of errors",
@@ -375,6 +377,20 @@ export default function Landing() {
               <div className="mt-1 text-xs text-[#7c68a8]">{item.note}</div>
             </div>
           ))}
+        </section>
+        <section className="mt-4 grid gap-4 md:grid-cols-[1.2fr_0.8fr]">
+          <div className="rounded-2xl border border-[#e4d7fe] bg-white p-4 shadow-[0_8px_20px_rgba(45,18,91,0.06)]">
+            <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[#7863aa]">7-audit trend preview</div>
+            <div className="mt-2 h-20">
+              <ApexSparkline values={[49, 53, 52, 58, 61, 64, 69]} height={80} />
+            </div>
+          </div>
+          <div className="rounded-2xl border border-[#e4d7fe] bg-white p-4 shadow-[0_8px_20px_rgba(45,18,91,0.06)]">
+            <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[#7863aa]">First-fix confidence</div>
+            <div className="mt-2">
+              <ApexSemiDonutScore value={78} height={125} />
+            </div>
+          </div>
         </section>
 
         <section id="how-it-works" className="mt-14">

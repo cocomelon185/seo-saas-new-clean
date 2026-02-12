@@ -7,6 +7,9 @@ import { safeJson } from "../lib/safeJson.js";
 import Seo from "../components/Seo.jsx";
 import { getAuthToken } from "../lib/authClient.js";
 import { getSignupAuditHref } from "../lib/auditGate.js";
+import { apiUrl } from "../lib/api.js";
+import ApexDonutScore from "../components/charts/ApexDonutScore.jsx";
+import ApexMetricBars from "../components/charts/ApexMetricBars.jsx";
 
 const IssuesPanel = lazy(() => import("../components/IssuesPanel.jsx"));
 
@@ -72,6 +75,12 @@ export default function SharedReportPage() {
   const issues = Array.isArray(report?.issues) ? report.issues : [];
   const quickWins = Array.isArray(report?.quick_wins) ? report.quick_wins : [];
   const brief = typeof report?.content_brief === "string" ? report.content_brief : null;
+  const reportScore = typeof report?.score === "number" ? report.score : 0;
+  const reportMetrics = [
+    { label: "SEO health", value: reportScore },
+    { label: "Quick wins", value: Math.min(100, quickWins.length * 10) },
+    { label: "Issue pressure", value: Math.max(0, 100 - issues.length * 8) }
+  ];
   const isReady = !loading && report && !error;
   const hasError = !loading && (error || !report);
 
@@ -194,8 +203,8 @@ export default function SharedReportPage() {
               <div className="grid gap-4 md:grid-cols-3">
                 <div className="rp-card p-5">
                   <div className="rp-section-title">SEO Score</div>
-                  <div className="mt-2 text-4xl font-semibold text-[var(--rp-text-900)]">
-                    {typeof report.score === "number" ? report.score : "-"}
+                  <div className="mt-2 flex justify-center">
+                    <ApexDonutScore value={reportScore} size={170} />
                   </div>
                 </div>
 
@@ -212,6 +221,12 @@ export default function SharedReportPage() {
                       <div className="text-[var(--rp-text-500)]">No quick wins available.</div>
                     )}
                   </div>
+                </div>
+              </div>
+              <div className="rp-card p-5">
+                <div className="rp-section-title">Performance mix</div>
+                <div className="mt-3">
+                  <ApexMetricBars metrics={reportMetrics} />
                 </div>
               </div>
 

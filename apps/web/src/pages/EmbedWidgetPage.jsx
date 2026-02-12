@@ -4,6 +4,8 @@ import { IconArrowRight, IconLink } from "../components/Icons.jsx";
 import { getAnonId } from "../utils/anonId.js";
 import { safeJson } from "../lib/safeJson.js";
 import { apiUrl } from "../lib/api.js";
+import ApexSemiDonutScore from "../components/charts/ApexSemiDonutScore.jsx";
+import ApexMetricBars from "../components/charts/ApexMetricBars.jsx";
 
 export default function EmbedWidgetPage() {
   const base = typeof window !== "undefined" ? window.location.origin : "https://rankypulse.com";
@@ -263,46 +265,30 @@ export default function EmbedWidgetPage() {
           <div className="mt-4 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-4">
             <div className="text-xs text-[var(--rp-text-500)]">Delivery success chart</div>
             <div className="mt-3 flex items-center gap-4">
-              {(() => {
-                const size = 90;
-                const stroke = 8;
-                const r = (size - stroke) / 2;
-                const circumference = 2 * Math.PI * r;
-                const pct = Math.max(0, Math.min(100, metrics.successRate || 0));
-                const offset = circumference * (1 - pct / 100);
-                return (
-                  <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-                    <circle
-                      cx={size / 2}
-                      cy={size / 2}
-                      r={r}
-                      fill="none"
-                      stroke="#e2e8f0"
-                      strokeWidth={stroke}
-                    />
-                    <circle
-                      cx={size / 2}
-                      cy={size / 2}
-                      r={r}
-                      fill="none"
-                      stroke="#22c55e"
-                      strokeWidth={stroke}
-                      strokeLinecap="round"
-                      strokeDasharray={circumference}
-                      strokeDashoffset={offset}
-                      transform={`rotate(-90 ${size / 2} ${size / 2})`}
-                    />
-                    <text x="50%" y="50%" dominantBaseline="middle" textAnchor="middle" fontSize="16" fontWeight="700" fill="#0f172a">
-                      {pct}%
-                    </text>
-                  </svg>
-                );
-              })()}
+              <div className="w-[120px]">
+                <ApexSemiDonutScore value={metrics.successRate || 0} height={120} color="#22c55e" />
+              </div>
               <div className="text-xs text-[var(--rp-text-600)] space-y-1">
                 <div>Sent: <span className="font-semibold text-[var(--rp-text-800)]">{metrics.sent}</span></div>
                 <div>Failed: <span className="font-semibold text-[var(--rp-text-800)]">{metrics.failed}</span></div>
                 <div>Total: <span className="font-semibold text-[var(--rp-text-800)]">{metrics.total}</span></div>
               </div>
+            </div>
+            <div className="mt-3">
+              <ApexMetricBars
+                height={165}
+                metrics={[
+                  { label: "Success rate", value: metrics.successRate || 0 },
+                  {
+                    label: "Failure rate",
+                    value: Math.max(0, 100 - Number(metrics.successRate || 0))
+                  },
+                  {
+                    label: "Delivery volume",
+                    value: Math.min(100, Math.round(((metrics.total || 0) / Math.max(1, (metrics.total || 0) + 10)) * 100))
+                  }
+                ]}
+              />
             </div>
           </div>
         </div>

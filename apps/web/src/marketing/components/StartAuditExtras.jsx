@@ -1,3 +1,6 @@
+import ApexSparkline from "../../components/charts/ApexSparkline.jsx";
+import ApexMetricBars from "../../components/charts/ApexMetricBars.jsx";
+
 export default function StartAuditExtras() {
   return (
     <>
@@ -24,25 +27,9 @@ export default function StartAuditExtras() {
             <span className="rounded-full border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-2 py-1">Last 7 audits</span>
           </div>
           <div className="mt-3 text-sm font-semibold text-[var(--rp-text-900)]">SEO score + visibility lift</div>
-          <svg viewBox="0 0 300 120" className="mt-4 h-28 w-full" aria-label="Score trend chart">
-            <defs>
-              <linearGradient id="trendLine" x1="0" y1="0" x2="1" y2="0">
-                <stop offset="0%" stopColor="#7C3AED" />
-                <stop offset="100%" stopColor="#22D3EE" />
-              </linearGradient>
-            </defs>
-            <polyline
-              fill="none"
-              stroke="url(#trendLine)"
-              strokeWidth="4"
-              points="10,90 50,80 90,86 130,60 170,68 210,48 250,52 290,36"
-            />
-            <polyline
-              fill="url(#trendLine)"
-              opacity="0.12"
-              points="10,110 10,90 50,80 90,86 130,60 170,68 210,48 250,52 290,36 290,110"
-            />
-          </svg>
+          <div className="mt-4 h-28 w-full">
+            <ApexSparkline values={[58, 61, 60, 67, 65, 72, 74, 79]} height={112} />
+          </div>
           <div className="mt-2 text-xs text-[var(--rp-text-500)]">
             Trend reflects improvements after fixing top-priority issues.
           </div>
@@ -90,6 +77,21 @@ export default function StartAuditExtras() {
               <div className={`mt-2 text-sm font-semibold ${item.tone}`}>{item.value}</div>
             </div>
           ))}
+        </div>
+        <div className="mt-4 rounded-xl border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-4">
+          <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--rp-text-500)]">
+            Impact distribution
+          </div>
+          <div className="mt-3">
+            <ApexMetricBars
+              height={170}
+              metrics={[
+                { label: "Core Web Vitals", value: 42 },
+                { label: "On-page gaps", value: 66 },
+                { label: "Internal linking", value: 84 }
+              ]}
+            />
+          </div>
         </div>
       </div>
     </>
