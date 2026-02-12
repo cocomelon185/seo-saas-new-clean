@@ -18,6 +18,7 @@
   "dependencies": {
     "@fortawesome/fontawesome-free": "^7.1.0",
     "@popperjs/core": "^2.11.8",
+    "apexcharts": "^5.3.6",
     "beasties": "^0.1.0",
     "chart.js": "^4.5.1",
     "clsx": "^2.1.1",
@@ -26,6 +27,7 @@
     "gulp": "^5.0.1",
     "gulp-append-prepend": "^1.0.9",
     "react": "^18.3.1",
+    "react-apexcharts": "^1.9.0",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.30.3",
     "tailwind-merge": "^3.4.0"

@@ -26,7 +26,7 @@ export default function MarketingShell({ title, subtitle, children }) {
     <div className="rp-page rp-premium-bg">
       <a href="#main" className="rp-skip">Skip to content</a>
       <header className="sticky top-0 z-50 border-b border-[var(--rp-border)] bg-white/95 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-5 py-4">
+        <div className="mx-auto flex w-full max-w-[1360px] items-center justify-between px-4 py-4 md:px-6 xl:px-8">
           <Link to="/" className="flex items-center gap-3 text-lg font-semibold text-[var(--rp-text-900)]">
             <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--rp-indigo-900)]">
               <img src={logo} alt="RankyPulse" className="h-6 w-6" />
@@ -81,7 +81,7 @@ export default function MarketingShell({ title, subtitle, children }) {
         </div>
       </header>
 
-      <main id="main" className="mx-auto w-full max-w-6xl px-5 py-10">
+      <main id="main" className="mx-auto w-full max-w-[1360px] px-4 py-10 md:px-6 xl:px-8">
         {(title || subtitle) && (
           <div className="mb-8">
             {title && <h1 className="text-3xl font-semibold text-[var(--rp-text-900)] md:text-4xl">{title}</h1>}
@@ -92,7 +92,7 @@ export default function MarketingShell({ title, subtitle, children }) {
       </main>
 
       <footer className="border-t border-[var(--rp-border)] py-10">
-        <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-5 text-sm text-[var(--rp-text-600)] md:flex-row md:items-center md:justify-between">
+        <div className="mx-auto flex w-full max-w-[1360px] flex-col gap-6 px-4 text-sm text-[var(--rp-text-600)] md:flex-row md:items-center md:justify-between md:px-6 xl:px-8">
           <span>© 2026 RankyPulse</span>
           <div className="flex flex-wrap gap-4">
             <Link to="/about" className="hover:text-[var(--rp-text-900)]">About</Link>

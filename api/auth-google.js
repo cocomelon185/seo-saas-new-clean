@@ -10,7 +10,8 @@ const {
   getUserByEmail,
   createUser,
   setVerified,
-  acceptInvite
+  acceptInvite,
+  updateUserRole
 } = store;
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key-12345";
@@ -19,6 +20,26 @@ const GOOGLE_CLIENT_ID =
   process.env.GSC_CLIENT_ID ||
   process.env.VITE_GOOGLE_CLIENT_ID ||
   "";
+
+function normalizeEmail(email) {
+  const lower = String(email || "").trim().toLowerCase();
+  const [localRaw, domainRaw] = lower.split("@");
+  const local = localRaw || "";
+  const domain = domainRaw || "";
+  if (!local || !domain) return lower;
+  if (domain === "gmail.com" || domain === "googlemail.com") {
+    const gmailLocal = local.split("+")[0].replace(/\./g, "");
+    return `${gmailLocal}@gmail.com`;
+  }
+  return `${local}@${domain}`;
+}
+
+const OWNER_EMAILS = new Set(
+  String(process.env.OWNER_EMAILS || process.env.ADMIN_EMAILS || "")
+    .split(",")
+    .map((v) => normalizeEmail(v))
+    .filter(Boolean)
+);
 
 async function verifyGoogleCredential(credential) {
   const url = `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(credential)}`;
@@ -71,6 +92,13 @@ export default async function googleAuth(req, res) {
 
     if (!user.verified) {
       setVerified(email);
+    }
+
+    const normalized = normalizeEmail(email);
+    const shouldBeAdmin = OWNER_EMAILS.has(normalized);
+    if (shouldBeAdmin && user.role !== "admin") {
+      updateUserRole(user.team_id, email, "admin");
+      user = getUserByEmail(email) || user;
     }
 
     const token = jwt.sign(

@@ -40,6 +40,15 @@ function getUserByEmail(email) {
   return db.prepare("SELECT * FROM users WHERE email = ? LIMIT 1").get(email);
 }
 
+function getUserByIdentity(identity) {
+  const db = getDb();
+  return db
+    .prepare(
+      "SELECT * FROM users WHERE lower(email) = lower(?) OR lower(name) = lower(?) OR lower(substr(email, 1, instr(email, '@') - 1)) = lower(?) LIMIT 1"
+    )
+    .get(identity, identity, identity);
+}
+
 function ensureUserColumns() {
   const db = getDb();
   try { db.prepare("ALTER TABLE users ADD COLUMN role TEXT").run(); } catch {}
@@ -253,6 +262,7 @@ function getInvite(token) {
 
 module.exports = {
   getUserByEmail,
+  getUserByIdentity,
   createUser,
   setVerified,
   updatePassword,

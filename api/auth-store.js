@@ -121,6 +121,27 @@ export async function getUserByEmail(email) {
   );
 }
 
+export async function getUserByIdentity(identity) {
+  return await qOne(
+    `
+    select
+      email,
+      name,
+      role,
+      team_id,
+      verified,
+      active,
+      password_hash
+    from users
+    where lower(email) = lower($1)
+       or lower(name) = lower($1)
+       or split_part(lower(email), '@', 1) = lower($1)
+    limit 1
+    `,
+    [identity]
+  );
+}
+
 export async function verifyUserPassword(email, passwordPlain) {
   const user = await getUserByEmail(email);
   return user || null;
@@ -246,6 +267,7 @@ export default {
   setVerified,
   createUser,
   getUserByEmail,
+  getUserByIdentity,
   verifyUserPassword,
   acceptInvite
 };

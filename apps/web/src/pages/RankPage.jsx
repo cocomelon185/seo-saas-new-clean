@@ -11,6 +11,7 @@ import { listRankChecks } from "../utils/rankHistory.js";
 import { getAuthToken, getAuthUser } from "../lib/authClient.js";
 import { safeJson } from "../lib/safeJson.js";
 import { apiUrl } from "../lib/api.js";
+import ApexSparkline from "../components/charts/ApexSparkline.jsx";
 
 const PricingModal = lazy(() => import("../components/PricingModal.jsx"));
 const RankHistoryPanel = lazy(() => import("../components/RankHistoryPanel.jsx"));
@@ -176,19 +177,12 @@ export default function RankPage() {
     }).slice(0, 12);
   }, [safeKeyword, safeDomain]);
 
-  const sparkline = useMemo(() => {
-    const points = history
+  const trendValues = useMemo(() => {
+    return history
       .map((x) => Number(x.rank))
       .filter((x) => Number.isFinite(x))
       .slice(0, 8)
       .reverse();
-    if (!points.length) return "";
-    const max = Math.max(...points);
-    const min = Math.min(...points);
-    const range = Math.max(1, max - min);
-    const xs = points.map((_, i) => 10 + i * 18);
-    const ys = points.map((v) => 50 - ((v - min) / range) * 30);
-    return xs.map((x, i) => `${x},${ys[i]}`).join(" ");
   }, [history]);
 
   const bestRank = useMemo(() => {
@@ -438,21 +432,8 @@ export default function RankPage() {
                   Trend
                 </div>
                 <div className="rp-chart-card mt-3 h-14 rounded-xl border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-2">
-                  {sparkline ? (
-                    <svg viewBox="0 0 150 60" className="h-full w-full">
-                      <polyline
-                        fill="none"
-                        stroke="url(#rankTrend)"
-                        strokeWidth="3"
-                        points={sparkline}
-                      />
-                      <defs>
-                        <linearGradient id="rankTrend" x1="0" y1="0" x2="1" y2="0">
-                          <stop offset="0%" stopColor="#22d3ee" />
-                          <stop offset="100%" stopColor="#34d399" />
-                        </linearGradient>
-                      </defs>
-                    </svg>
+                  {trendValues.length ? (
+                    <ApexSparkline values={trendValues} />
                   ) : (
                     <div className="text-xs text-[var(--rp-text-500)]">No trend data yet.</div>
                   )}

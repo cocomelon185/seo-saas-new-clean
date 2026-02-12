@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import AppShell from "../components/AppShell.jsx";
 import { setAuthSession } from "../lib/authClient.js";
 import { track } from "../lib/eventsClient.js";
@@ -34,6 +34,7 @@ function getCaughtErrorMessage(err, fallback) {
 
 export default function SignUpPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const base = typeof window !== "undefined" ? window.location.origin : "https://rankypulse.com";
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -46,6 +47,7 @@ export default function SignUpPage() {
   const [googleClientId, setGoogleClientId] = useState(() => import.meta.env.VITE_GOOGLE_CLIENT_ID || "");
   const [provider, setProvider] = useState("");
   const [planParam, setPlanParam] = useState("");
+  const [nextPath, setNextPath] = useState("/audit");
   const googlePromptedRef = useRef(false);
 
   async function submit(e) {
@@ -90,7 +92,7 @@ export default function SignUpPage() {
       if (inviteToken) {
         navigate("/auth/invite-accepted");
       } else {
-        navigate("/auth/verify");
+        navigate(nextPath || "/audit");
       }
     } catch (e2) {
       setError(getCaughtErrorMessage(e2, "Sign up failed"));
@@ -139,7 +141,7 @@ export default function SignUpPage() {
         });
         navigate("/auth/invite-accepted");
       } else {
-        navigate("/audit");
+        navigate(nextPath || "/audit");
       }
     } catch (e2) {
       setError(getCaughtErrorMessage(e2, "Google sign up failed"));
@@ -149,17 +151,19 @@ export default function SignUpPage() {
 
   useEffect(() => {
     try {
-      const params = new URLSearchParams(window.location.search || "");
+      const params = new URLSearchParams(location.search || "");
       const invite = params.get("invite") || "";
       const emailParam = params.get("email") || "";
       const providerParam = params.get("provider") || "";
       const plan = params.get("plan") || "";
+      const next = params.get("next") || "";
       if (invite) setInviteToken(invite);
       if (emailParam) setEmail(emailParam);
       if (providerParam) setProvider(providerParam);
       if (plan) setPlanParam(plan);
+      if (next && next.startsWith("/")) setNextPath(next);
     } catch {}
-  }, []);
+  }, [location.search]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;

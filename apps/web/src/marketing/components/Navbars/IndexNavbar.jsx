@@ -23,7 +23,7 @@ export default function IndexNavbar() {
 
   return (
     <nav className="top-0 fixed z-50 w-full border-b border-white/10 bg-[#120a22]/90 backdrop-blur">
-      <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-3">
+      <div className="mx-auto flex w-full max-w-[1360px] items-center justify-between px-4 py-3 md:px-6 xl:px-8">
         <div className="flex items-center gap-3">
           <Link to="/" className="text-sm font-semibold uppercase tracking-[0.2em] text-white">
             RankyPulse
@@ -68,7 +68,7 @@ export default function IndexNavbar() {
                 </Link>
                 <Link
                   to="/auth/signup"
-                  className="rounded-full border border-violet-400/40 bg-violet-500/20 px-4 py-2 text-sm font-semibold text-white hover:border-violet-300"
+                  className="rounded-full border border-violet-500 bg-violet-600 px-4 py-2 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(109,40,217,0.28)] hover:bg-violet-500"
                 >
                   Create account
                 </Link>

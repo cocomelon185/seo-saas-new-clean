@@ -8,6 +8,7 @@ export default function ResetPasswordPage() {
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState("idle");
   const [token, setToken] = useState("");
+  const [mode, setMode] = useState("password");
   const [newPassword, setNewPassword] = useState("");
   const [error, setError] = useState("");
 
@@ -15,7 +16,9 @@ export default function ResetPasswordPage() {
     try {
       const params = new URLSearchParams(window.location.search || "");
       const t = params.get("token");
+      const m = params.get("mode");
       if (t) setToken(t);
+      if (m === "username") setMode("username");
     } catch {}
   }, []);
 
@@ -25,7 +28,8 @@ export default function ResetPasswordPage() {
     setError("");
     try {
       if (!token) {
-        const res = await fetch(apiUrl("/api/reset-password"), {
+        const endpoint = mode === "username" ? "/api/forgot-username" : "/api/reset-password";
+        const res = await fetch(apiUrl(endpoint), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email })
@@ -56,8 +60,8 @@ export default function ResetPasswordPage() {
 
   return (
     <AppShell
-      title="Reset password"
-      subtitle="We’ll send a reset link to your email."
+      title={mode === "username" ? "Recover username" : "Reset password"}
+      subtitle={mode === "username" ? "We’ll send your sign-in username to your email." : "We’ll send a reset link to your email."}
       seoTitle="Reset Password | RankyPulse"
       seoDescription="Reset your RankyPulse password."
       seoCanonical={`${base}/auth/reset`}
@@ -66,7 +70,7 @@ export default function ResetPasswordPage() {
       <div className="mx-auto max-w-md rp-auth-shell">
         <form onSubmit={submit} className="rp-card rp-auth-card p-6">
           <div className="rp-auth-title text-sm font-semibold text-[var(--rp-text-700)]">
-            {token ? "Choose a new password" : "Reset password"}
+            {token ? "Choose a new password" : mode === "username" ? "Recover username" : "Reset password"}
           </div>
           {!token ? (
             <label className="block text-xs text-[var(--rp-text-500)]">
@@ -123,11 +127,16 @@ export default function ResetPasswordPage() {
               ))
             }
           >
-            {status === "loading" ? "Submitting..." : token ? "Reset password" : "Send reset link"}
+            {status === "loading" ? "Submitting..." : token ? "Reset password" : mode === "username" ? "Send username" : "Send reset link"}
           </button>
-          {status === "done" && !token && (
+          {status === "done" && !token && mode !== "username" && (
             <div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-700">
               Reset email sent. Check your inbox.
+            </div>
+          )}
+          {status === "done" && !token && mode === "username" && (
+            <div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-700">
+              Username email sent. Check your inbox.
             </div>
           )}
           {status === "done" && token && (

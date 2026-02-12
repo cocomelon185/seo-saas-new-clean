@@ -7,6 +7,7 @@ const PricingPage = React.lazy(() => import("../pages/PricingPage.jsx"));
 const AboutPage = React.lazy(() => import("../pages/AboutPage.jsx"));
 const ChangelogPage = React.lazy(() => import("../pages/ChangelogPage.jsx"));
 const SharePage = React.lazy(() => import("../pages/SharePage.jsx"));
+const SampleReportPage = React.lazy(() => import("../pages/SampleReportPage.jsx"));
 const SaasLandingAuditPage = React.lazy(() => import("../pages/SaasLandingAuditPage.jsx"));
 const BlogAuditChecklistPage = React.lazy(() => import("../pages/BlogAuditChecklistPage.jsx"));
 const AgencyAuditWorkflowPage = React.lazy(() => import("../pages/AgencyAuditWorkflowPage.jsx"));
@@ -33,6 +34,7 @@ const routes = [
   { path: "/about", element: suspenseWrap(<AboutPage />) },
   { path: "/changelog", element: suspenseWrap(<ChangelogPage />) },
   { path: "/shared", element: suspenseWrap(<SharePage />) },
+  { path: "/sample-report", element: suspenseWrap(<SampleReportPage />) },
   { path: "/audit", element: suspenseWrap(<AuditPage />) },
   { path: "/auth/signin", element: suspenseWrap(<SignInPage />) },
   { path: "/auth/signup", element: suspenseWrap(<SignUpPage />) },

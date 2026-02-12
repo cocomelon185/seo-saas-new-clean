@@ -5,6 +5,8 @@ import AppShell from "../components/AppShell.jsx";
 import { IconPlay, IconArrowRight } from "../components/Icons.jsx";
 import { safeJson } from "../lib/safeJson.js";
 import Seo from "../components/Seo.jsx";
+import { getAuthToken } from "../lib/authClient.js";
+import { getSignupAuditHref } from "../lib/auditGate.js";
 
 const IssuesPanel = lazy(() => import("../components/IssuesPanel.jsx"));
 
@@ -15,6 +17,7 @@ export default function SharedReportPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const base = typeof window !== "undefined" ? window.location.origin : "https://rankypulse.com";
+  const authed = Boolean(getAuthToken());
 
   useEffect(() => {
     if (reportId) {
@@ -77,7 +80,7 @@ export default function SharedReportPage() {
       scope: "",
       meta: { reportId, cta: "run_audit" }
     });
-    window.location.href = "/audit";
+    window.location.href = authed ? "/audit" : getSignupAuditHref();
   };
 
   const handleUpgradeClick = () => {

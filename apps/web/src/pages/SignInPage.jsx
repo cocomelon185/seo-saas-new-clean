@@ -35,7 +35,7 @@ export default function SignInPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const base = typeof window !== "undefined" ? window.location.origin : "https://rankypulse.com";
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [status, setStatus] = useState("idle");
   const [error, setError] = useState("");
@@ -101,10 +101,11 @@ export default function SignInPage() {
     setStatus("loading");
     setError("");
     try {
+      const loginId = String(username || "").trim();
       const res = await fetch(apiUrl("/api/signin"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password })
+        body: JSON.stringify({ identity: loginId, email: loginId, username: loginId, password })
       });
       const data = await safeJson(res);
       if (!res.ok || !data?.token) {
@@ -256,14 +257,14 @@ export default function SignInPage() {
           </div>
 
           <form className="mt-4 space-y-3" onSubmit={submit}>
-            <label className="sr-only" htmlFor="signin-email">Email</label>
+            <label className="sr-only" htmlFor="signin-username">Username or email</label>
             <input
-              id="signin-email"
+              id="signin-username"
               className="w-full rounded-xl border border-[var(--rp-gray-200)] bg-white px-3 py-2 text-[var(--rp-text-900)] outline-none placeholder:text-[var(--rp-text-400)]"
-              placeholder="Email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              autoComplete="email"
+              placeholder="Username or email"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              autoComplete="username"
             />
             <label className="sr-only" htmlFor="signin-password">Password</label>
             <input
@@ -291,7 +292,7 @@ export default function SignInPage() {
             </button>
           </form>
 
-          <div className="mt-4 flex items-center justify-between text-sm">
+          <div className="mt-4 flex items-center justify-start gap-8 text-sm">
             <Link
               className="rounded-xl border border-[var(--rp-gray-200)] bg-[var(--rp-gray-50)] px-3 py-2 text-xs font-semibold text-[var(--rp-text-700)] hover:border-[var(--rp-text-400)] hover:text-[var(--rp-text-900)]"
               to="/auth/reset"
@@ -299,10 +300,10 @@ export default function SignInPage() {
               Forgot password?
             </Link>
             <Link
-              className="rounded-xl border border-[var(--rp-indigo-700)] bg-[var(--rp-indigo-700)] px-3 py-2 text-xs font-semibold text-white hover:bg-[var(--rp-indigo-800)]"
-              to="/auth/signup"
+              className="rounded-xl border border-[var(--rp-gray-200)] bg-[var(--rp-gray-50)] px-3 py-2 text-xs font-semibold text-[var(--rp-text-700)] hover:border-[var(--rp-text-400)] hover:text-[var(--rp-text-900)]"
+              to="/auth/reset?mode=username"
             >
-              Create account
+              Forgot username?
             </Link>
           </div>
         </div>

@@ -265,7 +265,7 @@ export default function AppShell({ title, subtitle, seoTitle, seoDescription, se
                     </button>
                   </>
                 ) : (
-                  <Link to="/auth/signup" className="rp-topbar-pill hidden rounded-full border border-[var(--rp-indigo-700)] bg-[var(--rp-indigo-700)] px-3 py-2 text-xs font-semibold text-white md:inline-flex">
+                  <Link to="/auth/signup" className="hidden rounded-full border border-[var(--rp-indigo-700)] bg-[var(--rp-indigo-700)] px-3 py-2 text-xs font-semibold text-white shadow-[0_10px_20px_rgba(109,40,217,0.25)] hover:bg-[var(--rp-indigo-800)] md:inline-flex">
                     Create account
                   </Link>
                 )}

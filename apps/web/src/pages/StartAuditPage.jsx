@@ -2,6 +2,7 @@ import StartAuditExtras from "../marketing/components/StartAuditExtras.jsx";
 import { IconPlay } from "../components/Icons.jsx";
 import Seo from "../components/Seo.jsx";
 import { useNavigate } from "react-router-dom";
+import { getSignupAuditHref } from "../lib/auditGate.js";
 
 export default function StartAuditPage() {
   const navigate = useNavigate();
@@ -12,7 +13,7 @@ export default function StartAuditPage() {
     const fd = new FormData(form);
     const url = String(fd.get("url") || "").trim();
     if (!url) return;
-    navigate(`/audit?url=${encodeURIComponent(url)}`);
+    navigate(getSignupAuditHref(url));
   };
   return (
     <main className="rp-page rp-premium-bg flex items-center justify-center px-4" role="main">
@@ -54,19 +55,19 @@ export default function StartAuditPage() {
             </button>
 
             <p className="text-xs text-[var(--rp-text-500)] text-center">
-              No signup required
+              Create a free account to run your audit
             </p>
             <p className="text-xs text-center">
-              <a className="text-[var(--rp-indigo-700)] hover:underline" href="/shared">
+              <a className="text-[var(--rp-indigo-700)] hover:underline" href="/sample-report">
                 View a sample results report
               </a>
             </p>
             <p className="text-xs text-center">
-              <a className="text-[var(--rp-text-500)] hover:text-[var(--rp-text-700)] hover:underline" href="/shared">
+              <a className="text-[var(--rp-text-500)] hover:text-[var(--rp-text-700)] hover:underline" href="/sample-report">
                 Results
               </a>
               <span className="text-[var(--rp-text-400)]"> · </span>
-              <a className="text-[var(--rp-text-500)] hover:text-[var(--rp-text-700)] hover:underline" href="/audit">
+              <a className="text-[var(--rp-text-500)] hover:text-[var(--rp-text-700)] hover:underline" href="/auth/signup?next=%2Faudit">
                 Go to audit
               </a>
             </p>

@@ -71,7 +71,7 @@ export default function BlogAuditChecklistPage() {
           </p>
           <div className="mt-4 flex flex-wrap gap-3">
             <Link
-              to="/start"
+              to="/auth/signup?next=%2Fstart"
               className="rp-btn-primary text-sm"
             >
               <IconArrowRight size={14} />

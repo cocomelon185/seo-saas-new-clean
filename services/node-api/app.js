@@ -151,8 +151,39 @@ CREATE INDEX IF NOT EXISTS idx_audits_user_created ON audits(user_id, created_at
 
 const JWT_SECRET = process.env.JWT_SECRET || "dev_secret_change_me";
 
+function normalizeEmail(email) {
+  const lower = String(email || "").trim().toLowerCase();
+  const [localRaw, domainRaw] = lower.split("@");
+  const local = localRaw || "";
+  const domain = domainRaw || "";
+  if (!local || !domain) return lower;
+  if (domain === "gmail.com" || domain === "googlemail.com") {
+    return `${local.split("+")[0].replace(/\./g, "")}@gmail.com`;
+  }
+  return `${local}@${domain}`;
+}
+
+const OWNER_EMAILS = new Set(
+  String(process.env.OWNER_EMAILS || process.env.ADMIN_EMAILS || "")
+    .split(",")
+    .map((value) => normalizeEmail(value))
+    .filter(Boolean)
+);
+
+function resolveUserRole(email) {
+  return OWNER_EMAILS.has(normalizeEmail(email)) ? "admin" : "member";
+}
+
+function serializeUser(user) {
+  return { id: user.id, email: user.email, plan: user.plan, role: resolveUserRole(user.email) };
+}
+
 function signToken(user) {
-  return jwt.sign({ uid: user.id, email: user.email, plan: user.plan }, JWT_SECRET, { expiresIn: "30d" });
+  return jwt.sign(
+    { uid: user.id, email: user.email, plan: user.plan, role: resolveUserRole(user.email) },
+    JWT_SECRET,
+    { expiresIn: "30d" }
+  );
 }
 
 function requireAuth(req, res, next) {
@@ -182,6 +213,14 @@ function getPlanFromRequest(req) {
 
 function getUserByEmail(email) {
   return db.prepare('SELECT id, email, hashed_password, "plan", created_at FROM users WHERE email = ?').get(email);
+}
+
+function getUserByIdentity(identity) {
+  return db
+    .prepare(
+      'SELECT id, email, hashed_password, "plan", created_at FROM users WHERE lower(email) = lower(?) OR lower(substr(email, 1, instr(email, "@") - 1)) = lower(?) LIMIT 1'
+    )
+    .get(identity, identity);
 }
 
 function getUserById(id) {
@@ -388,43 +427,51 @@ app.post("/api/guest-signin", (req, res) => {
   }
 
   const token = signToken(user);
-  res.json({ ok: true, token, user: { id: user.id, email: user.email, plan: user.plan } });
+  res.json({ ok: true, token, user: serializeUser(user) });
 });
 
 app.post("/api/signin", (req, res) => {
-  const email = String(req.body?.email || "").trim().toLowerCase();
+  const loginId = String(req.body?.identity || req.body?.email || req.body?.username || "").trim().toLowerCase();
   const password = String(req.body?.password || "");
 
-  if (!email || !password) return jsonError(res, 400, "INVALID_LOGIN", "Email and password required.");
+  if (!loginId || !password) return jsonError(res, 400, "INVALID_LOGIN", "Username/email and password required.");
 
   const guestEmail = String(process.env.GUEST_EMAIL || "").trim().toLowerCase();
   const guestPassword = String(process.env.GUEST_PASSWORD || "");
-  if (guestEmail && guestPassword && email === guestEmail && password === guestPassword) {
-    let user = getUserByEmail(email);
+  if (guestEmail && guestPassword && (loginId === guestEmail || loginId === guestEmail.split("@")[0]) && password === guestPassword) {
+    let user = getUserByEmail(guestEmail);
     if (!user) {
       const hashed_password = bcrypt.hashSync(password, 10);
       const created_at = new Date().toISOString();
       const info = db.prepare('INSERT INTO users (email, hashed_password, "plan", created_at) VALUES (?, ?, ?, ?)').run(
-        email, hashed_password, "free", created_at
+        guestEmail, hashed_password, "free", created_at
       );
       user = getUserById(info.lastInsertRowid);
     } else if (!bcrypt.compareSync(password, user.hashed_password)) {
       const hashed_password = bcrypt.hashSync(password, 10);
-      db.prepare('UPDATE users SET hashed_password = ? WHERE email = ?').run(hashed_password, email);
-      user = getUserByEmail(email);
+      db.prepare('UPDATE users SET hashed_password = ? WHERE email = ?').run(hashed_password, guestEmail);
+      user = getUserByEmail(guestEmail);
     }
     const token = signToken(user);
-    return res.json({ ok: true, token, user: { id: user.id, email: user.email, plan: user.plan } });
+    return res.json({ ok: true, token, user: serializeUser(user) });
   }
 
-  const user = getUserByEmail(email);
-  if (!user) return jsonError(res, 401, "INVALID_LOGIN", "Invalid email or password.");
+  const user = getUserByIdentity(loginId);
+  if (!user) return jsonError(res, 401, "INVALID_LOGIN", "Invalid username/email or password.");
 
   const ok = bcrypt.compareSync(password, user.hashed_password);
-  if (!ok) return jsonError(res, 401, "INVALID_LOGIN", "Invalid email or password.");
+  if (!ok) return jsonError(res, 401, "INVALID_LOGIN", "Invalid username/email or password.");
 
   const token = signToken(user);
-  res.json({ ok: true, token, user: { id: user.id, email: user.email, plan: user.plan } });
+  res.json({ ok: true, token, user: serializeUser(user) });
+});
+
+app.post("/api/forgot-username", (req, res) => {
+  const email = String(req.body?.email || "").trim().toLowerCase();
+  if (!email) return jsonError(res, 400, "BAD_EMAIL", "Email required.");
+  // Privacy-safe response by design.
+  // If configured with email provider, this route can dispatch a username reminder email.
+  return res.json({ ok: true });
 });
 
 app.post("/api/signup", (req, res) => {
@@ -446,7 +493,7 @@ app.post("/api/signup", (req, res) => {
   const user = getUserById(info.lastInsertRowid);
 
   const token = signToken(user);
-  res.json({ ok: true, token, user: { id: user.id, email: user.email, plan: user.plan } });
+  res.json({ ok: true, token, user: serializeUser(user) });
 });
 
 app.post("/api/auth/google", async (req, res) => {
@@ -485,7 +532,7 @@ app.post("/api/auth/google", async (req, res) => {
       user = getUserById(info.lastInsertRowid);
     }
     const token = signToken(user);
-    return res.json({ ok: true, token, user: { id: user.id, email: user.email, plan: user.plan } });
+    return res.json({ ok: true, token, user: serializeUser(user) });
   } catch (e) {
     return jsonError(res, 500, "GOOGLE_AUTH_FAILED", "Google auth failed.");
   }
@@ -521,7 +568,7 @@ app.post("/api/auth/register", (req, res) => {
   const user = getUserById(info.lastInsertRowid);
 
   const token = signToken(user);
-  res.json({ ok: true, token, user: { id: user.id, email: user.email, plan: user.plan } });
+  res.json({ ok: true, token, user: serializeUser(user) });
 });
 
 app.post("/api/auth/login", (req, res) => {
@@ -535,7 +582,7 @@ app.post("/api/auth/login", (req, res) => {
   if (!ok) return jsonError(res, 401, "INVALID_LOGIN", "Invalid email or password.");
 
   const token = signToken(user);
-  res.json({ ok: true, token, user: { id: user.id, email: user.email, plan: user.plan } });
+  res.json({ ok: true, token, user: serializeUser(user) });
 });
 
 // ===== Audits history (F2) =====

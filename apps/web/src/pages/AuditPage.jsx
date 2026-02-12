@@ -10,6 +10,8 @@ import { track } from "../lib/eventsClient.js";
 import { getAuthToken, getAuthUser } from "../lib/authClient.js";
 import { safeJson } from "../lib/safeJson.js";
 import { apiUrl } from "../lib/api.js";
+import ApexMetricBars from "../components/charts/ApexMetricBars.jsx";
+import ApexDonutScore from "../components/charts/ApexDonutScore.jsx";
 import {
   IconLink,
   IconCheck,
@@ -2210,6 +2212,22 @@ function AuditPageInner() {
                     </div>
                   ))}
                 </div>
+                {overviewMetrics ? (
+                  <div className="mt-4 rounded-xl border border-[var(--rp-border)] bg-white p-4 shadow-sm">
+                    <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--rp-text-500)]">
+                      Performance mix
+                    </div>
+                    <div className="mt-3">
+                      <ApexMetricBars
+                        metrics={[
+                          { label: "Visibility", value: overviewMetrics.visibility },
+                          { label: "CTR clarity", value: overviewMetrics.ctrClarity },
+                          { label: "Content depth", value: overviewMetrics.contentDepth }
+                        ]}
+                      />
+                    </div>
+                  </div>
+                ) : null}
               </div>
             </div>
             <div data-testid="key-issues">
@@ -2242,9 +2260,13 @@ function AuditPageInner() {
               <div className="mt-4 grid gap-4 md:grid-cols-3">
                 <div className="rp-metric-tile rounded-xl border border-[var(--rp-border)] bg-white p-4 shadow-sm">
                   <div className="text-xs text-[var(--rp-text-500)]">SEO score</div>
-                  <div className="mt-1 text-2xl font-semibold text-[var(--rp-text-900)] tabular-nums">
-                    {typeof scoreValue === "number" ? scoreValue : "-"}
-                  </div>
+                  {typeof scoreValue === "number" ? (
+                    <div className="mt-2 flex items-center justify-center">
+                      <ApexDonutScore value={scoreValue} size={150} />
+                    </div>
+                  ) : (
+                    <div className="mt-1 text-2xl font-semibold text-[var(--rp-text-900)] tabular-nums">-</div>
+                  )}
                   <div className="mt-1 text-xs text-[var(--rp-text-500)]">
                     {typeof scoreValue === "number" ? scoreLabel(scoreValue) : "Run an audit to calculate score."}
                   </div>

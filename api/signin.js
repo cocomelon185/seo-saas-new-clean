@@ -1,6 +1,6 @@
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
-import { getUserByEmail } from "./auth-store.js";
+import { getUserByIdentity } from "./auth-store.js";
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key-12345";
 
@@ -12,13 +12,14 @@ export default async function signIn(req, res) {
   if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
-  const { email, password } = req.body || {};
-  if (!email || !password) {
-    return res.status(400).json({ error: "Email and password required" });
+  const loginId = String(req.body?.identity || req.body?.email || req.body?.username || "").trim().toLowerCase();
+  const { password } = req.body || {};
+  if (!loginId || !password) {
+    return res.status(400).json({ error: "Username/email and password required" });
   }
 
   try {
-    const user = await getUserByEmail(email);
+    const user = await getUserByIdentity(loginId);
     if (!user) return res.status(401).json({ error: "Invalid credentials" });
     if (user.active === 0) return res.status(403).json({ error: "Account inactive" });
     if (!user.password_hash) {
@@ -28,7 +29,7 @@ export default async function signIn(req, res) {
     if (!ok) return res.status(401).json({ error: "Invalid credentials" });
     if (!user.verified) return res.status(403).json({ error: "Email not verified" });
     const token = jwt.sign(
-      { email, name: user.name, verified: true, role: user.role, team_id: user.team_id },
+      { email: user.email, name: user.name, verified: true, role: user.role, team_id: user.team_id },
       JWT_SECRET,
       { expiresIn: "30d" }
     );
@@ -36,7 +37,7 @@ export default async function signIn(req, res) {
       success: true,
       token,
       user: {
-        email,
+        email: user.email,
         name: user.name,
         verified: true,
         role: user.role,
@@ -46,7 +47,7 @@ export default async function signIn(req, res) {
     });
   } catch (error) {
     const detail = String(error?.message || error);
-    console.error("signin_error", detail, { email });
+    console.error("signin_error", detail, { loginId });
     return res.status(500).json({ error: "Failed to sign in", detail });
   }
 }

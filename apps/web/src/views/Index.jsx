@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 export default function Index() {
   return (
     <div className="min-h-screen bg-white text-slate-900">
-      <div className="max-w-5xl mx-auto px-6 py-10">
+      <div className="mx-auto w-full max-w-[1360px] px-4 py-10 md:px-6 xl:px-8">
         <div className="flex items-center justify-between">
           <div className="text-xl font-bold">RankyPulse</div>
           <div className="flex gap-4 text-sm">
