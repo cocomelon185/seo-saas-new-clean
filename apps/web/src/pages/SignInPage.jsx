@@ -189,6 +189,7 @@ export default function SignInPage() {
             handleGoogleCredential(response.credential);
           }
         },
+        ux_mode: "popup",
         auto_select: false
       });
       target.innerHTML = "";
@@ -292,7 +293,7 @@ export default function SignInPage() {
             </button>
           </form>
 
-          <div className="mt-4 flex items-center justify-start gap-8 text-sm">
+          <div className="mt-4 flex w-full items-center justify-between gap-3 text-sm">
             <Link
               className="rounded-xl border border-[var(--rp-gray-200)] bg-[var(--rp-gray-50)] px-3 py-2 text-xs font-semibold text-[var(--rp-text-700)] hover:border-[var(--rp-text-400)] hover:text-[var(--rp-text-900)]"
               to="/auth/reset"

@@ -200,7 +200,9 @@ export default function SignUpPage() {
           if (response?.credential) {
             handleGoogleCredential(response.credential);
           }
-        }
+        },
+        ux_mode: "popup",
+        auto_select: false
       });
       target.innerHTML = "";
       window.google.accounts.id.renderButton(target, {

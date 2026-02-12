@@ -74,7 +74,7 @@ app.use(
       preload: true,
     },
     referrerPolicy: { policy: "strict-origin-when-cross-origin" },
-    crossOriginOpenerPolicy: { policy: "same-origin" },
+    crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" },
   })
 );
 
