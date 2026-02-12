@@ -5,6 +5,7 @@ import RequireAuth from "./RequireAuth.jsx";
 const AuditPage = React.lazy(() => import("../pages/AuditPage.jsx"));
 const RankPage = React.lazy(() => import("../pages/RankPage.jsx"));
 const ImprovePage = React.lazy(() => import("../pages/ImprovePage.jsx"));
+const PricingPage = React.lazy(() => import("../pages/PricingPage.jsx"));
 const UpgradePage = React.lazy(() => import("../pages/UpgradePage.jsx"));
 const UpgradeSuccessPage = React.lazy(() => import("../pages/UpgradeSuccessPage.jsx"));
 const PaymentFailurePage = React.lazy(() => import("../pages/PaymentFailurePage.jsx"));
@@ -42,6 +43,7 @@ const routes = [
   { path: "/audit", element: suspenseWrap(<AuditPage />) },
   { path: "/rank", element: <RequireAuth role="member">{suspenseWrap(<RankPage />)}</RequireAuth> },
   { path: "/improve", element: <RequireAuth role="member">{suspenseWrap(<ImprovePage />)}</RequireAuth> },
+  { path: "/pricing", element: suspenseWrap(<PricingPage />) },
   { path: "/upgrade", element: suspenseWrap(<UpgradePage />) },
   { path: "/upgrade/success", element: suspenseWrap(<UpgradeSuccessPage />) },
   { path: "/upgrade/failure", element: suspenseWrap(<PaymentFailurePage />) },

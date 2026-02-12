@@ -446,7 +446,6 @@ export default function AccountSettingsPage() {
             </p>
             <div className="mt-5 flex flex-col gap-3">
               <Link to="/account/deleted" className="rp-btn-secondary"><IconTrash size={14} />Delete account</Link>
-              <Link to="/audit" className="rp-btn-primary"><IconArrowRight size={14} />Run audit</Link>
             </div>
           </div>
         </div>
