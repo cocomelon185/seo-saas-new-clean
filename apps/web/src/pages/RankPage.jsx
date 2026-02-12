@@ -295,7 +295,7 @@ export default function RankPage() {
         </Suspense>
       ) : null}
 
-      <div className="mb-4 grid gap-4 md:grid-cols-3">
+      <div className="mb-4 grid gap-3 md:gap-4 md:grid-cols-3">
         {[
           {
             label: "Tracked keywords",
@@ -318,8 +318,8 @@ export default function RankPage() {
           }
         ].map((item) => (
           <div key={item.label} className="rp-kpi-card rounded-2xl border border-[var(--rp-border)] bg-white p-4 shadow-sm">
-            <div className="text-xs text-[var(--rp-text-500)]">{item.label}</div>
-            <div className={`mt-2 text-2xl font-semibold ${item.tone}`}>{item.value}</div>
+            <div className="text-xs font-medium text-[var(--rp-text-600)]">{item.label}</div>
+            <div className={`mt-2 text-2xl font-semibold tracking-tight ${item.tone}`}>{item.value}</div>
           </div>
         ))}
       </div>
@@ -354,9 +354,11 @@ export default function RankPage() {
           The Rank Tracker is disabled for your team. Ask an admin to enable it.
         </div>
       )}
-      <div className="flex flex-col gap-4">
-        <div className="flex justify-end gap-2">
-          <ShareRankButton result={result} />
+      <div className="flex flex-col gap-4 md:gap-5">
+        <div className="flex flex-wrap justify-stretch gap-2 md:justify-end">
+          <div className="min-w-[140px] flex-1 md:min-w-0 md:flex-none">
+            <ShareRankButton result={result} />
+          </div>
           <button
             onClick={async () => {
               if (!result) return;
@@ -364,7 +366,7 @@ export default function RankPage() {
               mod.exportRankSummary(result);
             }}
             disabled={!result}
-            className={"rp-btn-secondary rp-btn-sm h-9 px-3 text-xs " + (result ? "" : "cursor-not-allowed opacity-50")}
+            className={"rp-btn-secondary rp-btn-sm h-9 w-full px-3 text-xs md:w-auto " + (result ? "" : "cursor-not-allowed opacity-50")}
             title={result ? "Download a .txt summary" : "Run a check first"}
           >
             Export result
@@ -423,7 +425,8 @@ export default function RankPage() {
           </div>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-3 md:items-end">
+        <div className="rp-card border border-[var(--rp-border)] bg-white p-4 md:p-5">
+          <div className="grid gap-4 md:grid-cols-3 md:items-end">
           <div>
             <label className="mb-2 block text-sm font-medium text-[var(--rp-text-600)]" htmlFor="rank-keyword">
               Keyword
@@ -435,7 +438,7 @@ export default function RankPage() {
               placeholder="seo audit tool"
               className={"rp-input " + (inlineErrors.keyword ? "border-rose-300 focus:border-rose-400" : "")}
             />
-            <div className="mt-1 text-xs text-[var(--rp-text-500)]">One query at a time for the cleanest signal.</div>
+            <div className="mt-1 text-xs text-[var(--rp-text-600)]">One query at a time for the cleanest signal.</div>
             {inlineErrors.keyword ? <div className="mt-1 text-xs text-rose-600">{inlineErrors.keyword}</div> : null}
             {!!ideas.length && (
               <div className="mt-2 flex flex-wrap gap-2">
@@ -464,7 +467,7 @@ export default function RankPage() {
               placeholder="rankypulse.com"
               className={"rp-input " + (inlineErrors.domain ? "border-rose-300 focus:border-rose-400" : "")}
             />
-            <div className="mt-1 text-xs text-[var(--rp-text-500)]">Use root domain only (example.com), no https or path.</div>
+            <div className="mt-1 text-xs text-[var(--rp-text-600)]">Use root domain only (example.com), no https or path.</div>
             {inlineErrors.domain ? <div className="mt-1 text-xs text-rose-600">{inlineErrors.domain}</div> : null}
           </div>
 
@@ -472,7 +475,7 @@ export default function RankPage() {
             onClick={checkRank}
             disabled={status === "loading" || !allowRank}
             className={[
-              "rp-btn-primary text-sm",
+              "rp-btn-primary h-11 w-full text-sm md:h-10 md:w-auto",
               status === "loading" || !allowRank ? "opacity-50 cursor-not-allowed" : ""
             ].join(" ")}
           >
@@ -480,15 +483,16 @@ export default function RankPage() {
             {status === "loading" ? "Checking..." : "Check Rank"}
           </button>
         </div>
+        </div>
 
         {status === "idle" && (
-          <div className="rp-card p-5 text-[var(--rp-text-500)]">
+          <div className="rp-card p-4 md:p-5 text-[var(--rp-text-600)]">
             Enter a keyword and domain above to check rank.
           </div>
         )}
 
         {status === "loading" && (
-          <div className="rp-card p-5 text-[var(--rp-text-600)]">
+          <div className="rp-card p-4 md:p-5 text-[var(--rp-text-700)]">
             <div className="text-sm font-semibold text-[var(--rp-text-800)]">Checking rank…</div>
             <div className="mt-3 flex flex-wrap gap-2">
               {["Fetching SERP", "Comparing domains", "Calculating visibility"].map((step, index) => (
@@ -509,15 +513,15 @@ export default function RankPage() {
         )}
 
         {status === "error" && (
-          <div className="rounded-2xl border border-rose-300/60 bg-rose-100/70 p-5 text-rose-700">
+          <div className="rounded-2xl border border-rose-300/60 bg-rose-100/70 p-4 md:p-5 text-rose-700">
             {String(error || "")}
           </div>
         )}
 
         {status === "success" && (
-          <div className="grid gap-4">
-            <div className="rp-card p-5">
-              <div className="flex items-center gap-2">
+          <div className="grid gap-4 md:gap-5">
+            <div className="rp-card p-4 md:p-5">
+              <div className="flex flex-wrap items-center gap-2">
                 <div className="rp-section-title">Rank result</div>
                 {badge && (
                   <span className={"inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold " + badge.cls}>
@@ -530,7 +534,7 @@ export default function RankPage() {
                 Last checked: {lastCheckedAt ? new Date(lastCheckedAt).toLocaleString() : "Just now"}
               </div>
 
-              <div className="mt-3 grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+              <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 <div className="rounded-xl border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-3">
                   <div className="text-xs text-[var(--rp-text-500)]">Current position</div>
                   <div className="mt-1 text-2xl font-semibold text-[var(--rp-text-900)]">{shownRank ?? "—"}</div>
@@ -543,7 +547,7 @@ export default function RankPage() {
                 </div>
                 <div className="rounded-xl border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-3">
                   <div className="text-xs text-[var(--rp-text-500)]">Top competitor</div>
-                  <div className="mt-1 text-sm font-semibold text-[var(--rp-text-800)]">{inferredCompetitor}</div>
+                  <div className="mt-1 text-sm font-semibold leading-snug text-[var(--rp-text-900)]">{inferredCompetitor}</div>
                 </div>
                 <div className="rounded-xl border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-3">
                   <div className="text-xs text-[var(--rp-text-500)]">Estimated clicks opportunity</div>
@@ -551,7 +555,7 @@ export default function RankPage() {
                 </div>
               </div>
 
-              <div className="mt-3 grid gap-2 text-[var(--rp-text-700)]">
+              <div className="mt-3 grid gap-2 text-[var(--rp-text-800)]">
                 <div><span className="text-[var(--rp-text-500)]">Keyword:</span> {safeKeyword || "-"}</div>
                 <div><span className="text-[var(--rp-text-500)]">Domain:</span> {safeDomain || "-"}</div>
 
@@ -559,14 +563,14 @@ export default function RankPage() {
                   <span className="text-[var(--rp-text-500)] text-base font-medium">Rank:</span> {shownRank ?? "-"}
                 </div>
 
-                <div className="text-sm text-[var(--rp-text-500)]">
+                <div className="text-sm text-[var(--rp-text-700)]">
                   {rankExplain(shownRank)}
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2 pt-2">
                   <button
                     onClick={() => navigate(`/audit?url=${encodeURIComponent(`https://${domainFromInput(result?.domain || domain)}`)}`)}
-                    className="rp-btn-primary text-sm"
+                    className="rp-btn-primary h-10 w-full text-sm sm:w-auto"
                   >
                     Run SEO Audit for this domain
                   </button>
@@ -577,14 +581,14 @@ export default function RankPage() {
                       const mod = await import("../utils/exportRankSummary.js");
                       mod.exportRankSummary(result);
                     }}
-                    className="rp-btn-secondary rp-btn-sm h-9 px-3 text-xs"
+                    className="rp-btn-secondary rp-btn-sm h-9 w-full px-3 text-xs sm:w-auto"
                   >
                     Export result
                   </button>
 
                   <button
                     onClick={() => setPricingOpen(true)}
-                    className="rp-btn-secondary rp-btn-sm h-9 px-3 text-xs"
+                    className="rp-btn-secondary rp-btn-sm h-9 w-full px-3 text-xs sm:w-auto"
                   >
                     Track weekly
                   </button>
@@ -635,7 +639,7 @@ export default function RankPage() {
 
             {trendValues.length ? (
               <div className="rp-card p-4">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="text-sm font-semibold text-[var(--rp-text-800)]">Position trend (recent checks)</div>
                   <div className="text-xs text-[var(--rp-text-500)]">Rank 1 is best</div>
                 </div>
