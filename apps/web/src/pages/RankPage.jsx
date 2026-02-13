@@ -229,6 +229,22 @@ function contentGapPreview(keyword, domain) {
   };
 }
 
+function estimateFixImpactClicks(baseClicks, ratio) {
+  const base = Number(baseClicks);
+  if (!Number.isFinite(base) || base <= 0) return 0;
+  return Math.max(4, Math.round(base * ratio));
+}
+
+function defaultSitelinks(keyword) {
+  const title = keywordToTitleCase(keyword) || "SEO Audit Tool";
+  return [
+    `${title} checklist`,
+    `${title} comparison`,
+    `${title} pricing`,
+    `${title} FAQ`
+  ];
+}
+
 function inferKeywordIntent(keyword) {
   const text = normalizeKeywordForStore(keyword);
   if (!text) return "Informational";
@@ -461,6 +477,7 @@ export default function RankPage() {
 
   const safeKeyword = String(result?.keyword || keyword || "");
   const safeDomain = normalizeDomainForStore(result?.domain || domainFromInput(domain) || "");
+  const auditTargetDomain = safeDomain || domainFromInput(domain);
   const displayKeyword = keywordToTitleCase(safeKeyword);
 
   const history = useMemo(() => {
@@ -552,14 +569,24 @@ export default function RankPage() {
         position: Number(entry?.position ?? idx + 1),
         title: String(entry?.title || "").trim() || "Untitled result",
         domain: domainFromInput(entry?.url || entry?.domain || "") || "unknown-domain",
-        type: String(entry?.type || "Organic")
+        type: String(entry?.type || "Organic"),
+        description: String(entry?.description || "").trim() || `Ranking page for ${keywordToTitleCase(safeKeyword) || "this keyword"} with intent-matched content.`,
+        sitelinks: Array.isArray(entry?.sitelinks) && entry.sitelinks.length
+          ? entry.sitelinks.slice(0, 4).map((x) => String(x || "").trim()).filter(Boolean)
+          : defaultSitelinks(safeKeyword).slice(0, 4)
       }));
     }
     return topCompetitors.map((entry, idx) => ({
       position: Number(entry.position ?? idx + 1),
-      title: idx === 0 ? `Best result for "${safeKeyword || "keyword"}"` : `Related result ${idx + 1}`,
+      title: idx === 0 ? `Best result for "${keywordToTitleCase(safeKeyword) || "keyword"}"` : `${keywordToTitleCase(safeKeyword) || "Keyword"} guide ${idx + 1}`,
       domain: entry.domain,
-      type: "Organic"
+      type: idx === 0 ? "Comparison" : "Organic",
+      description: idx === 0
+        ? `Compares tools, includes pricing blocks, FAQs, and buyer-intent sections for ${keywordToTitleCase(safeKeyword) || "this query"}.`
+        : `Explains implementation steps, examples, and action checklists for ${keywordToTitleCase(safeKeyword) || "this topic"}.`,
+      sitelinks: idx === 0
+        ? ["Checklist", "Tools comparison", "Pricing", "FAQ"]
+        : defaultSitelinks(safeKeyword).slice(0, 4)
     }));
   }, [result?.serp_preview, topCompetitors, safeKeyword]);
   const hasLiveSerpPreview = Array.isArray(result?.serp_preview) && result.serp_preview.length > 0;
@@ -689,6 +716,83 @@ export default function RankPage() {
     return Math.min(...ranks);
   }, [history]);
 
+  const actionableRecipe = useMemo(() => {
+    if (!hasValidRank(shownRank)) return [];
+    const ownWords = competitorBench.own.words || 900;
+    const targetWords = Math.max(1200, (competitorBench.avgWords || ownWords + 900) - ownWords);
+    const backlinksGap = Math.max(2, Math.ceil(((competitorBench.avgBacklinks || 600) - (competitorBench.own.backlinks || 80)) / 200));
+    const internalPath = `/${normalizeKeywordForStore(safeKeyword).replace(/\s+/g, "-") || "seo-audit"}`;
+    return [
+      {
+        title: "Add depth and intent coverage",
+        steps: [
+          `Add ${targetWords} more words focused on workflow + examples.`,
+          "Add one FAQ section with 4-6 direct question/answer pairs.",
+          "Add comparison table blocks for tools and outcomes.",
+          `Add one internal link from ${internalPath} to this ranking page.`
+        ],
+        ctrLift: 12,
+        visits: estimateFixImpactClicks(estimatedClicksGain, 0.42),
+        actionLabel: "Create optimized outline"
+      },
+      {
+        title: "Close authority gap",
+        steps: [
+          `Get ${backlinksGap} contextual backlinks from relevant pages.`,
+          "Refresh title/H1 to exactly match search intent.",
+          "Add FAQ schema and internal anchor links."
+        ],
+        ctrLift: 8,
+        visits: estimateFixImpactClicks(estimatedClicksGain, 0.3),
+        actionLabel: "Generate improved title"
+      },
+      {
+        title: "Ship quick technical wins",
+        steps: [
+          "Add missing subheadings competitors already use.",
+          "Improve snippet clarity in meta title/description.",
+          "Re-check rank after publish and iterate."
+        ],
+        ctrLift: 5,
+        visits: estimateFixImpactClicks(estimatedClicksGain, 0.2),
+        actionLabel: "Add missing headings now"
+      }
+    ];
+  }, [shownRank, competitorBench, safeKeyword, estimatedClicksGain]);
+
+  const rankMovementExplanation = useMemo(() => {
+    if (!hasValidRank(shownRank)) return [];
+    const lines = [];
+    if (rankDelta !== null) {
+      lines.push(
+        rankDelta > 0
+          ? `Live signal: rank improved by ${rankDelta} positions since last check.`
+          : rankDelta < 0
+            ? `Live signal: rank dropped by ${Math.abs(rankDelta)} positions since last check.`
+            : "Live signal: rank stayed flat since last check."
+      );
+    }
+    if (competitorBench.avgWords && competitorBench.own.words) {
+      const wordGap = competitorBench.avgWords - competitorBench.own.words;
+      if (wordGap > 200) lines.push(`Pattern-based: top pages average ~${competitorBench.avgWords} words while your page appears near ~${competitorBench.own.words}.`);
+    }
+    if (competitorBench.avgBacklinks && competitorBench.own.backlinks) {
+      const linkGap = competitorBench.avgBacklinks - competitorBench.own.backlinks;
+      if (linkGap > 80) lines.push(`Pattern-based: competitors likely have about ${linkGap}+ more referring-link signals for this query.`);
+    }
+    if (trendMovement?.direction === "up") lines.push("Pattern-based: recent on-page updates likely aligned better with query intent.");
+    if (trendMovement?.direction === "down") lines.push("Pattern-based: ranking volatility suggests competitor refreshes or weaker topical coverage.");
+    return lines.slice(0, 4);
+  }, [shownRank, rankDelta, competitorBench, trendMovement]);
+
+  const contentGapDiffRows = useMemo(() => {
+    const headings = gap.competitors.flatMap((c) => c.headings).slice(0, 6);
+    return headings.map((heading) => {
+      const coverageCount = gap.competitors.filter((c) => c.headings.includes(heading)).length;
+      return { heading, coverageCount };
+    });
+  }, [gap]);
+
   const kpis = useMemo(() => ([
     {
       label: "Tracked keywords",
@@ -697,6 +801,7 @@ export default function RankPage() {
       ),
       tone: "text-[var(--rp-indigo-700)]",
       hint: "Open history",
+      why: "Why this matters: more tracked keywords = more SEO opportunities discovered.",
       onClick: () => historyRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
     },
     {
@@ -706,6 +811,7 @@ export default function RankPage() {
         : "—",
       tone: "text-amber-600",
       hint: "View trend",
+      why: "Why this matters: lower average position means stronger organic visibility.",
       onClick: () => trendRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
     },
     {
@@ -713,6 +819,7 @@ export default function RankPage() {
       value: rankDelta === null ? "—" : `${rankDelta > 0 ? "+" : ""}${rankDelta}`,
       tone: rankDelta !== null && rankDelta > 0 ? "text-emerald-600" : "text-[var(--rp-text-700)]",
       hint: "See next action",
+      why: "Why this matters: positive lift shows recent changes are working.",
       onClick: () => actionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
     }
   ]), [history, rankDelta]);
@@ -750,6 +857,7 @@ export default function RankPage() {
               <span className="text-xs font-semibold text-[var(--rp-indigo-700)]">{item.hint}</span>
             </div>
             <div className={`mt-2 text-2xl font-semibold tracking-tight ${item.tone}`}>{item.value}</div>
+            <div className="mt-1 text-[11px] text-[var(--rp-text-500)]">{item.why}</div>
           </button>
         ))}
       </div>
@@ -1012,7 +1120,7 @@ export default function RankPage() {
             <div className="rp-card p-4 md:p-5">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="text-[15px] font-semibold text-[var(--rp-text-800)]">Position trend (last 7 checks)</div>
-                <div className="text-xs text-[var(--rp-text-500)]">This fills with real data after you click Check Rank</div>
+                <div className="text-xs text-[var(--rp-text-500)]">Run Check Rank to load your live movement timeline.</div>
               </div>
               <div className="mt-3 h-48 rounded-xl border border-[var(--rp-border)] bg-white p-2">
                 {last7Checks.length ? (
@@ -1060,7 +1168,7 @@ export default function RankPage() {
                   />
                 ) : (
                   <div className="flex h-full items-center justify-center text-sm text-[var(--rp-text-500)]">
-                    No checks yet. Run your first rank check to see movement.
+                    No history yet. Your first rank check creates the baseline trend.
                   </div>
                 )}
               </div>
@@ -1074,12 +1182,12 @@ export default function RankPage() {
                 </div>
                 <p className="mt-2 text-[15px] leading-relaxed text-[var(--rp-text-700)]">{opportunityInsight(shownRank)}</p>
                 <div className="mt-3 inline-flex items-center rounded-full border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-1 text-xs font-semibold text-[var(--rp-text-600)]">
-                  {hasValidRank(shownRank) ? `Current position: ${shownRank}` : "Current position: pending check"}
+                  {hasValidRank(shownRank) ? `Current position: ${shownRank}` : "Position appears right after first check"}
                 </div>
                 <div className="mt-2 text-xs text-[var(--rp-text-500)]">
                   {hasLiveOpportunityData
                     ? "Based on your latest rank-check response."
-                    : "Estimated from last rank check and benchmark model."}
+                    : "Benchmark model based on current keyword and SERP profile."}
                 </div>
               </div>
 
@@ -1132,7 +1240,7 @@ export default function RankPage() {
                   </div>
                 ) : (
                   <div className="mt-3 text-sm text-[var(--rp-text-600)]">
-                    Run a rank check to unlock this analysis.
+                    First check unlocks evidence-based ranking reasons.
                   </div>
                 )}
               </div>
@@ -1141,7 +1249,7 @@ export default function RankPage() {
                 <div className="mt-3 rounded-lg border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-3">
                   <div className="text-sm text-[var(--rp-text-700)]">{bestMove.move}</div>
                   <div className="mt-2 inline-flex items-center rounded-full border border-[var(--rp-indigo-200)] bg-[var(--rp-indigo-50)] px-3 py-1 text-xs font-semibold text-[var(--rp-indigo-800)]">
-                    Estimated gain: {bestMove.gain ? `+${bestMove.gain} positions` : "pending"}
+                    Estimated gain: {bestMove.gain ? `+${bestMove.gain} positions` : "shown after first check"}
                   </div>
                 </div>
               </div>
@@ -1289,7 +1397,10 @@ export default function RankPage() {
 
                 <div className="flex flex-wrap items-center gap-2 pt-2">
                   <button
-                    onClick={() => navigate(`/audit?url=${encodeURIComponent(`https://${domainFromInput(result?.domain || domain)}`)}`)}
+                    onClick={() => {
+                      if (!auditTargetDomain) return;
+                      navigate(`/audit?url=${encodeURIComponent(`https://${auditTargetDomain}`)}`);
+                    }}
                     className="rp-btn-primary h-10 w-full text-sm sm:w-auto"
                   >
                     Run SEO Audit for this domain
@@ -1428,6 +1539,72 @@ export default function RankPage() {
             <div className="grid gap-4 md:grid-cols-2">
               <div className="rp-card p-4">
                 <div className="flex items-center justify-between gap-2">
+                  <div className="text-[15px] font-semibold text-[var(--rp-text-900)]">Actionable SEO recipe (to reach page 1)</div>
+                  <span className="inline-flex items-center rounded-full border border-[var(--rp-indigo-200)] bg-[var(--rp-indigo-50)] px-2 py-0.5 text-[11px] font-semibold text-[var(--rp-indigo-800)]">
+                    Do this now
+                  </span>
+                </div>
+                <div className="mt-3 space-y-3">
+                  {actionableRecipe.map((fix) => (
+                    <div key={fix.title} className="rounded-xl border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-3">
+                      <div className="text-sm font-semibold text-[var(--rp-text-900)]">{fix.title}</div>
+                      <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-[var(--rp-text-700)]">
+                        {fix.steps.map((step) => <li key={`${fix.title}-${step}`}>{step}</li>)}
+                      </ul>
+                      <div className="mt-3 flex flex-wrap items-center gap-2">
+                        <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">
+                          +{fix.ctrLift}% CTR estimate
+                        </span>
+                        <span className="inline-flex items-center rounded-full border border-[var(--rp-indigo-200)] bg-[var(--rp-indigo-50)] px-2 py-0.5 text-xs font-semibold text-[var(--rp-indigo-800)]">
+                          ≈ +{fix.visits}/mo
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const firstTopic = gap.missingTopics[0];
+                            if (firstTopic) setKeyword(firstTopic.toLowerCase());
+                          }}
+                          className="rp-btn-primary rp-btn-sm h-8 px-3 text-xs"
+                        >
+                          {fix.actionLabel}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="rp-card p-4">
+                <div className="text-[15px] font-semibold text-[var(--rp-text-900)]">Rank movement explanation</div>
+                <div className="mt-2 text-xs text-[var(--rp-text-500)]">
+                  Why this changed, based on live rank change plus competitor pattern comparison.
+                </div>
+                <div className="mt-3 space-y-2">
+                  {rankMovementExplanation.length ? rankMovementExplanation.map((line) => (
+                    <div key={line} className="rounded-lg border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-2 text-sm text-[var(--rp-text-700)]">
+                      {line}
+                    </div>
+                  )) : (
+                    <div className="rounded-lg border border-dashed border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-4 text-sm text-[var(--rp-text-600)]">
+                      Run at least two checks to explain movement causes.
+                    </div>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!auditTargetDomain) return;
+                    navigate(`/audit?url=${encodeURIComponent(`https://${auditTargetDomain}`)}`);
+                  }}
+                  className="rp-btn-primary rp-btn-sm mt-3 h-8 px-3 text-xs"
+                >
+                  Add missing headings now
+                </button>
+              </div>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="rp-card p-4">
+                <div className="flex items-center justify-between gap-2">
                   <div className="text-[15px] font-semibold text-[var(--rp-text-900)]">Keyword opportunity insight</div>
                   <ProvenanceBadge live={hasLiveOpportunityData} />
                 </div>
@@ -1450,22 +1627,35 @@ export default function RankPage() {
                 <div className="mt-2 text-xs text-[var(--rp-text-500)]">
                   {hasLiveMetricScores
                     ? "Metrics returned from live rank-check response."
-                    : "Estimated from last rank check and benchmark model."}
+                    : "Benchmark model based on current keyword and SERP profile."}
                 </div>
                 <div className="mt-3 grid grid-cols-3 gap-2">
                   <div className="rounded-lg border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-2">
                     <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--rp-text-500)]">Difficulty</div>
                     <div className="mt-1 text-sm font-semibold text-[var(--rp-text-900)]">{difficultyScore ?? "—"}/100</div>
+                    <div className="mt-1 text-[11px] text-[var(--rp-text-500)]">Higher means stronger competitors.</div>
                   </div>
                   <div className="rounded-lg border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-2">
                     <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--rp-text-500)]">Opportunity</div>
                     <div className="mt-1 text-sm font-semibold text-[var(--rp-indigo-700)]">{opportunityScore ?? "—"}/100</div>
+                    <div className="mt-1 text-[11px] text-[var(--rp-text-500)]">Higher means faster growth potential.</div>
                   </div>
                   <div className="rounded-lg border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-2">
                     <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--rp-text-500)]">Traffic potential</div>
                     <div className="mt-1 text-sm font-semibold text-[var(--rp-text-900)]">{trafficPotential ? `~${trafficPotential}/mo` : "—"}</div>
+                    <div className="mt-1 text-[11px] text-[var(--rp-text-500)]">Estimated monthly visits from this keyword.</div>
                   </div>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!auditTargetDomain) return;
+                    navigate(`/audit?url=${encodeURIComponent(`https://${auditTargetDomain}`)}`);
+                  }}
+                  className="rp-btn-primary rp-btn-sm mt-3 h-8 px-3 text-xs"
+                >
+                  Generate improved title
+                </button>
               </div>
 
               <div className="rp-card p-4">
@@ -1504,7 +1694,7 @@ export default function RankPage() {
                 <div className="text-xs text-[var(--rp-text-500)]">
                   {hasLiveSerpPreview
                     ? "Live SERP preview from this rank check."
-                    : "Preview generated from current signal; run again for fresh live SERP."}
+                    : "Preview generated from current signal; run again for fresh live SERP with full snippet details."}
                 </div>
                 <div className="text-xs text-[var(--rp-text-500)]">
                   {COUNTRIES.find((x) => x.value === (result?.country || country))?.label || (result?.country || country)} • {(result?.device || device)} • {(result?.language || language).toUpperCase()}
@@ -1518,7 +1708,20 @@ export default function RankPage() {
                         <div className="truncate text-sm font-semibold text-[var(--rp-text-900)]">#{row.position} {row.title}</div>
                         <span className="rounded-full border border-[var(--rp-border)] bg-white px-2 py-0.5 text-[11px] text-[var(--rp-text-600)]">{row.type}</span>
                       </div>
+                      <div className="mt-1 text-xs text-[var(--rp-text-700)]">{row.description}</div>
                       <div className="mt-1 text-xs text-[var(--rp-text-500)]">{row.domain}</div>
+                      {Array.isArray(row.sitelinks) && row.sitelinks.length ? (
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          {row.sitelinks.slice(0, 4).map((link) => (
+                            <span
+                              key={`${row.position}-${row.domain}-${link}`}
+                              className="inline-flex items-center rounded-full border border-[var(--rp-border)] bg-white px-2 py-0.5 text-[11px] text-[var(--rp-text-600)]"
+                            >
+                              {link}
+                            </span>
+                          ))}
+                        </div>
+                      ) : null}
                     </div>
                   ))
                 ) : (
@@ -1603,15 +1806,23 @@ export default function RankPage() {
               <div className="mt-3 grid gap-3 md:grid-cols-3">
                 <div className="rounded-lg border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-3">
                   <div className="text-xs font-semibold uppercase tracking-[0.08em] text-[var(--rp-text-500)]">Missing topics</div>
-                  <div className="mt-2 space-y-1 text-sm text-[var(--rp-text-700)]">
-                    {gap.missingTopics.slice(0, 4).map((topic) => <div key={`topic-${topic}`}>• {topic}</div>)}
+                  <div className="mt-2 space-y-2 text-sm">
+                    {gap.missingTopics.slice(0, 4).map((topic) => (
+                      <div key={`topic-${topic}`} className="flex items-center justify-between rounded-md border border-rose-200 bg-rose-50 px-2 py-1 text-rose-700">
+                        <span>{topic}</span>
+                        <span className="text-[11px] font-semibold">Missing</span>
+                      </div>
+                    ))}
                   </div>
                 </div>
                 <div className="rounded-lg border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-3">
-                  <div className="text-xs font-semibold uppercase tracking-[0.08em] text-[var(--rp-text-500)]">Missing headings</div>
+                  <div className="text-xs font-semibold uppercase tracking-[0.08em] text-[var(--rp-text-500)]">Competitor heading coverage</div>
                   <div className="mt-2 space-y-1 text-sm text-[var(--rp-text-700)]">
-                    {gap.competitors.flatMap((c) => c.headings).slice(0, 4).map((heading) => (
-                      <div key={`head-${heading}`}>• {heading}</div>
+                    {contentGapDiffRows.slice(0, 4).map((row) => (
+                      <div key={`head-${row.heading}`} className="rounded-md border border-[var(--rp-border)] bg-white px-2 py-1">
+                        <div className="font-medium">{row.heading}</div>
+                        <div className="text-[11px] text-[var(--rp-text-500)]">{row.coverageCount}/3 competitors include this heading</div>
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -1629,7 +1840,22 @@ export default function RankPage() {
                       </button>
                     ))}
                   </div>
+                  <div className="mt-3 text-xs text-[var(--rp-text-500)]">
+                    Suggested from competitor topic overlap + related intent terms.
+                  </div>
                 </div>
+              </div>
+              <div className="mt-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const first = gap.missingKeywords[0] || gap.missingTopics[0];
+                    if (first) setKeyword(first.toLowerCase());
+                  }}
+                  className="rp-btn-primary rp-btn-sm h-8 px-3 text-xs"
+                >
+                  Create optimized outline
+                </button>
               </div>
             </div>
           </div>
