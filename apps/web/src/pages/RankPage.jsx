@@ -625,7 +625,8 @@ export default function RankPage() {
               id="rank-keyword"
               value={keyword}
               onChange={(e) => setKeyword(e.target.value)}
-              placeholder="seo audit tool"
+              placeholder="Enter keyword"
+              autoComplete="off"
               className={"rp-input " + (inlineErrors.keyword ? "border-rose-300 focus:border-rose-400" : "")}
             />
             <div className="mt-1 text-xs text-[var(--rp-text-600)]">One query at a time for the cleanest signal.</div>
@@ -654,7 +655,8 @@ export default function RankPage() {
               id="rank-domain"
               value={domain}
               onChange={(e) => setDomain(e.target.value)}
-              placeholder="rankypulse.com"
+              placeholder="example.com"
+              autoComplete="off"
               className={"rp-input " + (inlineErrors.domain ? "border-rose-300 focus:border-rose-400" : "")}
             />
             <div className="mt-1 text-xs text-[var(--rp-text-600)]">Use root domain only (example.com), no https or path.</div>
