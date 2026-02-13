@@ -24,3 +24,6 @@ apps/web/src.bak_1768573284
 
 # Duplicate Tailwind config (keep .cjs)
 apps/web/tailwind.config.js
+
+# Backend functions are served from Railway API, not Vercel Functions
+api/**
