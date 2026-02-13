@@ -39,6 +39,27 @@ const LANGUAGES = [
   { value: "de", label: "German" }
 ];
 
+const TOPIC_LIBRARY = {
+  "seo audit tool": [
+    "Technical SEO checklist",
+    "On-page issues and fixes",
+    "Core Web Vitals overview",
+    "Crawl and indexation basics"
+  ],
+  "technical seo audit": [
+    "Crawl budget optimization",
+    "Canonical and index rules",
+    "Structured data validation",
+    "Internal link architecture"
+  ],
+  "rank checker": [
+    "Keyword grouping by intent",
+    "Position tracking workflow",
+    "Competitor movement analysis",
+    "SERP feature opportunities"
+  ]
+};
+
 function rankExplain(r) {
   if (!hasValidRank(r)) return "";
   const x = Number(r);
@@ -114,6 +135,84 @@ function latestKeywordIdeasForDomain(domain) {
   });
   const ideas = Array.isArray(hit?.keyword_ideas) ? hit.keyword_ideas : [];
   return ideas.map(x => String(x || "").trim()).filter(Boolean).slice(0, 8);
+}
+
+function clusterKeywords(baseKeyword) {
+  const base = String(baseKeyword || "").trim().toLowerCase();
+  if (!base) return [];
+  const map = {
+    "seo audit tool": [
+      "website seo audit",
+      "technical seo audit",
+      "seo checker",
+      "seo audit checklist",
+      "on page seo audit"
+    ],
+    "technical seo audit": [
+      "technical seo checklist",
+      "site crawl audit",
+      "indexability audit",
+      "core web vitals audit",
+      "schema audit"
+    ],
+    "rank checker": [
+      "google rank checker",
+      "keyword rank tracker",
+      "serp position checker",
+      "daily rank monitor",
+      "mobile rank checker"
+    ]
+  };
+  if (map[base]) return map[base];
+  const tokens = base.split(/\s+/).filter(Boolean);
+  const head = tokens.slice(0, 2).join(" ") || base;
+  return [
+    `${head} checker`,
+    `${head} tool`,
+    `${head} guide`,
+    `${head} strategy`,
+    `${head} template`
+  ];
+}
+
+function whyRankHere(rank, difficulty) {
+  const r = Number(rank);
+  const d = Number(difficulty);
+  if (!Number.isFinite(r) || r <= 0) return [];
+  const backlinksGap = r > 30 ? "Top results appear to have around 4x-6x stronger backlink profiles." : "Top results still have stronger backlink depth.";
+  const contentGap = r > 20 ? "Competing pages likely cover broader subtopics and longer intent-matched sections." : "Competing pages likely have tighter content depth and clarity.";
+  const structureGap = d > 65 ? "Your page likely misses structured data and supporting internal links." : "Your page can gain from stronger structured data and internal linking.";
+  return [backlinksGap, contentGap, structureGap];
+}
+
+function nextBestMove(rank) {
+  const r = Number(rank);
+  if (!Number.isFinite(r) || r <= 0) return { move: "Run one check to unlock your next best move.", gain: null };
+  if (r <= 10) return { move: "Improve CTR with stronger title/meta copy and add 2-3 internal links from high-authority pages.", gain: 2 };
+  if (r <= 20) return { move: "Expand the page with comparison sections and FAQ schema, then strengthen internal links.", gain: 4 };
+  if (r <= 40) return { move: "Upgrade title intent match and add missing topic sections competitors cover.", gain: 6 };
+  return { move: "Rework page intent, add complete topic coverage, and improve backlink quality.", gain: 8 };
+}
+
+function contentGapPreview(keyword, domain) {
+  const base = String(keyword || "").trim().toLowerCase();
+  const pool = TOPIC_LIBRARY[base] || [
+    "Pricing comparison",
+    "Implementation steps",
+    "Before/after outcomes",
+    "FAQ for objections"
+  ];
+  const competitors = [
+    { domain: "ahrefs.com", headings: ["What is SEO audit", "How to run an audit", "Common audit mistakes"] },
+    { domain: "semrush.com", headings: ["SEO audit workflow", "Priority fixes", "Technical SEO checks"] },
+    { domain: "moz.com", headings: ["On-page checklist", "Crawl issues", "Indexation guidance"] }
+  ].filter((item) => item.domain !== String(domain || "").toLowerCase());
+  const missingKeywords = clusterKeywords(base).slice(0, 4);
+  return {
+    competitors: competitors.slice(0, 3),
+    missingTopics: pool.slice(0, 4),
+    missingKeywords
+  };
 }
 
 function estimateDifficulty(rank, keywordText = "") {
@@ -412,6 +511,16 @@ export default function RankPage() {
       type: "Organic"
     }));
   }, [result?.serp_preview, topCompetitors, safeKeyword]);
+
+  const relatedKeywordCluster = useMemo(() => {
+    const fromTracked = clusterKeywords(safeKeyword);
+    const fromIdeas = ideas.slice(0, 5);
+    return [...new Set([...fromTracked, ...fromIdeas])].filter(Boolean).slice(0, 8);
+  }, [safeKeyword, ideas]);
+
+  const rankReasons = useMemo(() => whyRankHere(shownRank, difficultyScore), [shownRank, difficultyScore]);
+  const bestMove = useMemo(() => nextBestMove(shownRank), [shownRank]);
+  const gap = useMemo(() => contentGapPreview(safeKeyword, safeDomain), [safeKeyword, safeDomain]);
 
   const trendMovement = useMemo(() => {
     if (last7Checks.length < 2) return null;
@@ -836,6 +945,91 @@ export default function RankPage() {
                     </div>
                   )}
                 </div>
+              </div>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="rp-card p-4">
+                <div className="text-[15px] font-semibold text-[var(--rp-text-900)]">Why you rank here</div>
+                {rankReasons.length ? (
+                  <div className="mt-3 space-y-2">
+                    {rankReasons.map((reason) => (
+                      <div key={reason} className="rounded-lg border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-2 text-sm text-[var(--rp-text-700)]">
+                        {reason}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="mt-3 text-sm text-[var(--rp-text-600)]">
+                    Run a rank check to unlock this analysis.
+                  </div>
+                )}
+              </div>
+              <div className="rp-card p-4">
+                <div className="text-[15px] font-semibold text-[var(--rp-text-900)]">Next best SEO move</div>
+                <div className="mt-3 rounded-lg border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-3">
+                  <div className="text-sm text-[var(--rp-text-700)]">{bestMove.move}</div>
+                  <div className="mt-2 inline-flex items-center rounded-full border border-[var(--rp-indigo-200)] bg-[var(--rp-indigo-50)] px-3 py-1 text-xs font-semibold text-[var(--rp-indigo-800)]">
+                    Estimated gain: {bestMove.gain ? `+${bestMove.gain} positions` : "pending"}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="rp-card p-4">
+              <div className="text-[15px] font-semibold text-[var(--rp-text-900)]">Content gap preview</div>
+              <div className="mt-3 grid gap-3 md:grid-cols-3">
+                <div className="rounded-lg border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-3">
+                  <div className="text-xs font-semibold uppercase tracking-[0.08em] text-[var(--rp-text-500)]">Competitor headings</div>
+                  <div className="mt-2 space-y-2 text-sm text-[var(--rp-text-700)]">
+                    {gap.competitors.flatMap((c) => c.headings.slice(0, 1)).slice(0, 3).map((h) => (
+                      <div key={h}>• {h}</div>
+                    ))}
+                  </div>
+                </div>
+                <div className="rounded-lg border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-3">
+                  <div className="text-xs font-semibold uppercase tracking-[0.08em] text-[var(--rp-text-500)]">Missing topics</div>
+                  <div className="mt-2 space-y-2 text-sm text-[var(--rp-text-700)]">
+                    {gap.missingTopics.map((topic) => (
+                      <div key={topic}>• {topic}</div>
+                    ))}
+                  </div>
+                </div>
+                <div className="rounded-lg border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-3">
+                  <div className="text-xs font-semibold uppercase tracking-[0.08em] text-[var(--rp-text-500)]">Missing keywords</div>
+                  <div className="mt-2 space-y-2 text-sm text-[var(--rp-text-700)]">
+                    {gap.missingKeywords.map((kw) => (
+                      <button
+                        key={kw}
+                        type="button"
+                        onClick={() => setKeyword(kw)}
+                        className="block w-full rounded-lg border border-[var(--rp-border)] bg-white px-2 py-1 text-left hover:border-[var(--rp-indigo-300)]"
+                        title="Use this keyword"
+                      >
+                        {kw}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="rp-card p-4">
+              <div className="flex items-center justify-between gap-2">
+                <div className="text-[15px] font-semibold text-[var(--rp-text-900)]">Keyword cluster suggestions</div>
+                <div className="text-xs text-[var(--rp-text-500)]">Click one to run next check</div>
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {relatedKeywordCluster.map((kw) => (
+                  <button
+                    key={`cluster-${kw}`}
+                    type="button"
+                    onClick={() => setKeyword(kw)}
+                    className="rp-chip rp-chip-neutral"
+                  >
+                    {kw}
+                  </button>
+                ))}
               </div>
             </div>
           </div>
