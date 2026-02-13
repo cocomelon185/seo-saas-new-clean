@@ -101,7 +101,7 @@ app.use(express.json());
 app.post("/api/page-report", pageReport);
 
 app.post("/api/rank-check", (req, res) => {
-  const { keyword, domain } = req.body || {};
+  const { keyword, domain, country = "US", city = "", device = "desktop", language = "en" } = req.body || {};
 
   if (!keyword || !domain) {
     return res.status(400).json({ error: "Missing keyword or domain" });
@@ -122,10 +122,28 @@ app.post("/api/rank-check", (req, res) => {
     position: idx + 1
   }));
 
+  const difficulty_score = Math.max(1, Math.min(100, Math.round(35 + (100 - position) * 0.45)));
+  const opportunity_score = Math.max(1, Math.min(100, Math.round((70 - Math.min(60, position)) + (100 - difficulty_score) * 0.4)));
+  const traffic_potential = Math.max(120, Math.round((position <= 10 ? 1400 : 700) + (50 - Math.min(50, position)) * 16));
+  const serp_preview = [
+    { position: 1, title: `Top result for "${keyword}"`, domain: top_competitors[0]?.domain || "ahrefs.com", type: "Organic" },
+    { position: 2, title: `${keyword} guide`, domain: top_competitors[1]?.domain || "semrush.com", type: "Organic" },
+    { position: 3, title: `${keyword} checklist`, domain: top_competitors[2]?.domain || "moz.com", type: "Organic" },
+    { position: 4, title: `${keyword} examples`, domain: cleanDomain, type: "Organic" }
+  ];
+
   return res.json({
     keyword,
     domain: cleanDomain,
     position,
+    country: String(country || "US").toUpperCase(),
+    city: String(city || "").trim(),
+    device: String(device || "desktop").toLowerCase() === "mobile" ? "mobile" : "desktop",
+    language: String(language || "en").toLowerCase(),
+    difficulty_score,
+    opportunity_score,
+    traffic_potential,
+    serp_preview,
     top_competitors,
     checked_at: new Date().toISOString()
   });

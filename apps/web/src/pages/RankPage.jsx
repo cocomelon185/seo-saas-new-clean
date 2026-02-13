@@ -24,6 +24,21 @@ const EXAMPLE_KEYWORDS = [
   "rank tracker for agencies"
 ];
 
+const COUNTRIES = [
+  { value: "US", label: "United States" },
+  { value: "GB", label: "United Kingdom" },
+  { value: "CA", label: "Canada" },
+  { value: "AU", label: "Australia" },
+  { value: "IN", label: "India" }
+];
+
+const LANGUAGES = [
+  { value: "en", label: "English" },
+  { value: "es", label: "Spanish" },
+  { value: "fr", label: "French" },
+  { value: "de", label: "German" }
+];
+
 function rankExplain(r) {
   if (!hasValidRank(r)) return "";
   const x = Number(r);
@@ -101,6 +116,29 @@ function latestKeywordIdeasForDomain(domain) {
   return ideas.map(x => String(x || "").trim()).filter(Boolean).slice(0, 8);
 }
 
+function estimateDifficulty(rank, keywordText = "") {
+  const r = Number(rank);
+  if (!Number.isFinite(r) || r <= 0) return null;
+  const keywordComplexity = Math.min(20, String(keywordText || "").trim().split(/\s+/).filter(Boolean).length * 4);
+  const rankPressure = Math.max(0, 100 - r);
+  return Math.max(1, Math.min(100, Math.round(40 + keywordComplexity + rankPressure * 0.35)));
+}
+
+function estimateTrafficPotential(rank) {
+  const r = Number(rank);
+  if (!Number.isFinite(r) || r <= 0) return null;
+  const ctr = estimateCtr(r);
+  return Math.max(120, Math.round(ctr * 22000));
+}
+
+function estimateOpportunity(rank, difficulty) {
+  const r = Number(rank);
+  const d = Number(difficulty);
+  if (!Number.isFinite(r) || r <= 0) return null;
+  if (!Number.isFinite(d)) return Math.max(1, Math.min(100, Math.round((60 - Math.min(50, r)) + 30)));
+  return Math.max(1, Math.min(100, Math.round((70 - Math.min(60, r)) + (100 - d) * 0.4)));
+}
+
 export default function RankPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -110,6 +148,10 @@ export default function RankPage() {
 
   const [keyword, setKeyword] = useState("");
   const [domain, setDomain] = useState("");
+  const [country, setCountry] = useState("US");
+  const [city, setCity] = useState("");
+  const [device, setDevice] = useState("desktop");
+  const [language, setLanguage] = useState("en");
   const [waitlistEmail, setWaitlistEmail] = useState("");
   const [status, setStatus] = useState("idle");
   const [error, setError] = useState("");
@@ -164,9 +206,17 @@ export default function RankPage() {
       const share = (params.get("share") || "").trim();
       const kw = (params.get("keyword") || "").trim();
       const dm = (params.get("domain") || "").trim();
+      const ctry = (params.get("country") || "").trim();
+      const lang = (params.get("language") || "").trim();
+      const dev = (params.get("device") || "").trim();
+      const cityParam = (params.get("city") || "").trim();
 
       if (kw) setKeyword(kw);
       if (dm) setDomain(dm);
+      if (ctry) setCountry(ctry.toUpperCase());
+      if (lang) setLanguage(lang.toLowerCase());
+      if (dev) setDevice(dev.toLowerCase() === "mobile" ? "mobile" : "desktop");
+      if (cityParam) setCity(cityParam);
 
       if (share) {
         const payload = decodeSharePayload(share);
@@ -210,7 +260,14 @@ export default function RankPage() {
       const res = await fetch(apiUrl("/api/rank-check"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ keyword: keyword.trim(), domain: domainFromInput(domain) })
+        body: JSON.stringify({
+          keyword: keyword.trim(),
+          domain: domainFromInput(domain),
+          country,
+          city: city.trim(),
+          device,
+          language
+        })
       });
 
       if (!res.ok) {
@@ -226,7 +283,15 @@ export default function RankPage() {
         ...data,
         keyword: String(data?.keyword ?? keyword ?? "").trim(),
         domain: domainFromInput(data?.domain || domain),
-        rank: data.rank ?? data.position
+        rank: data.rank ?? data.position,
+        country: String(data?.country || country).toUpperCase(),
+        city: String(data?.city || city || "").trim(),
+        device: String(data?.device || device).toLowerCase() === "mobile" ? "mobile" : "desktop",
+        language: String(data?.language || language).toLowerCase(),
+        serp_preview: Array.isArray(data?.serp_preview) ? data.serp_preview : [],
+        traffic_potential: Number(data?.traffic_potential),
+        difficulty_score: Number(data?.difficulty_score),
+        opportunity_score: Number(data?.opportunity_score)
       };
       setResult(normalized);
       try { saveRankCheck(normalized); } catch {}
@@ -312,6 +377,41 @@ export default function RankPage() {
     }
     return [];
   }, [result?.top_competitors]);
+
+  const difficultyScore = useMemo(() => {
+    const apiValue = Number(result?.difficulty_score);
+    if (Number.isFinite(apiValue) && apiValue > 0) return Math.max(1, Math.min(100, Math.round(apiValue)));
+    return estimateDifficulty(shownRank, safeKeyword);
+  }, [result?.difficulty_score, shownRank, safeKeyword]);
+
+  const trafficPotential = useMemo(() => {
+    const apiValue = Number(result?.traffic_potential);
+    if (Number.isFinite(apiValue) && apiValue > 0) return Math.round(apiValue);
+    return estimateTrafficPotential(shownRank);
+  }, [result?.traffic_potential, shownRank]);
+
+  const opportunityScore = useMemo(() => {
+    const apiValue = Number(result?.opportunity_score);
+    if (Number.isFinite(apiValue) && apiValue > 0) return Math.max(1, Math.min(100, Math.round(apiValue)));
+    return estimateOpportunity(shownRank, difficultyScore);
+  }, [result?.opportunity_score, shownRank, difficultyScore]);
+
+  const serpPreview = useMemo(() => {
+    if (Array.isArray(result?.serp_preview) && result.serp_preview.length) {
+      return result.serp_preview.slice(0, 5).map((entry, idx) => ({
+        position: Number(entry?.position ?? idx + 1),
+        title: String(entry?.title || "").trim() || "Untitled result",
+        domain: domainFromInput(entry?.url || entry?.domain || "") || "unknown-domain",
+        type: String(entry?.type || "Organic")
+      }));
+    }
+    return topCompetitors.map((entry, idx) => ({
+      position: Number(entry.position ?? idx + 1),
+      title: idx === 0 ? `Best result for "${safeKeyword || "keyword"}"` : `Related result ${idx + 1}`,
+      domain: entry.domain,
+      type: "Organic"
+    }));
+  }, [result?.serp_preview, topCompetitors, safeKeyword]);
 
   const trendMovement = useMemo(() => {
     if (last7Checks.length < 2) return null;
@@ -566,8 +666,61 @@ export default function RankPage() {
             <IconCompass size={14} />
             {status === "loading" ? "Checking..." : "Check Rank"}
           </button>
+          <div className="md:col-span-3 grid gap-3 md:grid-cols-4">
+            <div>
+              <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-[var(--rp-text-500)]">Country</label>
+              <select value={country} onChange={(e) => setCountry(e.target.value)} className="rp-input h-11">
+                {COUNTRIES.map((item) => (
+                  <option key={item.value} value={item.value}>{item.label}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-[var(--rp-text-500)]">City (optional)</label>
+              <input
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                placeholder="Atlanta"
+                className="rp-input h-11"
+              />
+            </div>
+            <div>
+              <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-[var(--rp-text-500)]">Language</label>
+              <select value={language} onChange={(e) => setLanguage(e.target.value)} className="rp-input h-11">
+                {LANGUAGES.map((item) => (
+                  <option key={item.value} value={item.value}>{item.label}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-[var(--rp-text-500)]">Device</label>
+              <div className="flex h-11 items-center rounded-xl border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-1">
+                {["desktop", "mobile"].map((d) => (
+                  <button
+                    key={d}
+                    type="button"
+                    onClick={() => setDevice(d)}
+                    className={[
+                      "h-8 flex-1 rounded-lg text-xs font-semibold capitalize transition",
+                      device === d
+                        ? "bg-[var(--rp-indigo-700)] text-white"
+                        : "text-[var(--rp-text-700)] hover:bg-white"
+                    ].join(" ")}
+                  >
+                    {d}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
           <div className="md:col-span-3 flex flex-wrap items-center gap-2 text-xs text-[var(--rp-text-600)]">
             <span className="inline-flex items-center rounded-full border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-2 py-1">SERP checked live</span>
+            <span className="inline-flex items-center rounded-full border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-2 py-1">
+              {COUNTRIES.find((x) => x.value === country)?.label || country}{city ? ` • ${city}` : ""}
+            </span>
+            <span className="inline-flex items-center rounded-full border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-2 py-1">
+              {device === "mobile" ? "Mobile SERP" : "Desktop SERP"} • {language.toUpperCase()}
+            </span>
             <span className="inline-flex items-center rounded-full border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-2 py-1">
               {lastCheckedAt ? `Updated ${new Date(lastCheckedAt).toLocaleTimeString()}` : "Ready to run"}
             </span>
@@ -639,18 +792,26 @@ export default function RankPage() {
               <div className="rp-card p-4">
                 <div className="text-[15px] font-semibold text-[var(--rp-text-900)]">Competitor snapshot (top 3)</div>
                 <div className="mt-3 grid gap-2">
-                  {topCompetitors.length ? (
-                    topCompetitors.map((entry) => (
-                      <div
-                        key={`preview-${entry.position}-${entry.domain}`}
-                        className="flex items-center justify-between rounded-lg border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-2 text-[15px]"
-                      >
-                        <span className="font-medium text-[var(--rp-text-900)]">{entry.domain}</span>
-                        <span className="rounded-full bg-[var(--rp-indigo-100)] px-2 py-1 text-xs font-semibold text-[var(--rp-indigo-800)]">
-                          #{entry.position}
+                  {topCompetitors.length || hasValidRank(shownRank) ? (
+                    <>
+                      <div className="grid grid-cols-[1fr_auto] items-center rounded-lg border border-[var(--rp-indigo-200)] bg-[var(--rp-indigo-50)] px-3 py-2 text-[15px]">
+                        <span className="font-semibold text-[var(--rp-text-900)]">{safeDomain || "your-domain.com"} (you)</span>
+                        <span className="rounded-full bg-white px-2 py-1 text-xs font-semibold text-[var(--rp-indigo-800)]">
+                          #{hasValidRank(shownRank) ? shownRank : "—"}
                         </span>
                       </div>
-                    ))
+                      {topCompetitors.map((entry) => (
+                        <div
+                          key={`preview-${entry.position}-${entry.domain}`}
+                          className="grid grid-cols-[1fr_auto] items-center rounded-lg border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-2 text-[15px]"
+                        >
+                          <span className="font-medium text-[var(--rp-text-900)]">{entry.domain}</span>
+                          <span className="rounded-full bg-[var(--rp-indigo-100)] px-2 py-1 text-xs font-semibold text-[var(--rp-indigo-800)]">
+                            #{entry.position}
+                          </span>
+                        </div>
+                      ))}
+                    </>
                   ) : (
                     <div className="rounded-lg border border-dashed border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-4 text-sm text-[var(--rp-text-600)]">
                       Competitor list appears after your first successful rank check.
@@ -865,6 +1026,20 @@ export default function RankPage() {
                     Current position: {shownRank}
                   </div>
                 ) : null}
+                <div className="mt-3 grid grid-cols-3 gap-2">
+                  <div className="rounded-lg border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-2">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--rp-text-500)]">Difficulty</div>
+                    <div className="mt-1 text-sm font-semibold text-[var(--rp-text-900)]">{difficultyScore ?? "—"}/100</div>
+                  </div>
+                  <div className="rounded-lg border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-2">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--rp-text-500)]">Opportunity</div>
+                    <div className="mt-1 text-sm font-semibold text-[var(--rp-indigo-700)]">{opportunityScore ?? "—"}/100</div>
+                  </div>
+                  <div className="rounded-lg border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-2">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--rp-text-500)]">Traffic potential</div>
+                    <div className="mt-1 text-sm font-semibold text-[var(--rp-text-900)]">{trafficPotential ? `~${trafficPotential}/mo` : "—"}</div>
+                  </div>
+                </div>
               </div>
 
               <div className="rp-card p-4">
@@ -888,6 +1063,32 @@ export default function RankPage() {
                     </div>
                   )}
                 </div>
+              </div>
+            </div>
+
+            <div className="rp-card p-4">
+              <div className="flex items-center justify-between gap-2">
+                <div className="text-[15px] font-semibold text-[var(--rp-text-900)]">SERP snapshot preview</div>
+                <div className="text-xs text-[var(--rp-text-500)]">
+                  {COUNTRIES.find((x) => x.value === (result?.country || country))?.label || (result?.country || country)} • {(result?.device || device)} • {(result?.language || language).toUpperCase()}
+                </div>
+              </div>
+              <div className="mt-3 grid gap-2">
+                {serpPreview.length ? (
+                  serpPreview.slice(0, 5).map((row) => (
+                    <div key={`serp-${row.position}-${row.domain}`} className="rounded-lg border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-2">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="truncate text-sm font-semibold text-[var(--rp-text-900)]">#{row.position} {row.title}</div>
+                        <span className="rounded-full border border-[var(--rp-border)] bg-white px-2 py-0.5 text-[11px] text-[var(--rp-text-600)]">{row.type}</span>
+                      </div>
+                      <div className="mt-1 text-xs text-[var(--rp-text-500)]">{row.domain}</div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="rounded-lg border border-dashed border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-4 text-sm text-[var(--rp-text-600)]">
+                    SERP preview appears after a successful check.
+                  </div>
+                )}
               </div>
             </div>
           </div>
