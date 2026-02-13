@@ -25,7 +25,7 @@ const EXAMPLE_KEYWORDS = [
 ];
 
 function rankExplain(r) {
-  if (!Number.isFinite(Number(r))) return "";
+  if (!hasValidRank(r)) return "";
   const x = Number(r);
   if (x <= 10) return "First page (Top 10). Strong visibility.";
   if (x <= 20) return "Second page (11-20). Close to page one.";
@@ -34,7 +34,7 @@ function rankExplain(r) {
 }
 
 function rankBadge(r) {
-  if (!Number.isFinite(Number(r))) return null;
+  if (!hasValidRank(r)) return null;
   const x = Number(r);
   if (x <= 3) return { label: "Top 3", cls: "bg-emerald-100 text-emerald-700 border border-emerald-200" };
   if (x <= 10) return { label: "Top 10", cls: "bg-emerald-50 text-emerald-700 border border-emerald-200" };
@@ -76,12 +76,17 @@ function estimateMonthlyClicksGain(rank, targetRank = 10, monthlyVolume = 1200) 
 
 function opportunityInsight(rank) {
   const r = Number(rank);
-  if (!Number.isFinite(r)) return "Run a check to get a clear keyword opportunity recommendation.";
+  if (!Number.isFinite(r) || r <= 0) return "Run a check to get a clear keyword opportunity recommendation.";
   if (r <= 3) return "You are already near the top. Protect this ranking with freshness updates and internal links.";
   if (r <= 10) return "This keyword is on page 1. Improving CTR (title/meta) can move it to higher positions.";
   if (r <= 20) return "This keyword is close to page 1. Improving content depth and topical relevance could push it higher.";
   if (r <= 40) return "This keyword has potential. Strengthen on-page content and backlinks to climb toward page 1.";
   return "This keyword is a long-term opportunity. Start with intent-matched content and stronger authority signals.";
+}
+
+function hasValidRank(rank) {
+  const r = Number(rank);
+  return Number.isFinite(r) && r > 0;
 }
 
 function latestKeywordIdeasForDomain(domain) {
@@ -274,7 +279,7 @@ export default function RankPage() {
   }, [history]);
 
   const previousRank = useMemo(() => {
-    if (!history.length || !Number.isFinite(Number(shownRank))) return null;
+    if (!history.length || !hasValidRank(shownRank)) return null;
     const previous = history
       .map((x) => Number(x.rank))
       .filter((x) => Number.isFinite(x))
@@ -283,12 +288,12 @@ export default function RankPage() {
   }, [history, shownRank]);
 
   const rankDelta = useMemo(() => {
-    if (!Number.isFinite(Number(shownRank)) || !Number.isFinite(Number(previousRank))) return null;
+    if (!hasValidRank(shownRank) || !hasValidRank(previousRank)) return null;
     return Number(previousRank) - Number(shownRank);
   }, [shownRank, previousRank]);
 
   const inferredCompetitor = useMemo(() => {
-    if (Number(shownRank) <= 1) return "You are currently leading";
+    if (hasValidRank(shownRank) && Number(shownRank) <= 1) return "You are currently leading";
     const known = String(result?.top_competitor || result?.competitor || "").trim();
     if (known) return known;
     return "Higher-ranked competitor in this SERP";
@@ -626,7 +631,7 @@ export default function RankPage() {
                 <div className="text-sm font-semibold text-[var(--rp-text-900)]">Keyword opportunity insight</div>
                 <p className="mt-2 text-sm leading-relaxed text-[var(--rp-text-700)]">{opportunityInsight(shownRank)}</p>
                 <div className="mt-3 inline-flex items-center rounded-full border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-1 text-xs font-semibold text-[var(--rp-text-600)]">
-                  {Number.isFinite(Number(shownRank)) ? `Current position: ${shownRank}` : "Current position: pending check"}
+                  {hasValidRank(shownRank) ? `Current position: ${shownRank}` : "Current position: pending check"}
                 </div>
               </div>
 
@@ -848,7 +853,7 @@ export default function RankPage() {
               <div className="rp-card p-4">
                 <div className="text-sm font-semibold text-[var(--rp-text-900)]">Keyword opportunity insight</div>
                 <p className="mt-2 text-sm leading-relaxed text-[var(--rp-text-700)]">{opportunityInsight(shownRank)}</p>
-                {Number.isFinite(Number(shownRank)) ? (
+                {hasValidRank(shownRank) ? (
                   <div className="mt-3 inline-flex items-center rounded-full border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-1 text-xs font-semibold text-[var(--rp-text-600)]">
                     Current position: {shownRank}
                   </div>
