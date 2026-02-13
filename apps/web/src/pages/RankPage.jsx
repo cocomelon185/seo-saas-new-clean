@@ -625,7 +625,7 @@ export default function RankPage() {
               id="rank-keyword"
               value={keyword}
               onChange={(e) => setKeyword(e.target.value)}
-              placeholder="Enter keyword"
+              placeholder=""
               autoComplete="off"
               className={"rp-input " + (inlineErrors.keyword ? "border-rose-300 focus:border-rose-400" : "")}
             />
@@ -655,7 +655,7 @@ export default function RankPage() {
               id="rank-domain"
               value={domain}
               onChange={(e) => setDomain(e.target.value)}
-              placeholder="example.com"
+              placeholder=""
               autoComplete="off"
               className={"rp-input " + (inlineErrors.domain ? "border-rose-300 focus:border-rose-400" : "")}
             />
