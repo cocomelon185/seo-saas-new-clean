@@ -663,10 +663,10 @@ export default function RankPage() {
 
           <button
             type="submit"
-            disabled={status === "loading" || !allowRank || !canRun}
+            disabled={status === "loading"}
             className={[
               "rp-btn-primary h-11 w-full text-sm md:h-10 md:w-auto",
-              status === "loading" || !allowRank || !canRun ? "opacity-50 cursor-not-allowed" : ""
+              status === "loading" ? "opacity-50 cursor-not-allowed" : ""
             ].join(" ")}
           >
             <IconCompass size={14} />
