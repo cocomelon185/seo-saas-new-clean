@@ -1,6 +1,7 @@
 import React from "react";
 import { Navigate } from "react-router-dom";
 import RequireAuth from "./RequireAuth.jsx";
+import RankRouteError from "../components/RankRouteError.jsx";
 
 const AuditPage = React.lazy(() => import("../pages/AuditPage.jsx"));
 const RankPage = React.lazy(() => import("../pages/RankPage.jsx"));
@@ -41,7 +42,11 @@ const suspenseWrap = (element) => (
 
 const routes = [
   { path: "/audit", element: suspenseWrap(<AuditPage />) },
-  { path: "/rank", element: <RequireAuth role="member">{suspenseWrap(<RankPage />)}</RequireAuth> },
+  {
+    path: "/rank",
+    element: <RequireAuth role="member">{suspenseWrap(<RankPage />)}</RequireAuth>,
+    errorElement: <RankRouteError />
+  },
   { path: "/improve", element: <RequireAuth role="member">{suspenseWrap(<ImprovePage />)}</RequireAuth> },
   { path: "/pricing", element: suspenseWrap(<PricingPage />) },
   { path: "/upgrade", element: suspenseWrap(<UpgradePage />) },

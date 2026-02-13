@@ -881,6 +881,14 @@ export default function RankPage() {
     return Math.max(0, fromSteps + fromChecks - 1);
   }, [winsStats.completed, checksThisMonth.length]);
 
+  const contentGapDiffRows = useMemo(() => {
+    const headings = gap.competitors.flatMap((c) => c.headings).slice(0, 6);
+    return headings.map((heading) => {
+      const coverageCount = gap.competitors.filter((c) => c.headings.includes(heading)).length;
+      return { heading, coverageCount };
+    });
+  }, [gap]);
+
   useEffect(() => {
     if (status !== "success" || !scopeDomain || !scopeKeyword) return;
     const existing = getProgressState(scopeDomain, scopeKeyword);
@@ -992,14 +1000,6 @@ export default function RankPage() {
     if (trendMovement?.direction === "down") lines.push("Pattern-based: ranking volatility suggests competitor refreshes or weaker topical coverage.");
     return lines.slice(0, 4);
   }, [shownRank, rankDelta, competitorBench, trendMovement]);
-
-  const contentGapDiffRows = useMemo(() => {
-    const headings = gap.competitors.flatMap((c) => c.headings).slice(0, 6);
-    return headings.map((heading) => {
-      const coverageCount = gap.competitors.filter((c) => c.headings.includes(heading)).length;
-      return { heading, coverageCount };
-    });
-  }, [gap]);
 
   const kpis = useMemo(() => ([
     {
