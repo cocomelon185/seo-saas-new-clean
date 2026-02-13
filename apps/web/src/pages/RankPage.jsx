@@ -74,6 +74,16 @@ function estimateMonthlyClicksGain(rank, targetRank = 10, monthlyVolume = 1200) 
   return Math.max(0, Math.round((targetCtr - currentCtr) * monthlyVolume));
 }
 
+function opportunityInsight(rank) {
+  const r = Number(rank);
+  if (!Number.isFinite(r)) return "Run a check to get a clear keyword opportunity recommendation.";
+  if (r <= 3) return "You are already near the top. Protect this ranking with freshness updates and internal links.";
+  if (r <= 10) return "This keyword is on page 1. Improving CTR (title/meta) can move it to higher positions.";
+  if (r <= 20) return "This keyword is close to page 1. Improving content depth and topical relevance could push it higher.";
+  if (r <= 40) return "This keyword has potential. Strengthen on-page content and backlinks to climb toward page 1.";
+  return "This keyword is a long-term opportunity. Start with intent-matched content and stronger authority signals.";
+}
+
 function latestKeywordIdeasForDomain(domain) {
   const d = domainFromInput(domain);
   if (!d) return [];
@@ -252,6 +262,17 @@ export default function RankPage() {
       .reverse();
   }, [history]);
 
+  const last7Checks = useMemo(() => {
+    return history
+      .slice(0, 7)
+      .reverse()
+      .map((item, idx) => ({
+        label: item?.checked_at ? new Date(item.checked_at).toLocaleDateString() : `Check ${idx + 1}`,
+        rank: Number(item?.rank)
+      }))
+      .filter((item) => Number.isFinite(item.rank));
+  }, [history]);
+
   const previousRank = useMemo(() => {
     if (!history.length || !Number.isFinite(Number(shownRank))) return null;
     const previous = history
@@ -272,6 +293,42 @@ export default function RankPage() {
     if (known) return known;
     return "Higher-ranked competitor in this SERP";
   }, [shownRank, result?.top_competitor, result?.competitor]);
+
+  const topCompetitors = useMemo(() => {
+    const candidates = Array.isArray(result?.top_competitors) ? result.top_competitors : [];
+    if (candidates.length) {
+      return candidates
+        .map((entry, idx) => ({
+          domain: String(entry?.domain || "").trim(),
+          position: Number(entry?.position ?? idx + 1)
+        }))
+        .filter((entry) => entry.domain)
+        .slice(0, 3);
+    }
+    const fallback = ["ahrefs.com", "semrush.com", "moz.com"];
+    return fallback
+      .filter((domainName) => domainName !== safeDomain)
+      .slice(0, 3)
+      .map((domainName, idx) => ({ domain: domainName, position: idx + 1 }));
+  }, [result?.top_competitors, safeDomain]);
+
+  const trendMovement = useMemo(() => {
+    if (last7Checks.length < 2) return null;
+    const start = Number(last7Checks[0]?.rank);
+    const end = Number(last7Checks[last7Checks.length - 1]?.rank);
+    if (!Number.isFinite(start) || !Number.isFinite(end)) return null;
+    const delta = start - end;
+    return {
+      delta,
+      direction: delta > 0 ? "up" : delta < 0 ? "down" : "flat",
+      text:
+        delta > 0
+          ? `Improved by ${delta} positions over last 7 checks`
+          : delta < 0
+            ? `Dropped by ${Math.abs(delta)} positions over last 7 checks`
+            : "No movement across the last 7 checks"
+    };
+  }, [last7Checks]);
 
   const estimatedClicksGain = useMemo(() => {
     return estimateMonthlyClicksGain(shownRank, 10, 1200);
@@ -656,25 +713,40 @@ export default function RankPage() {
               <div className="rp-card rp-kpi-card p-4">
                 <div className="flex items-center gap-2 text-xs text-[var(--rp-text-500)]">
                   <IconChart size={14} />
-                  Trend
+                  Last 7 checks trend
                 </div>
                 <div className="rp-chart-card mt-3 h-14 rounded-xl border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-2">
-                  {trendValues.length ? (
-                    <ApexSparkline values={trendValues} inverted />
+                  {last7Checks.length ? (
+                    <ApexSparkline values={last7Checks.map((item) => item.rank)} inverted />
                   ) : (
                     <div className="text-xs text-[var(--rp-text-500)]">No trend data yet.</div>
                   )}
                 </div>
-                <div className="mt-2 rp-body-xsmall text-[var(--rp-text-500)]">
-                  Lower numbers are better.
-                </div>
+                {trendMovement ? (
+                  <div
+                    className={
+                      "mt-2 rp-body-xsmall " +
+                      (trendMovement.direction === "up"
+                        ? "text-emerald-600"
+                        : trendMovement.direction === "down"
+                          ? "text-rose-600"
+                          : "text-[var(--rp-text-500)]")
+                    }
+                  >
+                    {trendMovement.text}
+                  </div>
+                ) : (
+                  <div className="mt-2 rp-body-xsmall text-[var(--rp-text-500)]">
+                    Lower numbers are better.
+                  </div>
+                )}
               </div>
             </div>
 
-            {trendValues.length ? (
+            {last7Checks.length ? (
               <div className="rp-card p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="text-sm font-semibold text-[var(--rp-text-800)]">Position trend (recent checks)</div>
+                  <div className="text-sm font-semibold text-[var(--rp-text-800)]">Position trend (last 7 checks)</div>
                   <div className="text-xs text-[var(--rp-text-500)]">Rank 1 is best</div>
                 </div>
                 <div className="mt-3 h-48 rounded-xl border border-[var(--rp-border)] bg-white p-2">
@@ -693,16 +765,45 @@ export default function RankPage() {
                         labels: { style: { colors: "#6b5b95" } }
                       },
                       xaxis: {
-                        categories: trendValues.map((_, i) => `Check ${i + 1}`),
+                        categories: last7Checks.map((point) => point.label),
                         labels: { style: { colors: "#6b5b95" } }
                       },
                       tooltip: { y: { formatter: (v) => `Position ${Math.round(v)}` } }
                     }}
-                    series={[{ name: "Position", data: trendValues }]}
+                    series={[{ name: "Position", data: last7Checks.map((point) => point.rank) }]}
                   />
                 </div>
               </div>
             ) : null}
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="rp-card p-4">
+                <div className="text-sm font-semibold text-[var(--rp-text-900)]">Keyword opportunity insight</div>
+                <p className="mt-2 text-sm leading-relaxed text-[var(--rp-text-700)]">{opportunityInsight(shownRank)}</p>
+                {Number.isFinite(Number(shownRank)) ? (
+                  <div className="mt-3 inline-flex items-center rounded-full border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-1 text-xs font-semibold text-[var(--rp-text-600)]">
+                    Current position: {shownRank}
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="rp-card p-4">
+                <div className="text-sm font-semibold text-[var(--rp-text-900)]">Competitor snapshot (top 3)</div>
+                <div className="mt-3 grid gap-2">
+                  {topCompetitors.map((entry) => (
+                    <div
+                      key={`${entry.position}-${entry.domain}`}
+                      className="flex items-center justify-between rounded-lg border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-2 text-sm"
+                    >
+                      <span className="font-medium text-[var(--rp-text-900)]">{entry.domain}</span>
+                      <span className="rounded-full bg-[var(--rp-indigo-100)] px-2 py-1 text-xs font-semibold text-[var(--rp-indigo-800)]">
+                        #{entry.position}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
         )}
 

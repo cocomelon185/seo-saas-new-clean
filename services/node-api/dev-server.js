@@ -221,10 +221,26 @@ app.post("/api/rank-check", (req, res) => {
     return res.status(400).json({ error: "Missing keyword or domain" });
   }
 
+  const cleanDomain = String(domain).trim().toLowerCase();
+  const position = Math.floor(Math.random() * 50) + 1;
+  const competitorPool = [
+    "ahrefs.com",
+    "semrush.com",
+    "moz.com",
+    "backlinko.com",
+    "searchenginejournal.com",
+    "seo.com"
+  ].filter((d) => d !== cleanDomain);
+  const top_competitors = competitorPool.slice(0, 3).map((d, idx) => ({
+    domain: d,
+    position: idx + 1
+  }));
+
   return res.json({
     keyword,
-    domain,
-    position: Math.floor(Math.random() * 50) + 1,
+    domain: cleanDomain,
+    position,
+    top_competitors,
     checked_at: new Date().toISOString()
   });
 });
