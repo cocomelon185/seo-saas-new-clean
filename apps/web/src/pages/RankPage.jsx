@@ -229,6 +229,16 @@ function contentGapPreview(keyword, domain) {
   };
 }
 
+function inferKeywordIntent(keyword) {
+  const text = normalizeKeywordForStore(keyword);
+  if (!text) return "Informational";
+  const transactionalTerms = ["buy", "price", "cost", "pricing", "cheap", "discount", "demo", "trial", "subscribe"];
+  const commercialTerms = ["best", "top", "vs", "comparison", "compare", "tool", "software", "service", "agency", "review"];
+  if (transactionalTerms.some((term) => text.includes(term))) return "Transactional";
+  if (commercialTerms.some((term) => text.includes(term))) return "Commercial";
+  return "Informational";
+}
+
 function estimateDifficulty(rank, keywordText = "") {
   const r = Number(rank);
   if (!Number.isFinite(r) || r <= 0) return null;
@@ -265,6 +275,16 @@ function ProvenanceBadge({ live }) {
       {live ? "Live data" : "Estimated"}
     </span>
   );
+}
+
+function TrendMarkers({ checks = [] }) {
+  if (!checks.length) return { best: null, worst: null };
+  const mapped = checks.map((item, index) => ({ index, label: item.label, rank: Number(item.rank) }))
+    .filter((item) => Number.isFinite(item.rank));
+  if (!mapped.length) return { best: null, worst: null };
+  const best = mapped.reduce((acc, cur) => (cur.rank < acc.rank ? cur : acc), mapped[0]);
+  const worst = mapped.reduce((acc, cur) => (cur.rank > acc.rank ? cur : acc), mapped[0]);
+  return { best, worst };
 }
 
 export default function RankPage() {
@@ -453,20 +473,14 @@ export default function RankPage() {
     }).slice(0, 12);
   }, [safeKeyword, safeDomain]);
 
-  const trendValues = useMemo(() => {
-    return history
-      .map((x) => Number(x.rank))
-      .filter((x) => Number.isFinite(x))
-      .slice(0, 8)
-      .reverse();
-  }, [history]);
-
   const last7Checks = useMemo(() => {
     return history
       .slice(0, 7)
       .reverse()
       .map((item, idx) => ({
-        label: item?.checked_at ? new Date(item.checked_at).toLocaleDateString() : `Check ${idx + 1}`,
+        label: item?.checked_at || item?.createdAt
+          ? new Date(item?.checked_at || item?.createdAt).toLocaleDateString()
+          : `Check ${idx + 1}`,
         rank: Number(item?.rank)
       }))
       .filter((item) => Number.isFinite(item.rank));
@@ -486,13 +500,6 @@ export default function RankPage() {
     return Number(previousRank) - Number(shownRank);
   }, [shownRank, previousRank]);
 
-  const inferredCompetitor = useMemo(() => {
-    if (hasValidRank(shownRank) && Number(shownRank) <= 1) return "You are currently leading";
-    const known = String(result?.top_competitor || result?.competitor || "").trim();
-    if (known) return known;
-    return "Higher-ranked competitor in this SERP";
-  }, [shownRank, result?.top_competitor, result?.competitor]);
-
   const topCompetitors = useMemo(() => {
     const candidates = Array.isArray(result?.top_competitors) ? result.top_competitors : [];
     if (candidates.length) {
@@ -507,6 +514,13 @@ export default function RankPage() {
     return [];
   }, [result?.top_competitors]);
   const hasLiveTopCompetitors = topCompetitors.length > 0;
+  const inferredCompetitor = useMemo(() => {
+    if (hasValidRank(shownRank) && Number(shownRank) <= 1) return "You are currently leading";
+    if (topCompetitors[0]?.domain) return topCompetitors[0].domain;
+    const known = String(result?.top_competitor || result?.competitor || "").trim();
+    if (known) return known;
+    return "Higher-ranked competitor in this SERP";
+  }, [shownRank, topCompetitors, result?.top_competitor, result?.competitor]);
 
   const difficultyScore = useMemo(() => {
     const apiValue = Number(result?.difficulty_score);
@@ -557,18 +571,38 @@ export default function RankPage() {
     return [...new Set([...fromTracked, ...fromIdeas])].filter(Boolean).slice(0, 8);
   }, [safeKeyword, ideas]);
 
-  const rankReasons = useMemo(() => whyRankHere(shownRank, difficultyScore), [shownRank, difficultyScore]);
   const liveRankReasons = useMemo(() => {
     if (!Array.isArray(result?.rank_reasons)) return [];
     return result.rank_reasons.map((item) => String(item || "").trim()).filter(Boolean).slice(0, 4);
   }, [result?.rank_reasons]);
-  const displayedRankReasons = useMemo(() => {
-    if (liveRankReasons.length) {
-      return liveRankReasons.map((text) => ({ source: "Live signal", text }));
-    }
-    return rankReasons.map((text) => ({ source: "Pattern-based", text }));
-  }, [liveRankReasons, rankReasons]);
+  const detailedRankReasons = useMemo(() => {
+    if (!hasValidRank(shownRank)) return [];
+    if (liveRankReasons.length) return liveRankReasons.map((text) => ({ source: "Live signal", text }));
+    const competitor = topCompetitors[0]?.domain || "top competitors";
+    const baseWordCount = 900 + Math.max(0, (55 - Number(shownRank)) * 10);
+    const competitorWordCount = Math.round(baseWordCount * 1.9);
+    return [
+      {
+        source: "Pattern-based",
+        text: `${competitor} pages often average ~${competitorWordCount}+ words with comparison blocks, while your page likely has thinner coverage.`
+      },
+      {
+        source: "Pattern-based",
+        text: `Top pages typically carry stronger authority (often around 4x-6x backlink depth), which can outweigh similar on-page relevance.`
+      }
+    ];
+  }, [shownRank, liveRankReasons, topCompetitors]);
   const bestMove = useMemo(() => nextBestMove(shownRank), [shownRank]);
+  const keywordIntent = useMemo(() => inferKeywordIntent(safeKeyword), [safeKeyword]);
+  const rankingUrl = useMemo(() => {
+    const fromApi = String(result?.ranking_url || result?.rankingUrl || result?.url || "").trim();
+    if (fromApi) return fromApi;
+    const cleanDomain = safeDomain || domainFromInput(domain);
+    if (!cleanDomain) return "";
+    const slug = normalizeKeywordForStore(safeKeyword).replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+    return `https://${cleanDomain}/${slug || ""}`.replace(/\/$/, "");
+  }, [result?.ranking_url, result?.rankingUrl, result?.url, safeDomain, domain, safeKeyword]);
+  const trendMarkers = useMemo(() => TrendMarkers({ checks: last7Checks }), [last7Checks]);
   const gap = useMemo(() => contentGapPreview(safeKeyword, safeDomain), [safeKeyword, safeDomain]);
 
   const trendMovement = useMemo(() => {
@@ -934,6 +968,23 @@ export default function RankPage() {
                       stroke: { curve: "smooth", width: 3 },
                       colors: ["#7c3aed"],
                       grid: { borderColor: "#ede9fe" },
+                      markers: { size: 4, strokeWidth: 2, colors: ["#7c3aed"] },
+                      annotations: {
+                        points: [
+                          ...(trendMarkers.best ? [{
+                            x: trendMarkers.best.label,
+                            y: trendMarkers.best.rank,
+                            marker: { size: 5, fillColor: "#10b981", strokeColor: "#ffffff", strokeWidth: 2 },
+                            label: { borderColor: "#10b981", style: { color: "#fff", background: "#10b981" }, text: "Best" }
+                          }] : []),
+                          ...(trendMarkers.worst ? [{
+                            x: trendMarkers.worst.label,
+                            y: trendMarkers.worst.rank,
+                            marker: { size: 5, fillColor: "#ef4444", strokeColor: "#ffffff", strokeWidth: 2 },
+                            label: { borderColor: "#ef4444", style: { color: "#fff", background: "#ef4444" }, text: "Worst" }
+                          }] : [])
+                        ]
+                      },
                       yaxis: {
                         reversed: true,
                         min: 1,
@@ -944,7 +995,10 @@ export default function RankPage() {
                         categories: last7Checks.map((point) => point.label),
                         labels: { style: { colors: "#6b5b95" } }
                       },
-                      tooltip: { y: { formatter: (v) => `Position ${Math.round(v)}` } }
+                      tooltip: {
+                        x: { formatter: (v) => `Date: ${v}` },
+                        y: { formatter: (v) => `Position ${Math.round(v)}` }
+                      }
                     }}
                     series={[{ name: "Position", data: last7Checks.map((point) => point.rank) }]}
                   />
@@ -1011,9 +1065,9 @@ export default function RankPage() {
             <div className="grid gap-4 md:grid-cols-2">
               <div className="rp-card p-4">
                 <div className="text-[15px] font-semibold text-[var(--rp-text-900)]">Why you rank here</div>
-                {displayedRankReasons.length ? (
+                {detailedRankReasons.length ? (
                   <div className="mt-3 space-y-2">
-                    {displayedRankReasons.map((reason) => (
+                    {detailedRankReasons.map((reason) => (
                       <div key={`${reason.source}-${reason.text}`} className="rounded-lg border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-2 text-sm text-[var(--rp-text-700)]">
                         <span className="mr-1 font-semibold">{reason.source}:</span>
                         {reason.text}
@@ -1163,6 +1217,11 @@ export default function RankPage() {
               <div className="mt-3 grid gap-2 text-[var(--rp-text-800)]">
                 <div><span className="text-[var(--rp-text-500)]">Keyword:</span> {displayKeyword || "-"}</div>
                 <div><span className="text-[var(--rp-text-500)]">Domain:</span> {safeDomain || "-"}</div>
+                <div><span className="text-[var(--rp-text-500)]">Keyword intent:</span> {keywordIntent}</div>
+                <div className="break-all">
+                  <span className="text-[var(--rp-text-500)]">Ranking URL:</span>{" "}
+                  <span className="font-medium text-[var(--rp-text-900)]">{rankingUrl || "Pending live ranking URL"}</span>
+                </div>
 
                 <div className="text-2xl font-semibold text-[var(--rp-text-900)]">
                   <span className="text-[var(--rp-text-500)] text-base font-medium">Rank:</span> {shownRank ?? "-"}
@@ -1272,6 +1331,23 @@ export default function RankPage() {
                       stroke: { curve: "smooth", width: 3 },
                       colors: ["#7c3aed"],
                       grid: { borderColor: "#ede9fe" },
+                      markers: { size: 4, strokeWidth: 2, colors: ["#7c3aed"] },
+                      annotations: {
+                        points: [
+                          ...(trendMarkers.best ? [{
+                            x: trendMarkers.best.label,
+                            y: trendMarkers.best.rank,
+                            marker: { size: 5, fillColor: "#10b981", strokeColor: "#ffffff", strokeWidth: 2 },
+                            label: { borderColor: "#10b981", style: { color: "#fff", background: "#10b981" }, text: "Best" }
+                          }] : []),
+                          ...(trendMarkers.worst ? [{
+                            x: trendMarkers.worst.label,
+                            y: trendMarkers.worst.rank,
+                            marker: { size: 5, fillColor: "#ef4444", strokeColor: "#ffffff", strokeWidth: 2 },
+                            label: { borderColor: "#ef4444", style: { color: "#fff", background: "#ef4444" }, text: "Worst" }
+                          }] : [])
+                        ]
+                      },
                       yaxis: {
                         reversed: true,
                         min: 1,
@@ -1282,7 +1358,10 @@ export default function RankPage() {
                         categories: last7Checks.map((point) => point.label),
                         labels: { style: { colors: "#6b5b95" } }
                       },
-                      tooltip: { y: { formatter: (v) => `Position ${Math.round(v)}` } }
+                      tooltip: {
+                        x: { formatter: (v) => `Date: ${v}` },
+                        y: { formatter: (v) => `Position ${Math.round(v)}` }
+                      }
                     }}
                     series={[{ name: "Position", data: last7Checks.map((point) => point.rank) }]}
                   />
@@ -1297,6 +1376,16 @@ export default function RankPage() {
                   <ProvenanceBadge live={hasLiveOpportunityData} />
                 </div>
                 <p className="mt-2 text-[15px] leading-relaxed text-[var(--rp-text-700)]">{opportunityInsight(shownRank)}</p>
+                {!!detailedRankReasons.length && (
+                  <div className="mt-3 space-y-2">
+                    {detailedRankReasons.slice(0, 2).map((reason) => (
+                      <div key={`opp-${reason.source}-${reason.text}`} className="rounded-lg border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-2 text-sm text-[var(--rp-text-700)]">
+                        <span className="mr-1 font-semibold">{reason.source}:</span>
+                        {reason.text}
+                      </div>
+                    ))}
+                  </div>
+                )}
                 {hasValidRank(shownRank) ? (
                   <div className="mt-3 inline-flex items-center rounded-full border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-1 text-xs font-semibold text-[var(--rp-text-600)]">
                     Current position: {shownRank}
