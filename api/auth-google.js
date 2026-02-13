@@ -4,7 +4,7 @@ import jwt from "jsonwebtoken";
 import { createRequire } from "module";
 
 const require = createRequire(import.meta.url);
-const store = require("./auth-store.cjs");
+const store = require("./auth-store-cjs.cjs");
 
 const {
   getUserByEmail,
