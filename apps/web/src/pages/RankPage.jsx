@@ -10,6 +10,16 @@ import {
   normalizeKeywordForStore,
   saveRankCheck
 } from "../utils/rankHistory.js";
+import {
+  computeHybridSeoScore,
+  computeMonthlyScoreSeries,
+  computeWinsStats,
+  getAlertPrefs,
+  getProgressState,
+  setAlertPrefs,
+  setProgressState,
+  setProgressStep
+} from "../utils/rankProgress.js";
 import { decodeSharePayload } from "../utils/shareRank.js";
 import { listSnapshots } from "../utils/auditSnapshots.js";
 import { getAuthToken, getAuthUser } from "../lib/authClient.js";
@@ -42,6 +52,54 @@ const LANGUAGES = [
   { value: "fr", label: "French" },
   { value: "de", label: "German" }
 ];
+
+const SUCCESS_STEPS = [
+  {
+    key: "title",
+    label: "Fix title intent match",
+    why: "A clearer title improves relevance and click-through from search.",
+    ctrLift: 6,
+    visits: 14,
+    actionLabel: "Generate improved title"
+  },
+  {
+    key: "faq",
+    label: "Add FAQ section",
+    why: "FAQ content captures long-tail searches and supports rich snippets.",
+    ctrLift: 12,
+    visits: 18,
+    actionLabel: "Create FAQ section"
+  },
+  {
+    key: "headings",
+    label: "Add missing headings",
+    why: "Matching topic headings helps search engines trust your page coverage.",
+    ctrLift: 8,
+    visits: 16,
+    actionLabel: "Add missing headings now"
+  },
+  {
+    key: "backlinks",
+    label: "Build contextual backlinks",
+    why: "Relevant backlinks improve page authority in competitive SERPs.",
+    ctrLift: 10,
+    visits: 22,
+    actionLabel: "Plan 3 backlinks"
+  }
+];
+
+function isEmailLike(value) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || "").trim());
+}
+
+function formatScopeLabel(domain, keyword) {
+  const d = normalizeDomainForStore(domain);
+  const k = keywordToTitleCase(keyword);
+  if (d && k) return `${k} • ${d}`;
+  if (d) return d;
+  if (k) return k;
+  return "Current keyword scope";
+}
 
 const TOPIC_LIBRARY = {
   "seo audit tool": [
@@ -324,6 +382,10 @@ export default function RankPage() {
   const [loadingStep, setLoadingStep] = useState(0);
   const [inlineErrors, setInlineErrors] = useState({ keyword: "", domain: "" });
   const [waitlistMessage, setWaitlistMessage] = useState("");
+  const [progressState, setProgressStateUI] = useState(() => getProgressState("", ""));
+  const [alertPrefs, setAlertPrefsUI] = useState(() => getAlertPrefs());
+  const [alertMessage, setAlertMessage] = useState("");
+  const [alertErrors, setAlertErrors] = useState({ email: "" });
   const authUser = getAuthUser();
   const [requestStatus, setRequestStatus] = useState("");
   const [allowRank, setAllowRank] = useState(true);
@@ -479,16 +541,45 @@ export default function RankPage() {
   const safeDomain = normalizeDomainForStore(result?.domain || domainFromInput(domain) || "");
   const auditTargetDomain = safeDomain || domainFromInput(domain);
   const displayKeyword = keywordToTitleCase(safeKeyword);
+  const allChecks = useMemo(() => listRankChecks(), [result, lastCheckedAt, status]);
+  const scopeDomain = safeDomain || domainFromInput(domain);
+  const scopeKeyword = safeKeyword || keyword;
+
+  useEffect(() => {
+    setProgressStateUI(getProgressState(scopeDomain, scopeKeyword));
+  }, [scopeDomain, scopeKeyword]);
 
   const history = useMemo(() => {
-    const all = listRankChecks();
+    const all = allChecks;
     if (!safeKeyword && !safeDomain) return all.slice(0, 12);
     return all.filter((x) => {
       const kwMatch = safeKeyword ? String(x.keyword || "").toLowerCase() === safeKeyword.toLowerCase() : true;
       const dmMatch = safeDomain ? String(x.domain || "").toLowerCase().includes(safeDomain.toLowerCase()) : true;
       return kwMatch && dmMatch;
     }).slice(0, 12);
-  }, [safeKeyword, safeDomain]);
+  }, [safeKeyword, safeDomain, allChecks]);
+
+  const checks30d = useMemo(() => {
+    const cutoff = Date.now() - (30 * 24 * 60 * 60 * 1000);
+    return allChecks.filter((item) => {
+      const ts = Date.parse(String(item?.createdAt || item?.checked_at || ""));
+      if (!Number.isFinite(ts) || ts < cutoff) return false;
+      if (!scopeDomain) return true;
+      return normalizeDomainForStore(item?.domain) === normalizeDomainForStore(scopeDomain);
+    });
+  }, [allChecks, scopeDomain]);
+
+  const checksThisMonth = useMemo(() => {
+    const now = new Date();
+    const year = now.getUTCFullYear();
+    const month = now.getUTCMonth();
+    return checks30d.filter((item) => {
+      const ts = Date.parse(String(item?.createdAt || item?.checked_at || ""));
+      if (!Number.isFinite(ts)) return false;
+      const d = new Date(ts);
+      return d.getUTCFullYear() === year && d.getUTCMonth() === month;
+    });
+  }, [checks30d]);
 
   const last7Checks = useMemo(() => {
     return history
@@ -715,6 +806,123 @@ export default function RankPage() {
     if (!ranks.length) return null;
     return Math.min(...ranks);
   }, [history]);
+
+  const latestRankValue = hasValidRank(shownRank)
+    ? Number(shownRank)
+    : Number(history[0]?.rank);
+
+  const firstRank30d = useMemo(() => {
+    const ranked = checks30d
+      .map((item) => Number(item?.rank))
+      .filter((value) => Number.isFinite(value) && value > 0);
+    if (!ranked.length) return null;
+    return ranked[0];
+  }, [checks30d]);
+
+  const rankImprovement30d = useMemo(() => {
+    if (!Number.isFinite(firstRank30d) || !Number.isFinite(latestRankValue)) return null;
+    return firstRank30d - latestRankValue;
+  }, [firstRank30d, latestRankValue]);
+
+  const activeSnapshotScore = useMemo(() => {
+    const clean = normalizeDomainForStore(scopeDomain);
+    if (!clean) return null;
+    const snapshots = listSnapshots();
+    const hit = snapshots.find((item) => String(item?.url || "").includes(clean));
+    const score = Number(hit?.score ?? hit?.seo_score);
+    return Number.isFinite(score) ? score : null;
+  }, [scopeDomain]);
+
+  const monthlySeoScoreSeries = useMemo(() => {
+    return computeMonthlyScoreSeries({
+      rankHistory: checksThisMonth,
+      auditSnapshots: listSnapshots(),
+      domain: scopeDomain
+    });
+  }, [checksThisMonth, scopeDomain]);
+
+  const seoScoreHybrid = useMemo(() => {
+    return computeHybridSeoScore({
+      latestRank: latestRankValue,
+      rankHistory: history.slice(0, 7),
+      auditScore: activeSnapshotScore
+    });
+  }, [latestRankValue, history, activeSnapshotScore]);
+
+  const scoreSourceLabel = useMemo(() => {
+    if (Number.isFinite(activeSnapshotScore) && hasValidRank(latestRankValue)) return "Hybrid";
+    if (Number.isFinite(activeSnapshotScore)) return "Live";
+    return "Estimated";
+  }, [activeSnapshotScore, latestRankValue]);
+
+  const winsStats = useMemo(() => {
+    return computeWinsStats({ stepState: progressState?.stepState, checks30d });
+  }, [progressState?.stepState, checks30d]);
+
+  const completedVisitsGain = useMemo(() => {
+    return SUCCESS_STEPS.reduce((sum, step) => (
+      progressState?.stepState?.[step.key] ? sum + step.visits : sum
+    ), 0);
+  }, [progressState]);
+
+  const completedCtrGain = useMemo(() => {
+    return SUCCESS_STEPS.reduce((sum, step) => (
+      progressState?.stepState?.[step.key] ? sum + step.ctrLift : sum
+    ), 0);
+  }, [progressState]);
+
+  const nextIncompleteStep = useMemo(() => {
+    return SUCCESS_STEPS.find((step) => !progressState?.stepState?.[step.key]) || null;
+  }, [progressState]);
+
+  const winsThisMonth = useMemo(() => {
+    const fromSteps = winsStats.completed;
+    const fromChecks = Math.min(2, checksThisMonth.length);
+    return Math.max(0, fromSteps + fromChecks - 1);
+  }, [winsStats.completed, checksThisMonth.length]);
+
+  useEffect(() => {
+    if (status !== "success" || !scopeDomain || !scopeKeyword) return;
+    const existing = getProgressState(scopeDomain, scopeKeyword);
+    const hasManual = Object.values(existing.stepState || {}).some(Boolean);
+    if (hasManual) return;
+
+    const next = {
+      stepState: {
+        title: Boolean(rankDelta && rankDelta > 0 && ["Commercial", "Transactional", "Informational"].includes(keywordIntent)),
+        faq: false,
+        headings: contentGapDiffRows.filter((row) => Number(row.coverageCount) < 2).length <= 1,
+        backlinks: false
+      }
+    };
+    const saved = setProgressState(scopeDomain, scopeKeyword, next);
+    setProgressStateUI(saved);
+  }, [status, scopeDomain, scopeKeyword, rankDelta, keywordIntent, contentGapDiffRows]);
+
+  function handleProgressToggle(stepKey, value) {
+    const saved = setProgressStep(scopeDomain, scopeKeyword, stepKey, value);
+    setProgressStateUI(saved);
+  }
+
+  function handleAlertToggle(key, value) {
+    const saved = setAlertPrefs({ ...alertPrefs, [key]: Boolean(value) });
+    setAlertPrefsUI(saved);
+    setAlertMessage("Alert preferences saved.");
+    setTimeout(() => setAlertMessage(""), 1800);
+  }
+
+  function saveAlertEmail() {
+    const clean = String(alertPrefs.email || "").trim();
+    if (!clean || !isEmailLike(clean)) {
+      setAlertErrors({ email: "Enter a valid email address." });
+      return;
+    }
+    const saved = setAlertPrefs({ ...alertPrefs, email: clean });
+    setAlertPrefsUI(saved);
+    setAlertErrors({ email: "" });
+    setAlertMessage("Weekly alert email saved.");
+    setTimeout(() => setAlertMessage(""), 2200);
+  }
 
   const actionableRecipe = useMemo(() => {
     if (!hasValidRank(shownRank)) return [];
@@ -1104,14 +1312,67 @@ export default function RankPage() {
         </div>
 
         {status === "idle" && (
-          <div className="rp-card p-4 md:p-5 text-[var(--rp-text-700)]">
-            <div className="text-sm font-semibold text-[var(--rp-text-900)]">How this helps your business</div>
-            <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm">
-              <li>Enter one keyword and your domain.</li>
-              <li>Click <span className="font-semibold">Check Rank</span> for a live position check.</li>
-              <li>See change vs last check and click opportunity.</li>
-              <li>Run SEO Audit on that domain to fix what is holding rank back.</li>
-            </ol>
+          <div className="grid gap-3 md:gap-4">
+            <div className="rp-card p-4 md:p-5 text-[var(--rp-text-700)]">
+              <div className="text-sm font-semibold text-[var(--rp-text-900)]">How this helps your business</div>
+              <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm">
+                <li>Enter one keyword and your domain.</li>
+                <li>Click <span className="font-semibold">Check Rank</span> for a live position check.</li>
+                <li>See change vs last check and click opportunity.</li>
+                <li>Run SEO Audit on that domain to fix what is holding rank back.</li>
+              </ol>
+            </div>
+
+            <div className="rp-card p-4 md:p-5">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="text-sm font-semibold text-[var(--rp-text-900)]">Weekly Growth Alerts</div>
+                <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
+                  Automation preview
+                </span>
+              </div>
+              <div className="mt-2 text-xs text-[var(--rp-text-500)]">
+                Enable recurring alerts so you do not miss ranking drops or new opportunities.
+              </div>
+              <div className="mt-3 grid gap-2 md:grid-cols-2">
+                {[
+                  ["weeklyEmail", "Weekly progress email"],
+                  ["rankDrop", "Ranking drop alerts"],
+                  ["competitorMove", "Competitor movement alerts"],
+                  ["opportunity", "Opportunity alerts"]
+                ].map(([key, label]) => (
+                  <label key={key} className="flex items-center justify-between rounded-lg border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-2 text-sm text-[var(--rp-text-700)]">
+                    <span>{label}</span>
+                    <input
+                      type="checkbox"
+                      checked={Boolean(alertPrefs?.[key])}
+                      onChange={(e) => handleAlertToggle(key, e.target.checked)}
+                    />
+                  </label>
+                ))}
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <input
+                  type="email"
+                  value={alertPrefs.email}
+                  onChange={(e) => {
+                    setAlertPrefsUI((prev) => ({ ...prev, email: e.target.value }));
+                    if (alertErrors.email) setAlertErrors({ email: "" });
+                  }}
+                  placeholder="you@company.com"
+                  className="rp-input h-10 w-full sm:w-72"
+                />
+                <button type="button" onClick={saveAlertEmail} className="rp-btn-primary rp-btn-sm h-10 px-4 text-xs">
+                  Save alerts
+                </button>
+                {(alertPrefs.weeklyEmail || alertPrefs.rankDrop || alertPrefs.competitorMove || alertPrefs.opportunity) ? (
+                  <button type="button" onClick={() => setPricingOpen(true)} className="rp-btn-secondary rp-btn-sm h-10 px-4 text-xs">
+                    Unlock weekly automation
+                  </button>
+                ) : null}
+              </div>
+              {alertErrors.email ? <div className="mt-2 text-xs text-rose-600">{alertErrors.email}</div> : null}
+              {alertMessage ? <div className="mt-2 text-xs text-emerald-600">{alertMessage}</div> : null}
+            </div>
           </div>
         )}
 
@@ -1425,6 +1686,219 @@ export default function RankPage() {
                   </button>
                 </div>
               </div>
+            </div>
+
+            <div className="rp-card p-4 md:p-5">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <div className="text-[15px] font-semibold text-[var(--rp-text-900)]">SEO Progress Dashboard</div>
+                  <div className="text-xs text-[var(--rp-text-500)]">{formatScopeLabel(scopeDomain, scopeKeyword)}</div>
+                </div>
+                <span
+                  className={[
+                    "inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold",
+                    scoreSourceLabel === "Hybrid"
+                      ? "border-[var(--rp-indigo-200)] bg-[var(--rp-indigo-50)] text-[var(--rp-indigo-800)]"
+                      : scoreSourceLabel === "Live"
+                        ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                        : "border-amber-200 bg-amber-50 text-amber-700"
+                  ].join(" ")}
+                >
+                  {scoreSourceLabel}
+                </span>
+              </div>
+
+              <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+                <div className="rounded-xl border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-3">
+                  <div className="text-xs text-[var(--rp-text-500)]">SEO score (this month)</div>
+                  <div className="mt-1 text-2xl font-semibold text-[var(--rp-indigo-700)]">{seoScoreHybrid ?? "—"}</div>
+                  <div className="mt-1 text-[11px] text-[var(--rp-text-500)]">Why this matters: this blends ranking strength and consistency.</div>
+                </div>
+                <div className="rounded-xl border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-3">
+                  <div className="text-xs text-[var(--rp-text-500)]">Rank improvement (30d)</div>
+                  <div className={"mt-1 text-2xl font-semibold " + ((rankImprovement30d || 0) > 0 ? "text-emerald-600" : "text-[var(--rp-text-900)]")}>
+                    {Number.isFinite(rankImprovement30d) ? `${rankImprovement30d > 0 ? "+" : ""}${rankImprovement30d}` : "—"}
+                  </div>
+                  <div className="mt-1 text-[11px] text-[var(--rp-text-500)]">Why this matters: positive movement means fixes are working.</div>
+                </div>
+                <div className="rounded-xl border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-3">
+                  <div className="text-xs text-[var(--rp-text-500)]">Actions completed</div>
+                  <div className="mt-1 text-2xl font-semibold text-[var(--rp-text-900)]">{winsStats.completed}/{winsStats.total}</div>
+                  <div className="mt-1 text-[11px] text-[var(--rp-text-500)]">Why this matters: completed actions drive predictable SEO gains.</div>
+                </div>
+                <div className="rounded-xl border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-3">
+                  <div className="text-xs text-[var(--rp-text-500)]">Estimated traffic gained</div>
+                  <div className="mt-1 text-2xl font-semibold text-[var(--rp-indigo-700)]">+{completedVisitsGain}/mo</div>
+                  <div className="mt-1 text-[11px] text-[var(--rp-text-500)]">Why this matters: shows monthly upside from shipped fixes.</div>
+                </div>
+                <div className="rounded-xl border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-3">
+                  <div className="text-xs text-[var(--rp-text-500)]">Next best action</div>
+                  <div className="mt-1 text-sm font-semibold text-[var(--rp-text-900)]">{nextIncompleteStep?.label || "All core steps complete"}</div>
+                  <button
+                    type="button"
+                    onClick={() => actionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                    className="rp-btn-primary rp-btn-sm mt-2 h-8 px-3 text-xs"
+                  >
+                    {nextIncompleteStep?.actionLabel || "Run next optimization"}
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-4 grid gap-3 lg:grid-cols-[1.6fr_1fr]">
+                <div className="rounded-xl border border-[var(--rp-border)] bg-white p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="text-xs font-semibold uppercase tracking-[0.08em] text-[var(--rp-text-500)]">Monthly SEO score trend</div>
+                    <div className="text-[11px] text-[var(--rp-text-500)]">{checksThisMonth.length} checks this month</div>
+                  </div>
+                  <div className="mt-2 h-16">
+                    {monthlySeoScoreSeries.length ? (
+                      <ApexSparkline values={monthlySeoScoreSeries.map((point) => Number(point.value))} />
+                    ) : (
+                      <div className="flex h-full items-center text-xs text-[var(--rp-text-500)]">Run checks to build monthly score trend.</div>
+                    )}
+                  </div>
+                </div>
+                <div className="rounded-xl border border-[var(--rp-border)] bg-white p-3">
+                  <div className="flex items-center justify-between gap-2 text-xs text-[var(--rp-text-500)]">
+                    <span>Wins progress</span>
+                    <span>{Math.round((winsStats.completed / winsStats.total) * 100)}%</span>
+                  </div>
+                  <div className="mt-2 h-2 rounded-full bg-[var(--rp-gray-100)]">
+                    <div
+                      className="h-2 rounded-full bg-[var(--rp-indigo-700)] transition-all"
+                      style={{ width: `${Math.round((winsStats.completed / winsStats.total) * 100)}%` }}
+                    />
+                  </div>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
+                      {winsThisMonth} wins this month
+                    </span>
+                    <span className="inline-flex items-center rounded-full border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-2 py-0.5 text-[11px] text-[var(--rp-text-600)]">
+                      {winsStats.pending} pending
+                    </span>
+                    <span className="inline-flex items-center rounded-full border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-2 py-0.5 text-[11px] text-[var(--rp-text-600)]">
+                      Fastest win: {nextIncompleteStep?.label || "Done"}
+                    </span>
+                    <span className="inline-flex items-center rounded-full border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-2 py-0.5 text-[11px] text-[var(--rp-text-600)]">
+                      Streak: {winsStats.streak} days
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="rp-card p-4 md:p-5">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="text-[15px] font-semibold text-[var(--rp-text-900)]">SEO Success Path</div>
+                <span className="inline-flex items-center rounded-full border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-2 py-0.5 text-[11px] text-[var(--rp-text-600)]">
+                  {winsStats.completed}/{winsStats.total} complete
+                </span>
+              </div>
+              <div className="mt-3 grid gap-3 lg:grid-cols-2">
+                {SUCCESS_STEPS.map((step) => {
+                  const complete = Boolean(progressState?.stepState?.[step.key]);
+                  return (
+                    <div key={step.key} className="rounded-xl border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <label className="flex items-start gap-2 text-sm font-semibold text-[var(--rp-text-900)]">
+                          <input
+                            type="checkbox"
+                            checked={complete}
+                            onChange={(e) => handleProgressToggle(step.key, e.target.checked)}
+                            className="mt-0.5"
+                          />
+                          <span>{step.label}</span>
+                        </label>
+                        <span
+                          className={[
+                            "inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold",
+                            complete
+                              ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                              : "border-amber-200 bg-amber-50 text-amber-700"
+                          ].join(" ")}
+                        >
+                          {complete ? "Completed" : "Pending"}
+                        </span>
+                      </div>
+                      <div className="mt-2 text-xs text-[var(--rp-text-600)]">{step.why}</div>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        <span className="inline-flex items-center rounded-full border border-[var(--rp-indigo-200)] bg-[var(--rp-indigo-50)] px-2 py-0.5 text-[11px] font-semibold text-[var(--rp-indigo-800)]">
+                          +{step.ctrLift}% CTR
+                        </span>
+                        <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
+                          ≈ +{step.visits}/mo
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => actionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                        className="rp-btn-primary rp-btn-sm mt-3 h-8 px-3 text-xs"
+                      >
+                        {step.actionLabel}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="mt-3 rounded-xl border border-[var(--rp-border)] bg-white px-3 py-2 text-xs text-[var(--rp-text-600)]">
+                Estimated cumulative lift from completed actions: <span className="font-semibold text-[var(--rp-indigo-700)]">+{completedCtrGain}% CTR</span> and <span className="font-semibold text-[var(--rp-indigo-700)]">+{completedVisitsGain}/mo</span>.
+              </div>
+            </div>
+
+            <div className="rp-card p-4 md:p-5">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="text-[15px] font-semibold text-[var(--rp-text-900)]">Weekly Growth Alerts</div>
+                <span className="inline-flex items-center rounded-full border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-2 py-0.5 text-[11px] text-[var(--rp-text-600)]">
+                  Local preference sync
+                </span>
+              </div>
+              <div className="mt-2 text-xs text-[var(--rp-text-500)]">
+                Get these alerts every week without manual checks.
+              </div>
+              <div className="mt-3 grid gap-2 md:grid-cols-2">
+                {[
+                  ["weeklyEmail", "Weekly progress email"],
+                  ["rankDrop", "Ranking drop alerts"],
+                  ["competitorMove", "Competitor movement alerts"],
+                  ["opportunity", "Opportunity alerts"]
+                ].map(([key, label]) => (
+                  <label key={key} className="flex items-center justify-between rounded-lg border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-2 text-sm text-[var(--rp-text-700)]">
+                    <span>{label}</span>
+                    <input
+                      type="checkbox"
+                      checked={Boolean(alertPrefs?.[key])}
+                      onChange={(e) => handleAlertToggle(key, e.target.checked)}
+                    />
+                  </label>
+                ))}
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <input
+                  type="email"
+                  value={alertPrefs.email}
+                  onChange={(e) => {
+                    setAlertPrefsUI((prev) => ({ ...prev, email: e.target.value }));
+                    if (alertErrors.email) setAlertErrors({ email: "" });
+                  }}
+                  placeholder="you@company.com"
+                  className="rp-input h-10 w-full sm:w-72"
+                />
+                <button type="button" onClick={saveAlertEmail} className="rp-btn-primary rp-btn-sm h-10 px-4 text-xs">
+                  Save alerts
+                </button>
+                {(alertPrefs.weeklyEmail || alertPrefs.rankDrop || alertPrefs.competitorMove || alertPrefs.opportunity) ? (
+                  <>
+                    <button type="button" onClick={() => setPricingOpen(true)} className="rp-btn-secondary rp-btn-sm h-10 px-4 text-xs">
+                      Unlock weekly automation
+                    </button>
+                    <button type="button" onClick={() => setPricingOpen(true)} className="rp-btn-secondary rp-btn-sm h-10 px-4 text-xs">
+                      Track weekly
+                    </button>
+                  </>
+                ) : null}
+              </div>
+              {alertErrors.email ? <div className="mt-2 text-xs text-rose-600">{alertErrors.email}</div> : null}
+              {alertMessage ? <div className="mt-2 text-xs text-emerald-600">{alertMessage}</div> : null}
             </div>
 
             <div ref={trendRef} className="grid gap-4 md:grid-cols-3">

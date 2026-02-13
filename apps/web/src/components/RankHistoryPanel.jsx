@@ -86,6 +86,9 @@ export default function RankHistoryPanel({ onPick }) {
             </button>
           ) : null}
         </div>
+        <div className="mt-2 text-xs text-[var(--rp-text-500)]">
+          This command center tracks recurring rank wins, not just one-time logs.
+        </div>
         <div className="mt-3 grid gap-2 md:grid-cols-3">
           <div className="rounded-lg border border-[var(--rp-border)] bg-white px-2.5 py-2">
             <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--rp-text-500)]">Biggest opportunity</div>
