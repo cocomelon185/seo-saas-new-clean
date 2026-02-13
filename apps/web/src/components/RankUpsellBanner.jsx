@@ -32,7 +32,7 @@ export default function RankUpsellBanner({ onOpen, email = "", onEmailChange, on
         </button>
       </div>
       <div className="mt-2 text-xs text-[var(--rp-text-600)]">
-        Founder pricing for early users. Weekly alert emails start as soon as beta opens.
+        You’ll get weekly rank alerts, drop warnings, and competitor movement snapshots.
       </div>
       {message ? <div className="mt-2 text-xs font-semibold text-emerald-700">{message}</div> : null}
     </div>

@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import AppShell from "../components/AppShell.jsx";
 import { IconArrowRight, IconCompass, IconChart, IconReport } from "../components/Icons.jsx";
@@ -106,6 +106,9 @@ export default function RankPage() {
   const authUser = getAuthUser();
   const [requestStatus, setRequestStatus] = useState("");
   const [allowRank, setAllowRank] = useState(true);
+  const historyRef = useRef(null);
+  const trendRef = useRef(null);
+  const actionRef = useRef(null);
 
   useEffect(() => {
     const token = getAuthToken();
@@ -280,10 +283,38 @@ export default function RankPage() {
     return Math.min(...ranks);
   }, [history]);
 
+  const kpis = useMemo(() => ([
+    {
+      label: "Tracked keywords",
+      value: String(
+        new Set(listRankChecks().map((x) => String(x.keyword || "").trim()).filter(Boolean)).size || 0
+      ),
+      tone: "text-[var(--rp-indigo-700)]",
+      hint: "Open history",
+      onClick: () => historyRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+    },
+    {
+      label: "Avg. position",
+      value: history.length
+        ? (history.reduce((sum, row) => sum + Number(row.rank || 0), 0) / history.length).toFixed(1)
+        : "—",
+      tone: "text-amber-600",
+      hint: "View trend",
+      onClick: () => trendRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+    },
+    {
+      label: "Visibility lift",
+      value: rankDelta === null ? "—" : `${rankDelta > 0 ? "+" : ""}${rankDelta}`,
+      tone: rankDelta !== null && rankDelta > 0 ? "text-emerald-600" : "text-[var(--rp-text-700)]",
+      hint: "See next action",
+      onClick: () => actionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+    }
+  ]), [history, rankDelta]);
+
   return (
     <AppShell
       title="Rank Checker"
-      subtitle="Track where your keyword ranks and what to fix next."
+      subtitle="Track where your keyword ranks, compare trend, and take the next SEO action in one click."
       seoTitle="Rank Checker | RankyPulse"
       seoDescription="Check where your domain ranks for a keyword."
       seoCanonical={`${base}/rank`}
@@ -296,31 +327,19 @@ export default function RankPage() {
       ) : null}
 
       <div className="mb-4 grid gap-3 md:gap-4 md:grid-cols-3">
-        {[
-          {
-            label: "Tracked keywords",
-            value: String(
-              new Set(listRankChecks().map((x) => String(x.keyword || "").trim()).filter(Boolean)).size || 0
-            ),
-            tone: "text-[var(--rp-indigo-700)]"
-          },
-          {
-            label: "Avg. position",
-            value: history.length
-              ? (history.reduce((sum, row) => sum + Number(row.rank || 0), 0) / history.length).toFixed(1)
-              : "—",
-            tone: "text-amber-600"
-          },
-          {
-            label: "Visibility lift",
-            value: rankDelta === null ? "—" : `${rankDelta > 0 ? "+" : ""}${rankDelta}`,
-            tone: rankDelta !== null && rankDelta > 0 ? "text-emerald-600" : "text-[var(--rp-text-700)]"
-          }
-        ].map((item) => (
-          <div key={item.label} className="rp-kpi-card rounded-2xl border border-[var(--rp-border)] bg-white p-4 shadow-sm">
-            <div className="text-xs font-medium text-[var(--rp-text-600)]">{item.label}</div>
+        {kpis.map((item) => (
+          <button
+            key={item.label}
+            type="button"
+            onClick={item.onClick}
+            className="rp-kpi-card rounded-2xl border border-[var(--rp-border)] bg-white p-4 text-left shadow-sm transition hover:border-[var(--rp-indigo-300)] hover:shadow-md focus:outline-none focus:ring-2 focus:ring-[var(--rp-indigo-300)]"
+          >
+            <div className="flex items-center justify-between gap-2">
+              <div className="text-xs font-medium text-[var(--rp-text-600)]">{item.label}</div>
+              <span className="text-[11px] font-semibold text-[var(--rp-indigo-700)]">{item.hint}</span>
+            </div>
             <div className={`mt-2 text-2xl font-semibold tracking-tight ${item.tone}`}>{item.value}</div>
-          </div>
+          </button>
         ))}
       </div>
 
@@ -373,11 +392,13 @@ export default function RankPage() {
           </button>
         </div>
 
-        <DeferredRender>
-          <Suspense fallback={null}>
-            <RankHistoryPanel onPick={({ keyword, domain }) => { setKeyword(keyword); setDomain(domain); }} />
-          </Suspense>
-        </DeferredRender>
+        <div ref={historyRef}>
+          <DeferredRender>
+            <Suspense fallback={null}>
+              <RankHistoryPanel onPick={({ keyword, domain }) => { setKeyword(keyword); setDomain(domain); }} />
+            </Suspense>
+          </DeferredRender>
+        </div>
 
         <DeferredRender>
           <Suspense fallback={null}>
@@ -425,7 +446,7 @@ export default function RankPage() {
           </div>
         </div>
 
-        <div className="rp-card border border-[var(--rp-border)] bg-white p-4 md:p-5">
+        <div ref={actionRef} className="rp-card border border-[var(--rp-border)] bg-white p-4 md:p-5">
           <div className="grid gap-4 md:grid-cols-3 md:items-end">
           <div>
             <label className="mb-2 block text-sm font-medium text-[var(--rp-text-600)]" htmlFor="rank-keyword">
@@ -482,12 +503,25 @@ export default function RankPage() {
             <IconCompass size={14} />
             {status === "loading" ? "Checking..." : "Check Rank"}
           </button>
+          <div className="md:col-span-3 flex flex-wrap items-center gap-2 text-xs text-[var(--rp-text-600)]">
+            <span className="inline-flex items-center rounded-full border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-2 py-1">SERP checked live</span>
+            <span className="inline-flex items-center rounded-full border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-2 py-1">
+              {lastCheckedAt ? `Updated ${new Date(lastCheckedAt).toLocaleTimeString()}` : "Ready to run"}
+            </span>
+            <span className="inline-flex items-center rounded-full border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-2 py-1">Data source: live rank check</span>
+          </div>
         </div>
         </div>
 
         {status === "idle" && (
-          <div className="rp-card p-4 md:p-5 text-[var(--rp-text-600)]">
-            Enter a keyword and domain above to check rank.
+          <div className="rp-card p-4 md:p-5 text-[var(--rp-text-700)]">
+            <div className="text-sm font-semibold text-[var(--rp-text-900)]">How this helps your business</div>
+            <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm">
+              <li>Enter one keyword and your domain.</li>
+              <li>Click <span className="font-semibold">Check Rank</span> for a live position check.</li>
+              <li>See change vs last check and click opportunity.</li>
+              <li>Run SEO Audit on that domain to fix what is holding rank back.</li>
+            </ol>
           </div>
         )}
 
@@ -596,7 +630,7 @@ export default function RankPage() {
               </div>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-3">
+            <div ref={trendRef} className="grid gap-4 md:grid-cols-3">
               <div className="rp-card rp-kpi-card p-4">
                 <div className="flex items-center gap-2 text-xs text-[var(--rp-text-500)]">
                   <IconChart size={14} />
@@ -672,9 +706,6 @@ export default function RankPage() {
           </div>
         )}
 
-        <div className="text-xs text-[var(--rp-text-500)]">
-          This page calls <span className="text-[var(--rp-text-700)]">POST /api/rank-check</span>.
-        </div>
       </div>
     </AppShell>
   );
