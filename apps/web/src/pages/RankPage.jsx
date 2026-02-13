@@ -610,7 +610,13 @@ export default function RankPage() {
         </div>
 
         <div ref={actionRef} className="rp-card border border-[var(--rp-border)] bg-white p-4 md:p-5">
-          <div className="grid gap-4 md:grid-cols-3 md:items-end">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (status !== "loading" && allowRank) checkRank();
+            }}
+            className="grid gap-4 md:grid-cols-3 md:items-end"
+          >
           <div>
             <label className="mb-2 block text-sm font-medium text-[var(--rp-text-600)]" htmlFor="rank-keyword">
               Keyword
@@ -656,11 +662,11 @@ export default function RankPage() {
           </div>
 
           <button
-            onClick={checkRank}
-            disabled={status === "loading" || !allowRank}
+            type="submit"
+            disabled={status === "loading" || !allowRank || !canRun}
             className={[
               "rp-btn-primary h-11 w-full text-sm md:h-10 md:w-auto",
-              status === "loading" || !allowRank ? "opacity-50 cursor-not-allowed" : ""
+              status === "loading" || !allowRank || !canRun ? "opacity-50 cursor-not-allowed" : ""
             ].join(" ")}
           >
             <IconCompass size={14} />
@@ -726,7 +732,17 @@ export default function RankPage() {
             </span>
             <span className="inline-flex items-center rounded-full border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-2 py-1">Data source: live rank check</span>
           </div>
-        </div>
+          {status === "error" ? (
+            <div className="md:col-span-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+              {String(error || "Request failed.")}
+            </div>
+          ) : null}
+          {status === "loading" ? (
+            <div className="md:col-span-3 rounded-lg border border-[var(--rp-indigo-200)] bg-[var(--rp-indigo-50)] px-3 py-2 text-sm text-[var(--rp-indigo-800)]">
+              Running live rank check...
+            </div>
+          ) : null}
+          </form>
         </div>
 
         {status === "idle" && (
