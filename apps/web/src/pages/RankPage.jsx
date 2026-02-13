@@ -310,12 +310,8 @@ export default function RankPage() {
         .filter((entry) => entry.domain)
         .slice(0, 3);
     }
-    const fallback = ["ahrefs.com", "semrush.com", "moz.com"];
-    return fallback
-      .filter((domainName) => domainName !== safeDomain)
-      .slice(0, 3)
-      .map((domainName, idx) => ({ domain: domainName, position: idx + 1 }));
-  }, [result?.top_competitors, safeDomain]);
+    return [];
+  }, [result?.top_competitors]);
 
   const trendMovement = useMemo(() => {
     if (last7Checks.length < 2) return null;
@@ -394,11 +390,16 @@ export default function RankPage() {
             key={item.label}
             type="button"
             onClick={item.onClick}
-            className="rp-kpi-card rounded-2xl border border-[var(--rp-border)] bg-white p-4 text-left shadow-sm transition hover:border-[var(--rp-indigo-300)] hover:shadow-md focus:outline-none focus:ring-2 focus:ring-[var(--rp-indigo-300)]"
+            className={[
+              "rp-kpi-card rounded-2xl border p-4 text-left shadow-sm transition focus:outline-none focus:ring-2 focus:ring-[var(--rp-indigo-300)]",
+              item.label === "Avg. position"
+                ? "border-[var(--rp-indigo-300)] bg-[linear-gradient(180deg,#ffffff_0%,#f7f3ff_100%)] shadow-[0_6px_18px_rgba(124,58,237,0.12)] hover:border-[var(--rp-indigo-400)] hover:shadow-[0_8px_22px_rgba(124,58,237,0.16)]"
+                : "border-[var(--rp-border)] bg-white hover:border-[var(--rp-indigo-300)] hover:shadow-md"
+            ].join(" ")}
           >
             <div className="flex items-center justify-between gap-2">
-              <div className="text-xs font-medium text-[var(--rp-text-600)]">{item.label}</div>
-              <span className="text-[11px] font-semibold text-[var(--rp-indigo-700)]">{item.hint}</span>
+              <div className="text-[13px] font-medium text-[var(--rp-text-600)]">{item.label}</div>
+              <span className="text-xs font-semibold text-[var(--rp-indigo-700)]">{item.hint}</span>
             </div>
             <div className={`mt-2 text-2xl font-semibold tracking-tight ${item.tone}`}>{item.value}</div>
           </button>
@@ -435,7 +436,7 @@ export default function RankPage() {
           The Rank Tracker is disabled for your team. Ask an admin to enable it.
         </div>
       )}
-      <div className="flex flex-col gap-4 md:gap-5">
+      <div className="flex flex-col gap-3 md:gap-4">
         <div className="flex flex-wrap justify-stretch gap-2 md:justify-end">
           <div className="min-w-[140px] flex-1 md:min-w-0 md:flex-none">
             <ShareRankButton result={result} />
@@ -588,10 +589,10 @@ export default function RankPage() {
         )}
 
         {status !== "success" && (
-          <div className="grid gap-4 md:gap-5">
+          <div className="grid gap-3 md:gap-4">
             <div className="rp-card p-4 md:p-5">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="text-sm font-semibold text-[var(--rp-text-800)]">Position trend (last 7 checks)</div>
+                <div className="text-[15px] font-semibold text-[var(--rp-text-800)]">Position trend (last 7 checks)</div>
                 <div className="text-xs text-[var(--rp-text-500)]">This fills with real data after you click Check Rank</div>
               </div>
               <div className="mt-3 h-48 rounded-xl border border-[var(--rp-border)] bg-white p-2">
@@ -628,27 +629,33 @@ export default function RankPage() {
 
             <div className="grid gap-4 md:grid-cols-2">
               <div className="rp-card p-4">
-                <div className="text-sm font-semibold text-[var(--rp-text-900)]">Keyword opportunity insight</div>
-                <p className="mt-2 text-sm leading-relaxed text-[var(--rp-text-700)]">{opportunityInsight(shownRank)}</p>
+                <div className="text-[15px] font-semibold text-[var(--rp-text-900)]">Keyword opportunity insight</div>
+                <p className="mt-2 text-[15px] leading-relaxed text-[var(--rp-text-700)]">{opportunityInsight(shownRank)}</p>
                 <div className="mt-3 inline-flex items-center rounded-full border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-1 text-xs font-semibold text-[var(--rp-text-600)]">
                   {hasValidRank(shownRank) ? `Current position: ${shownRank}` : "Current position: pending check"}
                 </div>
               </div>
 
               <div className="rp-card p-4">
-                <div className="text-sm font-semibold text-[var(--rp-text-900)]">Competitor snapshot (top 3)</div>
+                <div className="text-[15px] font-semibold text-[var(--rp-text-900)]">Competitor snapshot (top 3)</div>
                 <div className="mt-3 grid gap-2">
-                  {topCompetitors.map((entry) => (
-                    <div
-                      key={`preview-${entry.position}-${entry.domain}`}
-                      className="flex items-center justify-between rounded-lg border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-2 text-sm"
-                    >
-                      <span className="font-medium text-[var(--rp-text-900)]">{entry.domain}</span>
-                      <span className="rounded-full bg-[var(--rp-indigo-100)] px-2 py-1 text-xs font-semibold text-[var(--rp-indigo-800)]">
-                        #{entry.position}
-                      </span>
+                  {topCompetitors.length ? (
+                    topCompetitors.map((entry) => (
+                      <div
+                        key={`preview-${entry.position}-${entry.domain}`}
+                        className="flex items-center justify-between rounded-lg border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-2 text-[15px]"
+                      >
+                        <span className="font-medium text-[var(--rp-text-900)]">{entry.domain}</span>
+                        <span className="rounded-full bg-[var(--rp-indigo-100)] px-2 py-1 text-xs font-semibold text-[var(--rp-indigo-800)]">
+                          #{entry.position}
+                        </span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="rounded-lg border border-dashed border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-4 text-sm text-[var(--rp-text-600)]">
+                      Competitor list appears after your first successful rank check.
                     </div>
-                  ))}
+                  )}
                 </div>
               </div>
             </div>
@@ -683,7 +690,7 @@ export default function RankPage() {
         )}
 
         {status === "success" && (
-          <div className="grid gap-4 md:gap-5">
+          <div className="grid gap-3 md:gap-4">
             <div className="rp-card p-4 md:p-5">
               <div className="flex flex-wrap items-center gap-2">
                 <div className="rp-section-title">Rank result</div>
@@ -851,8 +858,8 @@ export default function RankPage() {
 
             <div className="grid gap-4 md:grid-cols-2">
               <div className="rp-card p-4">
-                <div className="text-sm font-semibold text-[var(--rp-text-900)]">Keyword opportunity insight</div>
-                <p className="mt-2 text-sm leading-relaxed text-[var(--rp-text-700)]">{opportunityInsight(shownRank)}</p>
+                <div className="text-[15px] font-semibold text-[var(--rp-text-900)]">Keyword opportunity insight</div>
+                <p className="mt-2 text-[15px] leading-relaxed text-[var(--rp-text-700)]">{opportunityInsight(shownRank)}</p>
                 {hasValidRank(shownRank) ? (
                   <div className="mt-3 inline-flex items-center rounded-full border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-1 text-xs font-semibold text-[var(--rp-text-600)]">
                     Current position: {shownRank}
@@ -861,19 +868,25 @@ export default function RankPage() {
               </div>
 
               <div className="rp-card p-4">
-                <div className="text-sm font-semibold text-[var(--rp-text-900)]">Competitor snapshot (top 3)</div>
+                <div className="text-[15px] font-semibold text-[var(--rp-text-900)]">Competitor snapshot (top 3)</div>
                 <div className="mt-3 grid gap-2">
-                  {topCompetitors.map((entry) => (
-                    <div
-                      key={`${entry.position}-${entry.domain}`}
-                      className="flex items-center justify-between rounded-lg border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-2 text-sm"
-                    >
-                      <span className="font-medium text-[var(--rp-text-900)]">{entry.domain}</span>
-                      <span className="rounded-full bg-[var(--rp-indigo-100)] px-2 py-1 text-xs font-semibold text-[var(--rp-indigo-800)]">
-                        #{entry.position}
-                      </span>
+                  {topCompetitors.length ? (
+                    topCompetitors.map((entry) => (
+                      <div
+                        key={`${entry.position}-${entry.domain}`}
+                        className="flex items-center justify-between rounded-lg border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-2 text-[15px]"
+                      >
+                        <span className="font-medium text-[var(--rp-text-900)]">{entry.domain}</span>
+                        <span className="rounded-full bg-[var(--rp-indigo-100)] px-2 py-1 text-xs font-semibold text-[var(--rp-indigo-800)]">
+                          #{entry.position}
+                        </span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="rounded-lg border border-dashed border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-4 text-sm text-[var(--rp-text-600)]">
+                      Competitor data unavailable for this check.
                     </div>
-                  ))}
+                  )}
                 </div>
               </div>
             </div>
