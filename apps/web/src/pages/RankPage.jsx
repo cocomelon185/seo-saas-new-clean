@@ -582,6 +582,74 @@ export default function RankPage() {
           </div>
         )}
 
+        {status !== "success" && (
+          <div className="grid gap-4 md:gap-5">
+            <div className="rp-card p-4 md:p-5">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="text-sm font-semibold text-[var(--rp-text-800)]">Position trend (last 7 checks)</div>
+                <div className="text-xs text-[var(--rp-text-500)]">This fills with real data after you click Check Rank</div>
+              </div>
+              <div className="mt-3 h-48 rounded-xl border border-[var(--rp-border)] bg-white p-2">
+                {last7Checks.length ? (
+                  <SafeApexChart
+                    type="line"
+                    height={176}
+                    options={{
+                      chart: { toolbar: { show: false }, animations: { enabled: true } },
+                      stroke: { curve: "smooth", width: 3 },
+                      colors: ["#7c3aed"],
+                      grid: { borderColor: "#ede9fe" },
+                      yaxis: {
+                        reversed: true,
+                        min: 1,
+                        forceNiceScale: true,
+                        labels: { style: { colors: "#6b5b95" } }
+                      },
+                      xaxis: {
+                        categories: last7Checks.map((point) => point.label),
+                        labels: { style: { colors: "#6b5b95" } }
+                      },
+                      tooltip: { y: { formatter: (v) => `Position ${Math.round(v)}` } }
+                    }}
+                    series={[{ name: "Position", data: last7Checks.map((point) => point.rank) }]}
+                  />
+                ) : (
+                  <div className="flex h-full items-center justify-center text-sm text-[var(--rp-text-500)]">
+                    No checks yet. Run your first rank check to see movement.
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="rp-card p-4">
+                <div className="text-sm font-semibold text-[var(--rp-text-900)]">Keyword opportunity insight</div>
+                <p className="mt-2 text-sm leading-relaxed text-[var(--rp-text-700)]">{opportunityInsight(shownRank)}</p>
+                <div className="mt-3 inline-flex items-center rounded-full border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-1 text-xs font-semibold text-[var(--rp-text-600)]">
+                  {Number.isFinite(Number(shownRank)) ? `Current position: ${shownRank}` : "Current position: pending check"}
+                </div>
+              </div>
+
+              <div className="rp-card p-4">
+                <div className="text-sm font-semibold text-[var(--rp-text-900)]">Competitor snapshot (top 3)</div>
+                <div className="mt-3 grid gap-2">
+                  {topCompetitors.map((entry) => (
+                    <div
+                      key={`preview-${entry.position}-${entry.domain}`}
+                      className="flex items-center justify-between rounded-lg border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-2 text-sm"
+                    >
+                      <span className="font-medium text-[var(--rp-text-900)]">{entry.domain}</span>
+                      <span className="rounded-full bg-[var(--rp-indigo-100)] px-2 py-1 text-xs font-semibold text-[var(--rp-indigo-800)]">
+                        #{entry.position}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {status === "loading" && (
           <div className="rp-card p-4 md:p-5 text-[var(--rp-text-700)]">
             <div className="text-sm font-semibold text-[var(--rp-text-800)]">Checking rank…</div>
