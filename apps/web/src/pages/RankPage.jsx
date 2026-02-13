@@ -4,10 +4,14 @@ import AppShell from "../components/AppShell.jsx";
 import { IconArrowRight, IconCompass, IconChart, IconReport } from "../components/Icons.jsx";
 import ShareRankButton from "../components/ShareRankButton.jsx";
 import DeferredRender from "../components/DeferredRender.jsx";
-import { saveRankCheck } from "../utils/rankHistory.js";
+import {
+  listRankChecks,
+  normalizeDomainForStore,
+  normalizeKeywordForStore,
+  saveRankCheck
+} from "../utils/rankHistory.js";
 import { decodeSharePayload } from "../utils/shareRank.js";
 import { listSnapshots } from "../utils/auditSnapshots.js";
-import { listRankChecks } from "../utils/rankHistory.js";
 import { getAuthToken, getAuthUser } from "../lib/authClient.js";
 import { safeJson } from "../lib/safeJson.js";
 import { apiUrl } from "../lib/api.js";
@@ -82,7 +86,17 @@ function rankBadge(r) {
 function domainFromInput(s) {
   const raw = String(s || "").trim();
   if (!raw) return "";
-  return raw.replace(/^https?:\/\//i, "").replace(/\/.*$/, "");
+  return normalizeDomainForStore(raw);
+}
+
+function keywordToTitleCase(keyword) {
+  const normalized = normalizeKeywordForStore(keyword);
+  if (!normalized) return "";
+  const acronymMap = { seo: "SEO", serp: "SERP", ai: "AI", ctr: "CTR", cwv: "CWV" };
+  return normalized
+    .split(" ")
+    .map((token) => acronymMap[token] || `${token.charAt(0).toUpperCase()}${token.slice(1)}`)
+    .join(" ");
 }
 
 function isLikelyDomain(value) {
@@ -238,6 +252,21 @@ function estimateOpportunity(rank, difficulty) {
   return Math.max(1, Math.min(100, Math.round((70 - Math.min(60, r)) + (100 - d) * 0.4)));
 }
 
+function ProvenanceBadge({ live }) {
+  return (
+    <span
+      className={[
+        "inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold",
+        live
+          ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+          : "border-amber-200 bg-amber-50 text-amber-700"
+      ].join(" ")}
+    >
+      {live ? "Live data" : "Estimated"}
+    </span>
+  );
+}
+
 export default function RankPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -381,7 +410,7 @@ export default function RankPage() {
       const normalized = {
         ...data,
         keyword: String(data?.keyword ?? keyword ?? "").trim(),
-        domain: domainFromInput(data?.domain || domain),
+        domain: normalizeDomainForStore(data?.domain || domain),
         rank: data.rank ?? data.position,
         country: String(data?.country || country).toUpperCase(),
         city: String(data?.city || city || "").trim(),
@@ -411,7 +440,8 @@ export default function RankPage() {
   }, [domain, keyword]);
 
   const safeKeyword = String(result?.keyword || keyword || "");
-  const safeDomain = String(result?.domain || domainFromInput(domain) || "");
+  const safeDomain = normalizeDomainForStore(result?.domain || domainFromInput(domain) || "");
+  const displayKeyword = keywordToTitleCase(safeKeyword);
 
   const history = useMemo(() => {
     const all = listRankChecks();
@@ -476,6 +506,7 @@ export default function RankPage() {
     }
     return [];
   }, [result?.top_competitors]);
+  const hasLiveTopCompetitors = topCompetitors.length > 0;
 
   const difficultyScore = useMemo(() => {
     const apiValue = Number(result?.difficulty_score);
@@ -494,6 +525,12 @@ export default function RankPage() {
     if (Number.isFinite(apiValue) && apiValue > 0) return Math.max(1, Math.min(100, Math.round(apiValue)));
     return estimateOpportunity(shownRank, difficultyScore);
   }, [result?.opportunity_score, shownRank, difficultyScore]);
+  const hasLiveMetricScores = useMemo(() => {
+    const difficultyLive = Number.isFinite(Number(result?.difficulty_score)) && Number(result?.difficulty_score) > 0;
+    const trafficLive = Number.isFinite(Number(result?.traffic_potential)) && Number(result?.traffic_potential) > 0;
+    const opportunityLive = Number.isFinite(Number(result?.opportunity_score)) && Number(result?.opportunity_score) > 0;
+    return difficultyLive || trafficLive || opportunityLive;
+  }, [result?.difficulty_score, result?.traffic_potential, result?.opportunity_score]);
 
   const serpPreview = useMemo(() => {
     if (Array.isArray(result?.serp_preview) && result.serp_preview.length) {
@@ -511,6 +548,8 @@ export default function RankPage() {
       type: "Organic"
     }));
   }, [result?.serp_preview, topCompetitors, safeKeyword]);
+  const hasLiveSerpPreview = Array.isArray(result?.serp_preview) && result.serp_preview.length > 0;
+  const hasLiveOpportunityData = Boolean(hasValidRank(shownRank) || hasLiveMetricScores);
 
   const relatedKeywordCluster = useMemo(() => {
     const fromTracked = clusterKeywords(safeKeyword);
@@ -519,6 +558,16 @@ export default function RankPage() {
   }, [safeKeyword, ideas]);
 
   const rankReasons = useMemo(() => whyRankHere(shownRank, difficultyScore), [shownRank, difficultyScore]);
+  const liveRankReasons = useMemo(() => {
+    if (!Array.isArray(result?.rank_reasons)) return [];
+    return result.rank_reasons.map((item) => String(item || "").trim()).filter(Boolean).slice(0, 4);
+  }, [result?.rank_reasons]);
+  const displayedRankReasons = useMemo(() => {
+    if (liveRankReasons.length) {
+      return liveRankReasons.map((text) => ({ source: "Live signal", text }));
+    }
+    return rankReasons.map((text) => ({ source: "Pattern-based", text }));
+  }, [liveRankReasons, rankReasons]);
   const bestMove = useMemo(() => nextBestMove(shownRank), [shownRank]);
   const gap = useMemo(() => contentGapPreview(safeKeyword, safeDomain), [safeKeyword, safeDomain]);
 
@@ -909,15 +958,26 @@ export default function RankPage() {
 
             <div className="grid gap-4 md:grid-cols-2">
               <div className="rp-card p-4">
-                <div className="text-[15px] font-semibold text-[var(--rp-text-900)]">Keyword opportunity insight</div>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="text-[15px] font-semibold text-[var(--rp-text-900)]">Keyword opportunity insight</div>
+                  <ProvenanceBadge live={hasLiveOpportunityData} />
+                </div>
                 <p className="mt-2 text-[15px] leading-relaxed text-[var(--rp-text-700)]">{opportunityInsight(shownRank)}</p>
                 <div className="mt-3 inline-flex items-center rounded-full border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-1 text-xs font-semibold text-[var(--rp-text-600)]">
                   {hasValidRank(shownRank) ? `Current position: ${shownRank}` : "Current position: pending check"}
                 </div>
+                <div className="mt-2 text-xs text-[var(--rp-text-500)]">
+                  {hasLiveOpportunityData
+                    ? "Based on your latest rank-check response."
+                    : "Estimated from last rank check and benchmark model."}
+                </div>
               </div>
 
               <div className="rp-card p-4">
-                <div className="text-[15px] font-semibold text-[var(--rp-text-900)]">Competitor snapshot (top 3)</div>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="text-[15px] font-semibold text-[var(--rp-text-900)]">Competitor snapshot (top 3)</div>
+                  <ProvenanceBadge live={hasLiveTopCompetitors} />
+                </div>
                 <div className="mt-3 grid gap-2">
                   {topCompetitors.length || hasValidRank(shownRank) ? (
                     <>
@@ -941,7 +1001,7 @@ export default function RankPage() {
                     </>
                   ) : (
                     <div className="rounded-lg border border-dashed border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-4 text-sm text-[var(--rp-text-600)]">
-                      Competitor list appears after your first successful rank check.
+                      Sample competitor pattern until live SERP competitor data is available.
                     </div>
                   )}
                 </div>
@@ -951,11 +1011,12 @@ export default function RankPage() {
             <div className="grid gap-4 md:grid-cols-2">
               <div className="rp-card p-4">
                 <div className="text-[15px] font-semibold text-[var(--rp-text-900)]">Why you rank here</div>
-                {rankReasons.length ? (
+                {displayedRankReasons.length ? (
                   <div className="mt-3 space-y-2">
-                    {rankReasons.map((reason) => (
-                      <div key={reason} className="rounded-lg border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-2 text-sm text-[var(--rp-text-700)]">
-                        {reason}
+                    {displayedRankReasons.map((reason) => (
+                      <div key={`${reason.source}-${reason.text}`} className="rounded-lg border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-2 text-sm text-[var(--rp-text-700)]">
+                        <span className="mr-1 font-semibold">{reason.source}:</span>
+                        {reason.text}
                       </div>
                     ))}
                   </div>
@@ -1100,7 +1161,7 @@ export default function RankPage() {
               </div>
 
               <div className="mt-3 grid gap-2 text-[var(--rp-text-800)]">
-                <div><span className="text-[var(--rp-text-500)]">Keyword:</span> {safeKeyword || "-"}</div>
+                <div><span className="text-[var(--rp-text-500)]">Keyword:</span> {displayKeyword || "-"}</div>
                 <div><span className="text-[var(--rp-text-500)]">Domain:</span> {safeDomain || "-"}</div>
 
                 <div className="text-2xl font-semibold text-[var(--rp-text-900)]">
@@ -1231,13 +1292,21 @@ export default function RankPage() {
 
             <div className="grid gap-4 md:grid-cols-2">
               <div className="rp-card p-4">
-                <div className="text-[15px] font-semibold text-[var(--rp-text-900)]">Keyword opportunity insight</div>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="text-[15px] font-semibold text-[var(--rp-text-900)]">Keyword opportunity insight</div>
+                  <ProvenanceBadge live={hasLiveOpportunityData} />
+                </div>
                 <p className="mt-2 text-[15px] leading-relaxed text-[var(--rp-text-700)]">{opportunityInsight(shownRank)}</p>
                 {hasValidRank(shownRank) ? (
                   <div className="mt-3 inline-flex items-center rounded-full border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-1 text-xs font-semibold text-[var(--rp-text-600)]">
                     Current position: {shownRank}
                   </div>
                 ) : null}
+                <div className="mt-2 text-xs text-[var(--rp-text-500)]">
+                  {hasLiveMetricScores
+                    ? "Metrics returned from live rank-check response."
+                    : "Estimated from last rank check and benchmark model."}
+                </div>
                 <div className="mt-3 grid grid-cols-3 gap-2">
                   <div className="rounded-lg border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-2">
                     <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--rp-text-500)]">Difficulty</div>
@@ -1255,7 +1324,10 @@ export default function RankPage() {
               </div>
 
               <div className="rp-card p-4">
-                <div className="text-[15px] font-semibold text-[var(--rp-text-900)]">Competitor snapshot (top 3)</div>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="text-[15px] font-semibold text-[var(--rp-text-900)]">Competitor snapshot (top 3)</div>
+                  <ProvenanceBadge live={hasLiveTopCompetitors} />
+                </div>
                 <div className="mt-3 grid gap-2">
                   {topCompetitors.length ? (
                     topCompetitors.map((entry) => (
@@ -1271,7 +1343,7 @@ export default function RankPage() {
                     ))
                   ) : (
                     <div className="rounded-lg border border-dashed border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-4 text-sm text-[var(--rp-text-600)]">
-                      Competitor data unavailable for this check.
+                      Sample competitor pattern until live SERP competitor data is available.
                     </div>
                   )}
                 </div>
@@ -1281,6 +1353,14 @@ export default function RankPage() {
             <div className="rp-card p-4">
               <div className="flex items-center justify-between gap-2">
                 <div className="text-[15px] font-semibold text-[var(--rp-text-900)]">SERP snapshot preview</div>
+                <ProvenanceBadge live={hasLiveSerpPreview} />
+              </div>
+              <div className="mt-1 flex items-center justify-between gap-2">
+                <div className="text-xs text-[var(--rp-text-500)]">
+                  {hasLiveSerpPreview
+                    ? "Live SERP preview from this rank check."
+                    : "Preview generated from current signal; run again for fresh live SERP."}
+                </div>
                 <div className="text-xs text-[var(--rp-text-500)]">
                   {COUNTRIES.find((x) => x.value === (result?.country || country))?.label || (result?.country || country)} • {(result?.device || device)} • {(result?.language || language).toUpperCase()}
                 </div>
