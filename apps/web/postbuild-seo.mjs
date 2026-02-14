@@ -15,7 +15,9 @@ function upsert(html, regex, tag) {
 }
 
 function patchRank() {
-  const p = path.join(DIST, "rank", "index.html");
+  const p1 = path.join(DIST, "rank", "index.html");
+  const p2 = path.join(DIST, "rank.html");
+  const p = fs.existsSync(p1) ? p1 : p2;
   if (!fs.existsSync(p)) {
     console.log("[postbuild-seo] skip (missing):", p);
     return;

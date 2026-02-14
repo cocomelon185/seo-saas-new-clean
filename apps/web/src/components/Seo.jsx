@@ -79,7 +79,7 @@ export default function Seo({
     }
     setMeta('meta[name="twitter:card"]', { name: "twitter:card" }, twitterCard);
     setMeta('meta[name="robots"]', { name: "robots" }, robots);
-        const canonicalOrigin =
+    const canonicalOrigin =
       (typeof window !== "undefined" && window.location && window.location.origin)
         ? window.location.origin
         : "https://rankypulse.com";
