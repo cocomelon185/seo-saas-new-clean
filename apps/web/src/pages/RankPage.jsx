@@ -30,7 +30,6 @@ import SafeApexChart from "../components/charts/SafeApexChart.jsx";
 
 const PricingModal = lazy(() => import("../components/PricingModal.jsx"));
 const RankHistoryPanel = lazy(() => import("../components/RankHistoryPanel.jsx"));
-const RankUpsellBanner = lazy(() => import("../components/RankUpsellBanner.jsx"));
 
 const EXAMPLE_KEYWORDS = [
   "seo audit tool",
@@ -336,17 +335,35 @@ function estimateOpportunity(rank, difficulty) {
   return Math.max(1, Math.min(100, Math.round((70 - Math.min(60, r)) + (100 - d) * 0.4)));
 }
 
-function ProvenanceBadge({ live }) {
+const SOURCE_HINT = {
+  "Live data": "From latest rank-check response.",
+  Hybrid: "Live rank history + modeled score blend.",
+  Estimated: "Modeled from SERP/rank patterns."
+};
+
+function resolveSourceTag({ hasLive, hasAuditBlend }) {
+  if (hasLive) return "Live data";
+  if (hasAuditBlend) return "Hybrid";
+  return "Estimated";
+}
+
+function ProvenanceBadge({ tag }) {
+  const live = tag === "Live data";
+  const hybrid = tag === "Hybrid";
   return (
     <span
+      title={SOURCE_HINT[tag] || SOURCE_HINT.Estimated}
       className={[
         "inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold",
         live
           ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-          : "border-amber-200 bg-amber-50 text-amber-700"
+          : hybrid
+            ? "border-[var(--rp-indigo-200)] bg-[var(--rp-indigo-50)] text-[var(--rp-indigo-800)]"
+            : "border-amber-200 bg-amber-50 text-amber-700"
       ].join(" ")}
     >
-      {live ? "Live data" : "Estimated"}
+      {tag || "Estimated"}
+      <span className="ml-1 text-[10px]">i</span>
     </span>
   );
 }
@@ -374,14 +391,12 @@ export default function RankPage() {
   const [city, setCity] = useState("");
   const [device, setDevice] = useState("desktop");
   const [language, setLanguage] = useState("en");
-  const [waitlistEmail, setWaitlistEmail] = useState("");
   const [status, setStatus] = useState("idle");
   const [error, setError] = useState("");
   const [result, setResult] = useState(null);
   const [lastCheckedAt, setLastCheckedAt] = useState("");
   const [loadingStep, setLoadingStep] = useState(0);
   const [inlineErrors, setInlineErrors] = useState({ keyword: "", domain: "" });
-  const [waitlistMessage, setWaitlistMessage] = useState("");
   const [progressState, setProgressStateUI] = useState(() => getProgressState("", ""));
   const [alertPrefs, setAlertPrefsUI] = useState(() => getAlertPrefs());
   const [alertMessage, setAlertMessage] = useState("");
@@ -463,7 +478,6 @@ export default function RankPage() {
   async function checkRank() {
     setError("");
     setResult(null);
-    setWaitlistMessage("");
 
     if (!allowRank) {
       setStatus("error");
@@ -627,7 +641,7 @@ export default function RankPage() {
     if (topCompetitors[0]?.domain) return topCompetitors[0].domain;
     const known = String(result?.top_competitor || result?.competitor || "").trim();
     if (known) return known;
-    return "Higher-ranked competitor in this SERP";
+    return "Not available yet";
   }, [shownRank, topCompetitors, result?.top_competitor, result?.competitor]);
 
   const difficultyScore = useMemo(() => {
@@ -661,27 +675,37 @@ export default function RankPage() {
         title: String(entry?.title || "").trim() || "Untitled result",
         domain: domainFromInput(entry?.url || entry?.domain || "") || "unknown-domain",
         type: String(entry?.type || "Organic"),
-        description: String(entry?.description || "").trim() || `Ranking page for ${keywordToTitleCase(safeKeyword) || "this keyword"} with intent-matched content.`,
+        description: String(entry?.description || "").trim() || `Result for ${keywordToTitleCase(safeKeyword) || "this keyword"} with intent-matched on-page content.`,
+        snippetSource: String(entry?.description || "").trim() ? "Live snippet" : "Estimated snippet",
         sitelinks: Array.isArray(entry?.sitelinks) && entry.sitelinks.length
           ? entry.sitelinks.slice(0, 4).map((x) => String(x || "").trim()).filter(Boolean)
-          : defaultSitelinks(safeKeyword).slice(0, 4)
+          : []
       }));
     }
     return topCompetitors.map((entry, idx) => ({
       position: Number(entry.position ?? idx + 1),
-      title: idx === 0 ? `Best result for "${keywordToTitleCase(safeKeyword) || "keyword"}"` : `${keywordToTitleCase(safeKeyword) || "Keyword"} guide ${idx + 1}`,
+      title:
+        idx === 0
+          ? `Top result for "${keywordToTitleCase(safeKeyword) || "keyword"}"`
+          : `${keywordToTitleCase(safeKeyword) || "Keyword"} ${idx === 1 ? "guide" : idx === 2 ? "checklist" : "examples"}`,
       domain: entry.domain,
       type: idx === 0 ? "Comparison" : "Organic",
       description: idx === 0
-        ? `Compares tools, includes pricing blocks, FAQs, and buyer-intent sections for ${keywordToTitleCase(safeKeyword) || "this query"}.`
-        : `Explains implementation steps, examples, and action checklists for ${keywordToTitleCase(safeKeyword) || "this topic"}.`,
+        ? `Modeled SERP preview: this result likely wins with strong comparison sections and richer buyer-intent coverage.`
+        : `Modeled SERP preview: this page likely includes stronger topic depth and clearer execution steps.`,
+      snippetSource: "Estimated snippet",
       sitelinks: idx === 0
         ? ["Checklist", "Tools comparison", "Pricing", "FAQ"]
         : defaultSitelinks(safeKeyword).slice(0, 4)
     }));
   }, [result?.serp_preview, topCompetitors, safeKeyword]);
   const hasLiveSerpPreview = Array.isArray(result?.serp_preview) && result.serp_preview.length > 0;
-  const hasLiveOpportunityData = Boolean(hasValidRank(shownRank) || hasLiveMetricScores);
+  const hasLiveOpportunityData = Boolean(hasLiveMetricScores || liveRankReasons.length);
+  const opportunityTag = resolveSourceTag({ hasLive: hasLiveOpportunityData, hasAuditBlend: false });
+  const competitorTag = resolveSourceTag({ hasLive: hasLiveTopCompetitors, hasAuditBlend: false });
+  const serpTag = resolveSourceTag({ hasLive: hasLiveSerpPreview, hasAuditBlend: false });
+  const backlinkTag = resolveSourceTag({ hasLive: false, hasAuditBlend: false });
+  const contentGapTag = resolveSourceTag({ hasLive: false, hasAuditBlend: false });
 
   const relatedKeywordCluster = useMemo(() => {
     const fromTracked = clusterKeywords(safeKeyword);
@@ -695,7 +719,14 @@ export default function RankPage() {
   }, [result?.rank_reasons]);
   const detailedRankReasons = useMemo(() => {
     if (!hasValidRank(shownRank)) return [];
-    if (liveRankReasons.length) return liveRankReasons.map((text) => ({ source: "Live signal", text }));
+    if (liveRankReasons.length) {
+      return liveRankReasons.map((text) => ({
+        source: "Live signal",
+        metric: `Position ${shownRank}`,
+        interpretation: text,
+        action: "Prioritize the next best action below and rerun rank check after publish."
+      }));
+    }
     const firstCompetitor = topCompetitors[0]?.domain || serpPreview[0]?.domain || "top competitors";
     const seed = String(firstCompetitor).split("").reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
     const compWords = 1900 + (seed % 700);
@@ -704,12 +735,16 @@ export default function RankPage() {
     const ownBacklinks = Math.max(30, Math.round(compBacklinks * 0.24));
     return [
       {
-        source: "Pattern-based",
-        text: `${firstCompetitor} and similar top results average about ${compWords} words and commonly include comparison sections; your page appears closer to ~${ownWords} words and may be missing those blocks.`
+        source: "Pattern-based estimate",
+        metric: `Words ${ownWords} vs top ~${compWords}`,
+        interpretation: `${firstCompetitor} and similar results likely include deeper comparison coverage than your current page.`,
+        action: "Add 900-1200 words across workflow, FAQ, and comparison sections."
       },
       {
-        source: "Pattern-based",
-        text: `Top results in this SERP show roughly ${compBacklinks} referring-link signals versus about ${ownBacklinks} on your page, which can limit ranking strength even with similar relevance.`
+        source: "Pattern-based estimate",
+        metric: `Referring links ${ownBacklinks} vs top ~${compBacklinks}`,
+        interpretation: "Authority gap likely limits ranking stability even when relevance is close.",
+        action: "Build 3-5 contextual links from relevant pages to this URL."
       }
     ];
   }, [shownRank, liveRankReasons, topCompetitors, serpPreview]);
@@ -757,18 +792,33 @@ export default function RankPage() {
     const earlyDrop = mid > 0 ? (ranks[0] - ranks[mid]) : 0;
     const lateDrop = ranks.length - 1 > mid ? (ranks[mid] - ranks[ranks.length - 1]) : 0;
     return [
-      delta > 0
-        ? `You moved up ${delta} positions across the last ${ranks.length} checks.`
-        : delta < 0
-          ? `You moved down ${Math.abs(delta)} positions across the last ${ranks.length} checks.`
-          : "No net position change across recent checks.",
-      lateDrop >= earlyDrop
-        ? "Most growth happened in the most recent checks, which often follows recent on-page updates."
-        : "Most growth happened earlier; the latest checks are flatter.",
-      std >= 6
-        ? "Ranking volatility detected: positions are moving significantly check-to-check."
-        : "Low ranking volatility: position movement is relatively stable."
-    ];
+      {
+        source: "Pattern-based estimate",
+        metric: `Delta ${delta > 0 ? "+" : ""}${delta} over ${ranks.length} checks`,
+        interpretation: delta > 0
+          ? "Recent checks trend upward."
+          : delta < 0
+            ? "Recent checks trend downward."
+            : "Recent checks are flat.",
+        action: "Keep shipping one fix at a time and rerun rank checks after each update."
+      },
+      {
+        source: "Pattern-based estimate",
+        metric: `Recent segment ${lateDrop > 0 ? "+" : ""}${lateDrop}, earlier segment ${earlyDrop > 0 ? "+" : ""}${earlyDrop}`,
+        interpretation: lateDrop >= earlyDrop
+          ? "Most movement happened in the latest checks."
+          : "Most movement happened earlier and has slowed.",
+        action: "Repeat the last successful on-page changes on similar pages."
+      },
+      {
+        source: "Pattern-based estimate",
+        metric: `Volatility score ${std.toFixed(1)}`,
+        interpretation: std >= 6
+          ? "Rank volatility is elevated."
+          : "Rank volatility is relatively stable.",
+        action: "If volatility stays high, prioritize intent match and internal linking consistency."
+      }
+    ].filter((item) => /\d/.test(String(item.metric || "")));
   }, [last7Checks]);
 
   const competitorBench = useMemo(() => {
@@ -850,9 +900,10 @@ export default function RankPage() {
   }, [latestRankValue, history, activeSnapshotScore]);
 
   const scoreSourceLabel = useMemo(() => {
-    if (Number.isFinite(activeSnapshotScore) && hasValidRank(latestRankValue)) return "Hybrid";
-    if (Number.isFinite(activeSnapshotScore)) return "Live";
-    return "Estimated";
+    return resolveSourceTag({
+      hasLive: false,
+      hasAuditBlend: Boolean(Number.isFinite(activeSnapshotScore) && hasValidRank(latestRankValue))
+    });
   }, [activeSnapshotScore, latestRankValue]);
 
   const winsStats = useMemo(() => {
@@ -888,6 +939,26 @@ export default function RankPage() {
       return { heading, coverageCount };
     });
   }, [gap]);
+
+  const missingTopicRows = useMemo(() => {
+    return gap.missingTopics.slice(0, 6).map((topic, index) => {
+      let confidence = "Low";
+      let score = 1;
+      if (index === 0 || index === 1) {
+        confidence = "High";
+        score = 3;
+      } else if (index === 2 || index === 3) {
+        confidence = "Medium";
+        score = 2;
+      }
+      return { topic, confidence, score };
+    }).sort((a, b) => b.score - a.score);
+  }, [gap.missingTopics]);
+
+  const allSerpEstimated = useMemo(() => {
+    if (!serpPreview.length) return false;
+    return serpPreview.every((row) => row.snippetSource !== "Live snippet");
+  }, [serpPreview]);
 
   useEffect(() => {
     if (status !== "success" || !scopeDomain || !scopeKeyword) return;
@@ -980,25 +1051,57 @@ export default function RankPage() {
     if (!hasValidRank(shownRank)) return [];
     const lines = [];
     if (rankDelta !== null) {
-      lines.push(
-        rankDelta > 0
-          ? `Live signal: rank improved by ${rankDelta} positions since last check.`
-          : rankDelta < 0
-            ? `Live signal: rank dropped by ${Math.abs(rankDelta)} positions since last check.`
-            : "Live signal: rank stayed flat since last check."
-      );
+      lines.push({
+        source: "Live signal",
+        metric: `Position change ${rankDelta > 0 ? "+" : ""}${rankDelta}`,
+        interpretation:
+          rankDelta > 0
+            ? "Your page moved up since last check."
+            : rankDelta < 0
+              ? "Your page moved down since last check."
+              : "Position stayed flat since last check.",
+        action: "Re-run after each meaningful content update to confirm movement."
+      });
     }
     if (competitorBench.avgWords && competitorBench.own.words) {
       const wordGap = competitorBench.avgWords - competitorBench.own.words;
-      if (wordGap > 200) lines.push(`Pattern-based: top pages average ~${competitorBench.avgWords} words while your page appears near ~${competitorBench.own.words}.`);
+      if (wordGap > 200) {
+        lines.push({
+          source: "Pattern-based estimate",
+          metric: `Words gap ${wordGap}`,
+          interpretation: `Top pages average ~${competitorBench.avgWords} words while your page appears near ~${competitorBench.own.words}.`,
+          action: "Expand depth in missing sections before next rank check."
+        });
+      }
     }
     if (competitorBench.avgBacklinks && competitorBench.own.backlinks) {
       const linkGap = competitorBench.avgBacklinks - competitorBench.own.backlinks;
-      if (linkGap > 80) lines.push(`Pattern-based: competitors likely have about ${linkGap}+ more referring-link signals for this query.`);
+      if (linkGap > 80) {
+        lines.push({
+          source: "Pattern-based estimate",
+          metric: `Backlink gap ${linkGap}+`,
+          interpretation: "Competitors likely hold stronger referring-link signals for this query.",
+          action: "Plan contextual backlinks from high-relevance pages."
+        });
+      }
     }
-    if (trendMovement?.direction === "up") lines.push("Pattern-based: recent on-page updates likely aligned better with query intent.");
-    if (trendMovement?.direction === "down") lines.push("Pattern-based: ranking volatility suggests competitor refreshes or weaker topical coverage.");
-    return lines.slice(0, 4);
+    if (trendMovement?.direction === "up") {
+      lines.push({
+        source: "Pattern-based estimate",
+        metric: `Trend ${trendMovement.delta > 0 ? "+" : ""}${trendMovement.delta}`,
+        interpretation: "Recent page updates likely aligned better with intent.",
+        action: "Repeat recent update pattern across similar pages."
+      });
+    }
+    if (trendMovement?.direction === "down") {
+      lines.push({
+        source: "Pattern-based estimate",
+        metric: `Trend ${trendMovement.delta}`,
+        interpretation: "Volatility suggests competitor refreshes or topical coverage gap.",
+        action: "Refresh title, headings, and FAQ coverage, then re-check."
+      });
+    }
+    return lines.filter((x) => /\d/.test(String(x.metric || ""))).slice(0, 4);
   }, [shownRank, rankDelta, competitorBench, trendMovement]);
 
   const kpis = useMemo(() => ([
@@ -1126,34 +1229,6 @@ export default function RankPage() {
             </Suspense>
           </DeferredRender>
         </div>
-
-        <DeferredRender>
-          <Suspense fallback={null}>
-            <RankUpsellBanner
-              onOpen={() => setPricingOpen(true)}
-              email={waitlistEmail}
-              onEmailChange={setWaitlistEmail}
-              onJoinWaitlist={() => {
-                const clean = String(waitlistEmail || "").trim().toLowerCase();
-                if (!clean || !clean.includes("@")) {
-                  setWaitlistMessage("Enter a valid email.");
-                  setTimeout(() => setWaitlistMessage(""), 2200);
-                  return;
-                }
-                try {
-                  const key = "rp_rank_waitlist";
-                  const existing = JSON.parse(localStorage.getItem(key) || "[]");
-                  const next = Array.isArray(existing) ? existing : [];
-                  if (!next.includes(clean)) next.push(clean);
-                  localStorage.setItem(key, JSON.stringify(next));
-                } catch {}
-                setWaitlistMessage("You are on the waitlist. Weekly alerts coming soon.");
-                setTimeout(() => setWaitlistMessage(""), 2600);
-              }}
-              message={waitlistMessage}
-            />
-          </Suspense>
-        </DeferredRender>
 
         <div className="rp-card border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-4">
           <div className="text-xs font-semibold uppercase tracking-[0.15em] text-[var(--rp-text-500)]">
@@ -1439,7 +1514,7 @@ export default function RankPage() {
               <div className="rp-card p-4">
                 <div className="flex items-center justify-between gap-2">
                   <div className="text-[15px] font-semibold text-[var(--rp-text-900)]">Keyword opportunity insight</div>
-                  <ProvenanceBadge live={hasLiveOpportunityData} />
+                  <ProvenanceBadge tag={opportunityTag} />
                 </div>
                 <p className="mt-2 text-[15px] leading-relaxed text-[var(--rp-text-700)]">{opportunityInsight(shownRank)}</p>
                 <div className="mt-3 inline-flex items-center rounded-full border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-1 text-xs font-semibold text-[var(--rp-text-600)]">
@@ -1455,7 +1530,7 @@ export default function RankPage() {
               <div className="rp-card p-4">
                 <div className="flex items-center justify-between gap-2">
                   <div className="text-[15px] font-semibold text-[var(--rp-text-900)]">Competitor snapshot (top 3)</div>
-                  <ProvenanceBadge live={hasLiveTopCompetitors} />
+                  <ProvenanceBadge tag={competitorTag} />
                 </div>
                 <div className="mt-3 grid gap-2">
                   {topCompetitors.length || hasValidRank(shownRank) ? (
@@ -1493,15 +1568,16 @@ export default function RankPage() {
                 {detailedRankReasons.length ? (
                   <div className="mt-3 space-y-2">
                     {detailedRankReasons.map((reason) => (
-                      <div key={`${reason.source}-${reason.text}`} className="rounded-lg border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-2 text-sm text-[var(--rp-text-700)]">
-                        <span className="mr-1 font-semibold">{reason.source}:</span>
-                        {reason.text}
+                      <div key={`${reason.source}-${reason.metric}`} className="rounded-lg border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-2 text-sm text-[var(--rp-text-700)]">
+                        <div><span className="font-semibold">{reason.source}</span> • <span className="font-semibold">Metric:</span> {reason.metric}</div>
+                        <div className="mt-1"><span className="font-semibold">Interpretation:</span> {reason.interpretation}</div>
+                        <div className="mt-1"><span className="font-semibold">Action:</span> {reason.action}</div>
                       </div>
                     ))}
                   </div>
                 ) : (
                   <div className="mt-3 text-sm text-[var(--rp-text-600)]">
-                    First check unlocks evidence-based ranking reasons.
+                    Insufficient live signals for this card. Run another rank check with the same keyword and domain.
                   </div>
                 )}
               </div>
@@ -1632,9 +1708,12 @@ export default function RankPage() {
                 <div className="rounded-xl border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-3">
                   <div className="text-xs text-[var(--rp-text-500)]">Top competitor</div>
                   <div className="mt-1 text-sm font-semibold leading-snug text-[var(--rp-text-900)]">{inferredCompetitor}</div>
+                  {!topCompetitors.length ? (
+                    <div className="mt-1 text-[11px] text-[var(--rp-text-500)]">Appears after first successful live competitor fetch.</div>
+                  ) : null}
                 </div>
                 <div className="rounded-xl border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-3">
-                  <div className="text-xs text-[var(--rp-text-500)]">Estimated clicks opportunity</div>
+                  <div className="text-xs text-[var(--rp-text-500)]">Modeled clicks opportunity</div>
                   <div className="mt-1 text-2xl font-semibold text-[var(--rp-indigo-700)]">+{estimatedClicksGain}/mo</div>
                 </div>
               </div>
@@ -1699,7 +1778,7 @@ export default function RankPage() {
                     "inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold",
                     scoreSourceLabel === "Hybrid"
                       ? "border-[var(--rp-indigo-200)] bg-[var(--rp-indigo-50)] text-[var(--rp-indigo-800)]"
-                      : scoreSourceLabel === "Live"
+                      : scoreSourceLabel === "Live data"
                         ? "border-emerald-200 bg-emerald-50 text-emerald-700"
                         : "border-amber-200 bg-amber-50 text-amber-700"
                   ].join(" ")}
@@ -2054,12 +2133,14 @@ export default function RankPage() {
                 </div>
                 <div className="mt-3 space-y-2">
                   {rankMovementExplanation.length ? rankMovementExplanation.map((line) => (
-                    <div key={line} className="rounded-lg border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-2 text-sm text-[var(--rp-text-700)]">
-                      {line}
+                    <div key={`${line.source}-${line.metric}`} className="rounded-lg border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-2 text-sm text-[var(--rp-text-700)]">
+                      <div><span className="font-semibold">{line.source}</span> • <span className="font-semibold">Metric:</span> {line.metric}</div>
+                      <div className="mt-1"><span className="font-semibold">Interpretation:</span> {line.interpretation}</div>
+                      <div className="mt-1"><span className="font-semibold">Action:</span> {line.action}</div>
                     </div>
                   )) : (
                     <div className="rounded-lg border border-dashed border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-4 text-sm text-[var(--rp-text-600)]">
-                      Run at least two checks to explain movement causes.
+                      Insufficient live signals for this card. Run another rank check with the same keyword and domain.
                     </div>
                   )}
                 </div>
@@ -2080,15 +2161,16 @@ export default function RankPage() {
               <div className="rp-card p-4">
                 <div className="flex items-center justify-between gap-2">
                   <div className="text-[15px] font-semibold text-[var(--rp-text-900)]">Keyword opportunity insight</div>
-                  <ProvenanceBadge live={hasLiveOpportunityData} />
+                  <ProvenanceBadge tag={opportunityTag} />
                 </div>
                 <p className="mt-2 text-[15px] leading-relaxed text-[var(--rp-text-700)]">{opportunityInsight(shownRank)}</p>
                 {!!detailedRankReasons.length && (
                   <div className="mt-3 space-y-2">
                     {detailedRankReasons.slice(0, 2).map((reason) => (
-                      <div key={`opp-${reason.source}-${reason.text}`} className="rounded-lg border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-2 text-sm text-[var(--rp-text-700)]">
-                        <span className="mr-1 font-semibold">{reason.source}:</span>
-                        {reason.text}
+                      <div key={`opp-${reason.source}-${reason.metric}`} className="rounded-lg border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-2 text-sm text-[var(--rp-text-700)]">
+                        <div><span className="font-semibold">{reason.source}</span> • <span className="font-semibold">Metric:</span> {reason.metric}</div>
+                        <div className="mt-1"><span className="font-semibold">Interpretation:</span> {reason.interpretation}</div>
+                        <div className="mt-1"><span className="font-semibold">Action:</span> {reason.action}</div>
                       </div>
                     ))}
                   </div>
@@ -2135,7 +2217,7 @@ export default function RankPage() {
               <div className="rp-card p-4">
                 <div className="flex items-center justify-between gap-2">
                   <div className="text-[15px] font-semibold text-[var(--rp-text-900)]">Competitor snapshot (top 3)</div>
-                  <ProvenanceBadge live={hasLiveTopCompetitors} />
+                  <ProvenanceBadge tag={competitorTag} />
                 </div>
                 <div className="mt-3 grid gap-2">
                   {topCompetitors.length ? (
@@ -2162,11 +2244,13 @@ export default function RankPage() {
             <div className="rp-card p-4">
               <div className="flex items-center justify-between gap-2">
                 <div className="text-[15px] font-semibold text-[var(--rp-text-900)]">SERP snapshot preview</div>
-                <ProvenanceBadge live={hasLiveSerpPreview} />
+                <ProvenanceBadge tag={serpTag} />
               </div>
               <div className="mt-1 flex items-center justify-between gap-2">
                 <div className="text-xs text-[var(--rp-text-500)]">
-                  {hasLiveSerpPreview
+                  {allSerpEstimated
+                    ? "Preview generated from current signals; run again for fresh live SERP."
+                    : hasLiveSerpPreview
                     ? "Live SERP preview from this rank check."
                     : "Preview generated from current signal; run again for fresh live SERP with full snippet details."}
                 </div>
@@ -2183,7 +2267,12 @@ export default function RankPage() {
                         <span className="rounded-full border border-[var(--rp-border)] bg-white px-2 py-0.5 text-[11px] text-[var(--rp-text-600)]">{row.type}</span>
                       </div>
                       <div className="mt-1 text-xs text-[var(--rp-text-700)]">{row.description}</div>
-                      <div className="mt-1 text-xs text-[var(--rp-text-500)]">{row.domain}</div>
+                      <div className="mt-1 flex items-center justify-between gap-2 text-xs text-[var(--rp-text-500)]">
+                        <span>{row.domain}</span>
+                        <span className="rounded-full border border-[var(--rp-border)] bg-white px-2 py-0.5 text-[11px]">
+                          {row.snippetSource}
+                        </span>
+                      </div>
                       {Array.isArray(row.sitelinks) && row.sitelinks.length ? (
                         <div className="mt-2 flex flex-wrap gap-1.5">
                           {row.sitelinks.slice(0, 4).map((link) => (
@@ -2210,12 +2299,15 @@ export default function RankPage() {
               <div className="rp-card p-4">
                 <div className="flex items-center justify-between gap-2">
                   <div className="text-[15px] font-semibold text-[var(--rp-text-900)]">Backlink and authority comparison</div>
-                  <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
-                    Estimated
-                  </span>
+                  <ProvenanceBadge tag={backlinkTag} />
                 </div>
                 <div className="mt-2 text-xs text-[var(--rp-text-500)]">
                   Benchmark estimate from competitor SERP patterns.
+                </div>
+                <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
+                  <span className="rounded-full border border-[var(--rp-border)] bg-white px-2 py-0.5 text-[var(--rp-text-600)]">Words: modeled</span>
+                  <span className="rounded-full border border-[var(--rp-border)] bg-white px-2 py-0.5 text-[var(--rp-text-600)]">Backlinks: modeled</span>
+                  <span className="rounded-full border border-[var(--rp-border)] bg-white px-2 py-0.5 text-[var(--rp-text-600)]">Schema: modeled</span>
                 </div>
                 <div className="mt-3 overflow-auto">
                   <table className="w-full text-sm">
@@ -2248,6 +2340,9 @@ export default function RankPage() {
                     </tbody>
                   </table>
                 </div>
+                <div className="mt-2 text-xs text-[var(--rp-text-500)]">
+                  Benchmarks are modeled unless live competitor metrics are available.
+                </div>
               </div>
 
               <div className="rp-card p-4">
@@ -2255,8 +2350,10 @@ export default function RankPage() {
                 <div className="mt-2 text-xs text-[var(--rp-text-500)]">What this movement likely means</div>
                 <div className="mt-3 space-y-2">
                   {trendStory.length ? trendStory.map((line) => (
-                    <div key={line} className="rounded-lg border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-2 text-sm text-[var(--rp-text-700)]">
-                      {line}
+                    <div key={`${line.source}-${line.metric}`} className="rounded-lg border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-2 text-sm text-[var(--rp-text-700)]">
+                      <div><span className="font-semibold">{line.source}</span> • <span className="font-semibold">Metric:</span> {line.metric}</div>
+                      <div className="mt-1"><span className="font-semibold">Interpretation:</span> {line.interpretation}</div>
+                      <div className="mt-1"><span className="font-semibold">Action:</span> {line.action}</div>
                     </div>
                   )) : (
                     <div className="rounded-lg border border-dashed border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-4 text-sm text-[var(--rp-text-600)]">
@@ -2270,9 +2367,7 @@ export default function RankPage() {
             <div className="rp-card p-4">
               <div className="flex items-center justify-between gap-2">
                 <div className="text-[15px] font-semibold text-[var(--rp-text-900)]">Content gap preview</div>
-                <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
-                  Estimated
-                </span>
+                <ProvenanceBadge tag={contentGapTag} />
               </div>
               <div className="mt-2 text-xs text-[var(--rp-text-500)]">
                 Missing topics/headings inferred from competing SERP pages.
@@ -2281,10 +2376,10 @@ export default function RankPage() {
                 <div className="rounded-lg border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-3">
                   <div className="text-xs font-semibold uppercase tracking-[0.08em] text-[var(--rp-text-500)]">Missing topics</div>
                   <div className="mt-2 space-y-2 text-sm">
-                    {gap.missingTopics.slice(0, 4).map((topic) => (
-                      <div key={`topic-${topic}`} className="flex items-center justify-between rounded-md border border-rose-200 bg-rose-50 px-2 py-1 text-rose-700">
-                        <span>{topic}</span>
-                        <span className="text-[11px] font-semibold">Missing</span>
+                    {missingTopicRows.slice(0, 4).map((row) => (
+                      <div key={`topic-${row.topic}`} className="flex items-center justify-between rounded-md border border-rose-200 bg-rose-50 px-2 py-1 text-rose-700">
+                        <span>{row.topic}</span>
+                        <span className="text-[11px] font-semibold">Missing • {row.confidence}</span>
                       </div>
                     ))}
                   </div>
