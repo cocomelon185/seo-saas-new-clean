@@ -79,7 +79,16 @@ export default function Seo({
     }
     setMeta('meta[name="twitter:card"]', { name: "twitter:card" }, twitterCard);
     setMeta('meta[name="robots"]', { name: "robots" }, robots);
-    setCanonical(canonical);
+        const canonicalOrigin =
+      (typeof window !== "undefined" && window.location && window.location.origin)
+        ? window.location.origin
+        : "https://rankypulse.com";
+    const canonicalHref =
+      canonical ||
+      (typeof window !== "undefined" && window.location
+        ? canonicalOrigin + window.location.pathname
+        : canonicalOrigin + "/");
+    setCanonical(canonicalHref);
   }, [title, description, canonical, robots, twitterCard]);
 
   useEffect(() => {
