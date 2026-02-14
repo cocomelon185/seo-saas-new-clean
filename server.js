@@ -368,8 +368,9 @@ const publicMeta = [
     title: "Agency SEO Audit Workflow | RankyPulse",
     description: "Standardize audits with a repeatable workflow built for agencies."
   }
+  ,
   {
-    test: (path) => path === "/rank",
+    test: (pathName) => pathName === "/rank",
     title: "Keyword Rank Checker | RankyPulse",
     description:
       "Check where your domain ranks for keywords. Track position over time and get actionable SEO recommendations.",
