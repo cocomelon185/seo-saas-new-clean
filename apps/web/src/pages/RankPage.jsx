@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import AppShell from "../components/AppShell.jsx";
 import { IconArrowRight, IconCompass, IconChart, IconReport } from "../components/Icons.jsx";
 import ShareRankButton from "../components/ShareRankButton.jsx";
@@ -444,11 +444,13 @@ function TrendMarkers({ checks = [] }) {
 export default function RankPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
+  const q = (searchParams.get("q") || searchParams.get("keyword") || "").trim();
   const base = typeof window !== "undefined" ? window.location.origin : "https://rankypulse.com";
 
   const [pricingOpen, setPricingOpen] = useState(false);
 
-  const [keyword, setKeyword] = useState("");
+  const [keyword, setKeyword] = useState(q);
   const [domain, setDomain] = useState("");
   const [country, setCountry] = useState("US");
   const [city, setCity] = useState("");
@@ -508,7 +510,7 @@ export default function RankPage() {
     try {
       const params = new URLSearchParams(location.search || "");
       const share = (params.get("share") || "").trim();
-      const kw = (params.get("keyword") || "").trim();
+      const kw = (params.get("q") || params.get("keyword") || "").trim();
       const dm = (params.get("domain") || "").trim();
       const ctry = (params.get("country") || "").trim();
       const lang = (params.get("language") || "").trim();
@@ -1058,6 +1060,63 @@ export default function RankPage() {
     });
   }, [shownRank, missingTopicRows, nextIncompleteStep, auditTargetDomain, navigate, setKeyword, actionRef]);
 
+  const rankMovementExplanation = useMemo(() => {
+    if (!hasValidRank(shownRank)) return [];
+    const lines = [];
+    if (rankDelta !== null) {
+      lines.push({
+        source: "Live signal",
+        metric: `Position change ${rankDelta > 0 ? "+" : ""}${rankDelta}`,
+        interpretation:
+          rankDelta > 0
+            ? "Your page moved up since last check."
+            : rankDelta < 0
+              ? "Your page moved down since last check."
+              : "Position stayed flat since last check.",
+        action: "Re-run after each meaningful content update to confirm movement."
+      });
+    }
+    if (competitorBench.avgWords && competitorBench.own.words) {
+      const wordGap = competitorBench.avgWords - competitorBench.own.words;
+      if (wordGap > 200) {
+        lines.push({
+          source: "Pattern-based estimate",
+          metric: `Words gap ${wordGap}`,
+          interpretation: `Top pages average ~${competitorBench.avgWords} words while your page appears near ~${competitorBench.own.words}.`,
+          action: "Expand depth in missing sections before next rank check."
+        });
+      }
+    }
+    if (competitorBench.avgBacklinks && competitorBench.own.backlinks) {
+      const linkGap = competitorBench.avgBacklinks - competitorBench.own.backlinks;
+      if (linkGap > 80) {
+        lines.push({
+          source: "Pattern-based estimate",
+          metric: `Backlink gap ${linkGap}+`,
+          interpretation: "Competitors likely hold stronger referring-link signals for this query.",
+          action: "Plan contextual backlinks from high-relevance pages."
+        });
+      }
+    }
+    if (trendMovement?.direction === "up") {
+      lines.push({
+        source: "Pattern-based estimate",
+        metric: `Trend ${trendMovement.delta > 0 ? "+" : ""}${trendMovement.delta}`,
+        interpretation: "Recent page updates likely aligned better with intent.",
+        action: "Repeat recent update pattern across similar pages."
+      });
+    }
+    if (trendMovement?.direction === "down") {
+      lines.push({
+        source: "Pattern-based estimate",
+        metric: `Trend ${trendMovement.delta}`,
+        interpretation: "Volatility suggests competitor refreshes or topical coverage gap.",
+        action: "Refresh title, headings, and FAQ coverage, then re-check."
+      });
+    }
+    return lines.filter((x) => /\d/.test(String(x.metric || ""))).slice(0, 4);
+  }, [shownRank, rankDelta, competitorBench, trendMovement]);
+
   const rankMovementFacts = useMemo(() => (
     rankMovementExplanation.filter((line) => String(line.source || "").toLowerCase().includes("live"))
   ), [rankMovementExplanation]);
@@ -1189,63 +1248,6 @@ export default function RankPage() {
       }
     ];
   }, [shownRank, competitorBench, safeKeyword, estimatedClicksGain]);
-
-  const rankMovementExplanation = useMemo(() => {
-    if (!hasValidRank(shownRank)) return [];
-    const lines = [];
-    if (rankDelta !== null) {
-      lines.push({
-        source: "Live signal",
-        metric: `Position change ${rankDelta > 0 ? "+" : ""}${rankDelta}`,
-        interpretation:
-          rankDelta > 0
-            ? "Your page moved up since last check."
-            : rankDelta < 0
-              ? "Your page moved down since last check."
-              : "Position stayed flat since last check.",
-        action: "Re-run after each meaningful content update to confirm movement."
-      });
-    }
-    if (competitorBench.avgWords && competitorBench.own.words) {
-      const wordGap = competitorBench.avgWords - competitorBench.own.words;
-      if (wordGap > 200) {
-        lines.push({
-          source: "Pattern-based estimate",
-          metric: `Words gap ${wordGap}`,
-          interpretation: `Top pages average ~${competitorBench.avgWords} words while your page appears near ~${competitorBench.own.words}.`,
-          action: "Expand depth in missing sections before next rank check."
-        });
-      }
-    }
-    if (competitorBench.avgBacklinks && competitorBench.own.backlinks) {
-      const linkGap = competitorBench.avgBacklinks - competitorBench.own.backlinks;
-      if (linkGap > 80) {
-        lines.push({
-          source: "Pattern-based estimate",
-          metric: `Backlink gap ${linkGap}+`,
-          interpretation: "Competitors likely hold stronger referring-link signals for this query.",
-          action: "Plan contextual backlinks from high-relevance pages."
-        });
-      }
-    }
-    if (trendMovement?.direction === "up") {
-      lines.push({
-        source: "Pattern-based estimate",
-        metric: `Trend ${trendMovement.delta > 0 ? "+" : ""}${trendMovement.delta}`,
-        interpretation: "Recent page updates likely aligned better with intent.",
-        action: "Repeat recent update pattern across similar pages."
-      });
-    }
-    if (trendMovement?.direction === "down") {
-      lines.push({
-        source: "Pattern-based estimate",
-        metric: `Trend ${trendMovement.delta}`,
-        interpretation: "Volatility suggests competitor refreshes or topical coverage gap.",
-        action: "Refresh title, headings, and FAQ coverage, then re-check."
-      });
-    }
-    return lines.filter((x) => /\d/.test(String(x.metric || ""))).slice(0, 4);
-  }, [shownRank, rankDelta, competitorBench, trendMovement]);
 
   const kpis = useMemo(() => ([
     {

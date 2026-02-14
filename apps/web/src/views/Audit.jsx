@@ -134,6 +134,7 @@ export default function Audit() {
   const [tab, setTab] = React.useState("overview");
 
   const [sevFilter, setSevFilter] = React.useState("All");
+    const q = encodeURIComponent(targetUrl.trim());
   const [q, setQ] = React.useState("");
   const [targetUrl, setTargetUrl] = React.useState("https://example.com");
   const [loading, setLoading] = React.useState(false);
@@ -174,7 +175,6 @@ const visibleIssues = React.useMemo(() => {
   async function runAudit() {
     setLoading(true);
     setError("");
-    const q = encodeURIComponent(targetUrl.trim());
 
     const candidates = [
       { url: apiUrl(`/api/audit/run`), init: { method: "POST", headers: { "Content-Type": "application/json", ...authHeaders() }, body: JSON.stringify({ url: targetUrl.trim() }) } },
