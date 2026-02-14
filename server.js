@@ -351,7 +351,7 @@ const publicMeta = [
     test: (pathName) => pathName.startsWith("/r/"),
     title: "SEO Audit Report | RankyPulse",
     description: "Shared SEO audit report with prioritized issues and actionable recommendations.",
-    robots: "noindex, nofollow"
+    robots: "index, follow"
   },
   {
     test: (pathName) => pathName.startsWith("/use-cases/saas-landing-audit"),
@@ -395,7 +395,6 @@ const noindexPrefixes = [
   "/embed",
   "/leads",
   "/improve",
-  "/audit",
   "/r/",
   "/upgrade",
   "/plan-change"

@@ -74,7 +74,6 @@ const noindexPrefixes = [
   "/admin",
   "/embed",
   "/leads",
-  "/rank",
   "/improve",
   "/plan-change"
 ];
