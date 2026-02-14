@@ -4,7 +4,8 @@
   "version": "1.0.0",
   "scripts": {
     "dev": "node server.js",
-    "start": "node server.js"
+    "start": "node server.js",
+    "postbuild": "node postbuild-seo.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",
