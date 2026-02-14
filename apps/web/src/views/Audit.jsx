@@ -131,10 +131,12 @@ function SeverityBadge({ severity }) {
 }
 
 export default function Audit() {
+  const q = encodeURIComponent(targetUrl.trim());
+
   const [tab, setTab] = React.useState("overview");
 
   const [sevFilter, setSevFilter] = React.useState("All");
-    const q = encodeURIComponent(targetUrl.trim());
+    
   const [q, setQ] = React.useState("");
   const [targetUrl, setTargetUrl] = React.useState("https://example.com");
   const [loading, setLoading] = React.useState(false);
