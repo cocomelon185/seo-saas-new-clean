@@ -1450,202 +1450,33 @@ export default function RankPage() {
           </div>
         )}
 
-        {status !== "success" && (
-          <div className="grid gap-3 md:gap-4">
-            <div className="rp-card p-4 md:p-5">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="text-[15px] font-semibold text-[var(--rp-text-800)]">Position trend (last 7 checks)</div>
-                <div className="text-xs text-[var(--rp-text-500)]">Run Check Rank to load your live movement timeline.</div>
-              </div>
-              <div className="mt-3 h-48 rounded-xl border border-[var(--rp-border)] bg-white p-2">
-                {last7Checks.length ? (
-                  <SafeApexChart
-                    type="line"
-                    height={176}
-                    options={{
-                      chart: { toolbar: { show: false }, animations: { enabled: true } },
-                      stroke: { curve: "smooth", width: 3 },
-                      colors: ["#7c3aed"],
-                      grid: { borderColor: "#ede9fe" },
-                      markers: { size: 4, strokeWidth: 2, colors: ["#7c3aed"] },
-                      annotations: {
-                        points: [
-                          ...(trendMarkers.best ? [{
-                            x: trendMarkers.best.label,
-                            y: trendMarkers.best.rank,
-                            marker: { size: 5, fillColor: "#10b981", strokeColor: "#ffffff", strokeWidth: 2 },
-                            label: { borderColor: "#10b981", style: { color: "#fff", background: "#10b981" }, text: "Best" }
-                          }] : []),
-                          ...(trendMarkers.worst ? [{
-                            x: trendMarkers.worst.label,
-                            y: trendMarkers.worst.rank,
-                            marker: { size: 5, fillColor: "#ef4444", strokeColor: "#ffffff", strokeWidth: 2 },
-                            label: { borderColor: "#ef4444", style: { color: "#fff", background: "#ef4444" }, text: "Worst" }
-                          }] : [])
-                        ]
-                      },
-                      yaxis: {
-                        reversed: true,
-                        min: 1,
-                        forceNiceScale: true,
-                        labels: { style: { colors: "#6b5b95" } }
-                      },
-                      xaxis: {
-                        categories: last7Checks.map((point) => point.label),
-                        labels: { style: { colors: "#6b5b95" } }
-                      },
-                      tooltip: {
-                        x: { formatter: (v) => `Date: ${v}` },
-                        y: { formatter: (v) => `Position ${Math.round(v)}` }
-                      }
-                    }}
-                    series={[{ name: "Position", data: last7Checks.map((point) => point.rank) }]}
-                  />
-                ) : (
-                  <div className="flex h-full items-center justify-center text-sm text-[var(--rp-text-500)]">
-                    No history yet. Your first rank check creates the baseline trend.
-                  </div>
-                )}
-              </div>
+        {status === "idle" && (
+          <div className="rp-card p-4 md:p-5">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="text-[15px] font-semibold text-[var(--rp-text-800)]">Position trend (last 7 checks)</div>
+              <div className="text-xs text-[var(--rp-text-500)]">Run Check Rank to load live movement and competitor analysis.</div>
             </div>
-
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="rp-card p-4">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="text-[15px] font-semibold text-[var(--rp-text-900)]">Keyword opportunity insight</div>
-                  <ProvenanceBadge tag={opportunityTag} />
+            <div className="mt-3 h-48 rounded-xl border border-[var(--rp-border)] bg-white p-2">
+              {last7Checks.length ? (
+                <SafeApexChart
+                  type="line"
+                  height={176}
+                  options={{
+                    chart: { toolbar: { show: false }, animations: { enabled: true } },
+                    stroke: { curve: "smooth", width: 3 },
+                    colors: ["#7c3aed"],
+                    grid: { borderColor: "#ede9fe" },
+                    markers: { size: 4, strokeWidth: 2, colors: ["#7c3aed"] },
+                    yaxis: { reversed: true, min: 1, forceNiceScale: true, labels: { style: { colors: "#6b5b95" } } },
+                    xaxis: { categories: last7Checks.map((point) => point.label), labels: { style: { colors: "#6b5b95" } } }
+                  }}
+                  series={[{ name: "Position", data: last7Checks.map((point) => point.rank) }]}
+                />
+              ) : (
+                <div className="flex h-full items-center justify-center text-sm text-[var(--rp-text-500)]">
+                  No history yet. Your first rank check creates the baseline trend.
                 </div>
-                <p className="mt-2 text-[15px] leading-relaxed text-[var(--rp-text-700)]">{opportunityInsight(shownRank)}</p>
-                <div className="mt-3 inline-flex items-center rounded-full border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-1 text-xs font-semibold text-[var(--rp-text-600)]">
-                  {hasValidRank(shownRank) ? `Current position: ${shownRank}` : "Position appears right after first check"}
-                </div>
-                <div className="mt-2 text-xs text-[var(--rp-text-500)]">
-                  {hasLiveOpportunityData
-                    ? "Based on your latest rank-check response."
-                    : "Benchmark model based on current keyword and SERP profile."}
-                </div>
-              </div>
-
-              <div className="rp-card p-4">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="text-[15px] font-semibold text-[var(--rp-text-900)]">Competitor snapshot (top 3)</div>
-                  <ProvenanceBadge tag={competitorTag} />
-                </div>
-                <div className="mt-3 grid gap-2">
-                  {topCompetitors.length || hasValidRank(shownRank) ? (
-                    <>
-                      <div className="grid grid-cols-[1fr_auto] items-center rounded-lg border border-[var(--rp-indigo-200)] bg-[var(--rp-indigo-50)] px-3 py-2 text-[15px]">
-                        <span className="font-semibold text-[var(--rp-text-900)]">{safeDomain || "your-domain.com"} (you)</span>
-                        <span className="rounded-full bg-white px-2 py-1 text-xs font-semibold text-[var(--rp-indigo-800)]">
-                          #{hasValidRank(shownRank) ? shownRank : "—"}
-                        </span>
-                      </div>
-                      {topCompetitors.map((entry) => (
-                        <div
-                          key={`preview-${entry.position}-${entry.domain}`}
-                          className="grid grid-cols-[1fr_auto] items-center rounded-lg border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-2 text-[15px]"
-                        >
-                          <span className="font-medium text-[var(--rp-text-900)]">{entry.domain}</span>
-                          <span className="rounded-full bg-[var(--rp-indigo-100)] px-2 py-1 text-xs font-semibold text-[var(--rp-indigo-800)]">
-                            #{entry.position}
-                          </span>
-                        </div>
-                      ))}
-                    </>
-                  ) : (
-                    <div className="rounded-lg border border-dashed border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-4 text-sm text-[var(--rp-text-600)]">
-                      Sample competitor pattern until live SERP competitor data is available.
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="rp-card p-4">
-                <div className="text-[15px] font-semibold text-[var(--rp-text-900)]">Why you rank here</div>
-                {detailedRankReasons.length ? (
-                  <div className="mt-3 space-y-2">
-                    {detailedRankReasons.map((reason) => (
-                      <div key={`${reason.source}-${reason.metric}`} className="rounded-lg border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-2 text-sm text-[var(--rp-text-700)]">
-                        <div><span className="font-semibold">{reason.source}</span> • <span className="font-semibold">Metric:</span> {reason.metric}</div>
-                        <div className="mt-1"><span className="font-semibold">Interpretation:</span> {reason.interpretation}</div>
-                        <div className="mt-1"><span className="font-semibold">Action:</span> {reason.action}</div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="mt-3 text-sm text-[var(--rp-text-600)]">
-                    Insufficient live signals for this card. Run another rank check with the same keyword and domain.
-                  </div>
-                )}
-              </div>
-              <div className="rp-card p-4">
-                <div className="text-[15px] font-semibold text-[var(--rp-text-900)]">Next best SEO move</div>
-                <div className="mt-3 rounded-lg border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-3">
-                  <div className="text-sm text-[var(--rp-text-700)]">{bestMove.move}</div>
-                  <div className="mt-2 inline-flex items-center rounded-full border border-[var(--rp-indigo-200)] bg-[var(--rp-indigo-50)] px-3 py-1 text-xs font-semibold text-[var(--rp-indigo-800)]">
-                    Estimated gain: {bestMove.gain ? `+${bestMove.gain} positions` : "shown after first check"}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="rp-card p-4">
-              <div className="text-[15px] font-semibold text-[var(--rp-text-900)]">Content gap preview</div>
-              <div className="mt-3 grid gap-3 md:grid-cols-3">
-                <div className="rounded-lg border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-3">
-                  <div className="text-xs font-semibold uppercase tracking-[0.08em] text-[var(--rp-text-500)]">Competitor headings</div>
-                  <div className="mt-2 space-y-2 text-sm text-[var(--rp-text-700)]">
-                    {gap.competitors.flatMap((c) => c.headings.slice(0, 1)).slice(0, 3).map((h) => (
-                      <div key={h}>• {h}</div>
-                    ))}
-                  </div>
-                </div>
-                <div className="rounded-lg border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-3">
-                  <div className="text-xs font-semibold uppercase tracking-[0.08em] text-[var(--rp-text-500)]">Missing topics</div>
-                  <div className="mt-2 space-y-2 text-sm text-[var(--rp-text-700)]">
-                    {gap.missingTopics.map((topic) => (
-                      <div key={topic}>• {topic}</div>
-                    ))}
-                  </div>
-                </div>
-                <div className="rounded-lg border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-3">
-                  <div className="text-xs font-semibold uppercase tracking-[0.08em] text-[var(--rp-text-500)]">Missing keywords</div>
-                  <div className="mt-2 space-y-2 text-sm text-[var(--rp-text-700)]">
-                    {gap.missingKeywords.map((kw) => (
-                      <button
-                        key={kw}
-                        type="button"
-                        onClick={() => setKeyword(kw)}
-                        className="block w-full rounded-lg border border-[var(--rp-border)] bg-white px-2 py-1 text-left hover:border-[var(--rp-indigo-300)]"
-                        title="Use this keyword"
-                      >
-                        {kw}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="rp-card p-4">
-              <div className="flex items-center justify-between gap-2">
-                <div className="text-[15px] font-semibold text-[var(--rp-text-900)]">Keyword cluster suggestions</div>
-                <div className="text-xs text-[var(--rp-text-500)]">Click one to run next check</div>
-              </div>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {relatedKeywordCluster.map((kw) => (
-                  <button
-                    key={`cluster-${kw}`}
-                    type="button"
-                    onClick={() => setKeyword(kw)}
-                    className="rp-chip rp-chip-neutral"
-                  >
-                    {kw}
-                  </button>
-                ))}
-              </div>
+              )}
             </div>
           </div>
         )}
