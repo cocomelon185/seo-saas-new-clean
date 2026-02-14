@@ -349,7 +349,7 @@ const noindexPrefixes = [
   "/admin",
   "/embed",
   "/leads",
-  "/rank",
+  ,
   "/improve",
   "/audit",
   "/r/",

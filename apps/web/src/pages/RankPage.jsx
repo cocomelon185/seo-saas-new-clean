@@ -22,6 +22,16 @@ import {
 } from "../utils/rankProgress.js";
 import { decodeSharePayload } from "../utils/shareRank.js";
 import { listSnapshots } from "../utils/auditSnapshots.js";
+import {
+  SOURCE_HINTS,
+  SOURCE_TAGS,
+  buildRankProvenance,
+  getModeledRecommendationIntro,
+  getObservedFactsIntro,
+  getKeywordOpportunitySourceCopy,
+  getScenarioEstimateLabel,
+  getSerpSnapshotSourceCopy
+} from "../utils/rankProvenance.js";
 import { getAuthToken, getAuthUser } from "../lib/authClient.js";
 import { safeJson } from "../lib/safeJson.js";
 import { apiUrl } from "../lib/api.js";
@@ -292,6 +302,57 @@ function estimateFixImpactClicks(baseClicks, ratio) {
   return Math.max(4, Math.round(base * ratio));
 }
 
+function resolvePrimaryNextAction({ shownRank, missingTopicRows, nextIncompleteStep, auditTargetDomain, navigate, setKeyword, actionRef }) {
+  if (!hasValidRank(shownRank)) {
+    return {
+      key: "run_check",
+      label: "Run next optimization",
+      reason: "Run a fresh check to unlock a ranked next action.",
+      onClick: () => actionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+    };
+  }
+  const topTopic = missingTopicRows?.[0]?.topic;
+  const incompleteKey = nextIncompleteStep?.key;
+  if (incompleteKey === "headings" && topTopic) {
+    return {
+      key: "headings",
+      label: "Add missing headings now",
+      reason: `Prioritize heading coverage: start with "${topTopic}".`,
+      onClick: () => setKeyword(String(topTopic).toLowerCase())
+    };
+  }
+  if (incompleteKey === "faq" && auditTargetDomain) {
+    return {
+      key: "faq",
+      label: "Create FAQ section",
+      reason: "FAQ is the fastest pending step to expand intent coverage.",
+      onClick: () => navigate(`/audit?url=${encodeURIComponent(`https://${auditTargetDomain}`)}`)
+    };
+  }
+  if (incompleteKey === "title" && auditTargetDomain) {
+    return {
+      key: "title",
+      label: "Generate improved title",
+      reason: "Title intent match is the highest-leverage pending on-page improvement.",
+      onClick: () => navigate(`/audit?url=${encodeURIComponent(`https://${auditTargetDomain}`)}`)
+    };
+  }
+  if (incompleteKey === "backlinks" && auditTargetDomain) {
+    return {
+      key: "backlinks",
+      label: "Plan 3 backlinks",
+      reason: "Authority reinforcement is the primary remaining ranking constraint.",
+      onClick: () => navigate(`/audit?url=${encodeURIComponent(`https://${auditTargetDomain}`)}`)
+    };
+  }
+  return {
+    key: nextIncompleteStep?.key || "optimize",
+    label: nextIncompleteStep?.actionLabel || "Run next optimization",
+    reason: "Continue with the next pending optimization step.",
+    onClick: () => actionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+  };
+}
+
 function defaultSitelinks(keyword) {
   const title = keywordToTitleCase(keyword) || "SEO Audit Tool";
   return [
@@ -300,6 +361,20 @@ function defaultSitelinks(keyword) {
     `${title} pricing`,
     `${title} FAQ`
   ];
+}
+
+function normalizeSerpSnippetSource(entry) {
+  const raw = String(
+    entry?.snippetSource
+    || entry?.snippet_source
+    || entry?.snippetProvenance
+    || entry?.snippet_provenance
+    || entry?.source
+    || ""
+  ).trim().toLowerCase();
+  if (raw) return raw.includes("live") ? "Live snippet" : "Estimated snippet";
+  if (entry?.isLiveSnippet === true || entry?.is_live_snippet === true || entry?.liveSnippet === true) return "Live snippet";
+  return String(entry?.description || "").trim() ? "Live snippet" : "Estimated snippet";
 }
 
 function inferKeywordIntent(keyword) {
@@ -335,24 +410,12 @@ function estimateOpportunity(rank, difficulty) {
   return Math.max(1, Math.min(100, Math.round((70 - Math.min(60, r)) + (100 - d) * 0.4)));
 }
 
-const SOURCE_HINT = {
-  "Live data": "From latest rank-check response.",
-  Hybrid: "Live rank history + modeled score blend.",
-  Estimated: "Modeled from SERP/rank patterns."
-};
-
-function resolveSourceTag({ hasLive, hasAuditBlend }) {
-  if (hasLive) return "Live data";
-  if (hasAuditBlend) return "Hybrid";
-  return "Estimated";
-}
-
 function ProvenanceBadge({ tag }) {
-  const live = tag === "Live data";
-  const hybrid = tag === "Hybrid";
+  const live = tag === SOURCE_TAGS.LIVE;
+  const hybrid = tag === SOURCE_TAGS.HYBRID;
   return (
     <span
-      title={SOURCE_HINT[tag] || SOURCE_HINT.Estimated}
+      title={SOURCE_HINTS[tag] || SOURCE_HINTS[SOURCE_TAGS.ESTIMATED]}
       className={[
         "inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold",
         live
@@ -362,7 +425,7 @@ function ProvenanceBadge({ tag }) {
             : "border-amber-200 bg-amber-50 text-amber-700"
       ].join(" ")}
     >
-      {tag || "Estimated"}
+      {tag || SOURCE_TAGS.ESTIMATED}
       <span className="ml-1 text-[10px]">i</span>
     </span>
   );
@@ -635,7 +698,6 @@ export default function RankPage() {
     }
     return [];
   }, [result?.top_competitors]);
-  const hasLiveTopCompetitors = topCompetitors.length > 0;
   const inferredCompetitor = useMemo(() => {
     if (hasValidRank(shownRank) && Number(shownRank) <= 1) return "You are currently leading";
     if (topCompetitors[0]?.domain) return topCompetitors[0].domain;
@@ -661,26 +723,35 @@ export default function RankPage() {
     if (Number.isFinite(apiValue) && apiValue > 0) return Math.max(1, Math.min(100, Math.round(apiValue)));
     return estimateOpportunity(shownRank, difficultyScore);
   }, [result?.opportunity_score, shownRank, difficultyScore]);
-  const hasLiveMetricScores = useMemo(() => {
-    const difficultyLive = Number.isFinite(Number(result?.difficulty_score)) && Number(result?.difficulty_score) > 0;
-    const trafficLive = Number.isFinite(Number(result?.traffic_potential)) && Number(result?.traffic_potential) > 0;
-    const opportunityLive = Number.isFinite(Number(result?.opportunity_score)) && Number(result?.opportunity_score) > 0;
-    return difficultyLive || trafficLive || opportunityLive;
-  }, [result?.difficulty_score, result?.traffic_potential, result?.opportunity_score]);
   const liveRankReasons = useMemo(() => {
     if (!Array.isArray(result?.rank_reasons)) return [];
     return result.rank_reasons.map((item) => String(item || "").trim()).filter(Boolean).slice(0, 4);
   }, [result?.rank_reasons]);
+  const rawSerpPreview = useMemo(() => (
+    Array.isArray(result?.serp_preview) ? result.serp_preview : []
+  ), [result?.serp_preview]);
+
+  const serpProvenanceRows = useMemo(() => {
+    return rawSerpPreview.slice(0, 5).map((entry, idx) => ({
+      position: Number(entry?.position ?? idx + 1),
+      title: String(entry?.title || "").trim(),
+      domain: String(entry?.domain || entry?.url || "").trim(),
+      url: String(entry?.url || "").trim(),
+      type: String(entry?.type || "").trim(),
+      description: String(entry?.description || "").trim(),
+      snippetSource: normalizeSerpSnippetSource(entry)
+    }));
+  }, [rawSerpPreview]);
 
   const serpPreview = useMemo(() => {
-    if (Array.isArray(result?.serp_preview) && result.serp_preview.length) {
-      return result.serp_preview.slice(0, 5).map((entry, idx) => ({
+    if (rawSerpPreview.length) {
+      return rawSerpPreview.slice(0, 5).map((entry, idx) => ({
         position: Number(entry?.position ?? idx + 1),
         title: String(entry?.title || "").trim() || "Untitled result",
         domain: domainFromInput(entry?.url || entry?.domain || "") || "unknown-domain",
         type: String(entry?.type || "Organic"),
         description: String(entry?.description || "").trim() || `Result for ${keywordToTitleCase(safeKeyword) || "this keyword"} with intent-matched on-page content.`,
-        snippetSource: String(entry?.description || "").trim() ? "Live snippet" : "Estimated snippet",
+        snippetSource: normalizeSerpSnippetSource(entry),
         sitelinks: Array.isArray(entry?.sitelinks) && entry.sitelinks.length
           ? entry.sitelinks.slice(0, 4).map((x) => String(x || "").trim()).filter(Boolean)
           : []
@@ -702,14 +773,7 @@ export default function RankPage() {
         ? ["Checklist", "Tools comparison", "Pricing", "FAQ"]
         : defaultSitelinks(safeKeyword).slice(0, 4)
     }));
-  }, [result?.serp_preview, topCompetitors, safeKeyword]);
-  const hasLiveSerpPreview = Array.isArray(result?.serp_preview) && result.serp_preview.length > 0;
-  const hasLiveOpportunityData = Boolean(hasLiveMetricScores || liveRankReasons.length);
-  const opportunityTag = resolveSourceTag({ hasLive: hasLiveOpportunityData, hasAuditBlend: false });
-  const competitorTag = resolveSourceTag({ hasLive: hasLiveTopCompetitors, hasAuditBlend: false });
-  const serpTag = resolveSourceTag({ hasLive: hasLiveSerpPreview, hasAuditBlend: false });
-  const backlinkTag = resolveSourceTag({ hasLive: false, hasAuditBlend: false });
-  const contentGapTag = resolveSourceTag({ hasLive: false, hasAuditBlend: false });
+  }, [rawSerpPreview, topCompetitors, safeKeyword]);
 
   const relatedKeywordCluster = useMemo(() => {
     const fromTracked = clusterKeywords(safeKeyword);
@@ -899,11 +963,39 @@ export default function RankPage() {
   }, [latestRankValue, history, activeSnapshotScore]);
 
   const scoreSourceLabel = useMemo(() => {
-    return resolveSourceTag({
-      hasLive: false,
-      hasAuditBlend: Boolean(Number.isFinite(activeSnapshotScore) && hasValidRank(latestRankValue))
-    });
+    return buildRankProvenance({
+      activeSnapshotScore,
+      latestRankValue
+    }).seoProgressDashboard;
   }, [activeSnapshotScore, latestRankValue]);
+
+  const provenanceByCard = useMemo(() => {
+    return buildRankProvenance({
+      activeSnapshotScore,
+      latestRankValue,
+      rankDelta,
+      previousRank,
+      topCompetitors,
+      serpPreviewRaw: serpProvenanceRows,
+      difficultyScore: result?.difficulty_score,
+      trafficPotential: result?.traffic_potential,
+      opportunityScore: result?.opportunity_score,
+      liveRankReasonsCount: liveRankReasons.length,
+      trendChecksCount: last7Checks.length
+    });
+  }, [
+    activeSnapshotScore,
+    latestRankValue,
+    rankDelta,
+    previousRank,
+    topCompetitors,
+    serpProvenanceRows,
+    result?.difficulty_score,
+    result?.traffic_potential,
+    result?.opportunity_score,
+    liveRankReasons.length,
+    last7Checks.length
+  ]);
 
   const winsStats = useMemo(() => {
     return computeWinsStats({ stepState: progressState?.stepState, checks30d });
@@ -954,10 +1046,62 @@ export default function RankPage() {
     }).sort((a, b) => b.score - a.score);
   }, [gap.missingTopics]);
 
-  const allSerpEstimated = useMemo(() => {
-    if (!serpPreview.length) return false;
-    return serpPreview.every((row) => row.snippetSource !== "Live snippet");
-  }, [serpPreview]);
+  const primaryNextAction = useMemo(() => {
+    return resolvePrimaryNextAction({
+      shownRank,
+      missingTopicRows,
+      nextIncompleteStep,
+      auditTargetDomain,
+      navigate,
+      setKeyword,
+      actionRef
+    });
+  }, [shownRank, missingTopicRows, nextIncompleteStep, auditTargetDomain, navigate, setKeyword, actionRef]);
+
+  const rankMovementFacts = useMemo(() => (
+    rankMovementExplanation.filter((line) => String(line.source || "").toLowerCase().includes("live"))
+  ), [rankMovementExplanation]);
+
+  const rankMovementRecommendations = useMemo(() => (
+    rankMovementExplanation.filter((line) => !String(line.source || "").toLowerCase().includes("live"))
+  ), [rankMovementExplanation]);
+
+  const keywordLiveEvidence = useMemo(() => (
+    detailedRankReasons.filter((line) => String(line.source || "").toLowerCase().includes("live"))
+  ), [detailedRankReasons]);
+
+  const keywordModeledRecommendations = useMemo(() => (
+    detailedRankReasons.filter((line) => !String(line.source || "").toLowerCase().includes("live"))
+  ), [detailedRankReasons]);
+
+  const trendObservedFacts = useMemo(() => {
+    if (!last7Checks.length) return [];
+    return [
+      {
+        label: "Checks analyzed",
+        value: String(last7Checks.length)
+      },
+      {
+        label: "Observed movement",
+        value: trendMovement?.text || "No clear movement observed yet."
+      }
+    ];
+  }, [last7Checks.length, trendMovement]);
+
+  const keywordObservedFacts = useMemo(() => {
+    const facts = [];
+    if (hasValidRank(shownRank)) facts.push({ label: "Current position", value: String(shownRank) });
+    if (Number.isFinite(Number(result?.difficulty_score)) && Number(result?.difficulty_score) > 0) {
+      facts.push({ label: "Live difficulty", value: `${Math.round(Number(result?.difficulty_score))}/100` });
+    }
+    if (Number.isFinite(Number(result?.opportunity_score)) && Number(result?.opportunity_score) > 0) {
+      facts.push({ label: "Live opportunity", value: `${Math.round(Number(result?.opportunity_score))}/100` });
+    }
+    if (Number.isFinite(Number(result?.traffic_potential)) && Number(result?.traffic_potential) > 0) {
+      facts.push({ label: "Live traffic potential", value: `~${Math.round(Number(result?.traffic_potential))}/mo` });
+    }
+    return facts;
+  }, [shownRank, result?.difficulty_score, result?.opportunity_score, result?.traffic_potential]);
 
   useEffect(() => {
     if (status !== "success" || !scopeDomain || !scopeKeyword) return;
@@ -1141,7 +1285,7 @@ export default function RankPage() {
       seoTitle="Rank Checker | RankyPulse"
       seoDescription="Check where your domain ranks for a keyword."
       seoCanonical={`${base}/rank`}
-      seoRobots="noindex,nofollow"
+      seoRobots="index,follow"
     >
       {pricingOpen ? (
         <Suspense fallback={null}>
@@ -1397,7 +1541,7 @@ export default function RankPage() {
               </ol>
             </div>
 
-            <div className="rp-card p-4 md:p-5">
+            <div data-testid="rank-analysis-section" className="rp-card p-4 md:p-5">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="text-sm font-semibold text-[var(--rp-text-900)]">Weekly Growth Alerts</div>
                 <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
@@ -1543,7 +1687,7 @@ export default function RankPage() {
                   ) : null}
                 </div>
                 <div className="rounded-xl border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-3">
-                  <div className="text-xs text-[var(--rp-text-500)]">Modeled clicks opportunity</div>
+                  <div className="text-xs text-[var(--rp-text-500)]">{getScenarioEstimateLabel("clicks_opportunity")}</div>
                   <div className="mt-1 text-2xl font-semibold text-[var(--rp-indigo-700)]">+{estimatedClicksGain}/mo</div>
                 </div>
               </div>
@@ -1636,19 +1780,20 @@ export default function RankPage() {
                   <div className="mt-1 text-[11px] text-[var(--rp-text-500)]">Why this matters: completed actions drive predictable SEO gains.</div>
                 </div>
                 <div className="rounded-xl border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-3">
-                  <div className="text-xs text-[var(--rp-text-500)]">Estimated traffic gained</div>
+                  <div className="text-xs text-[var(--rp-text-500)]">{getScenarioEstimateLabel("traffic_gained")}</div>
                   <div className="mt-1 text-2xl font-semibold text-[var(--rp-indigo-700)]">+{completedVisitsGain}/mo</div>
                   <div className="mt-1 text-[11px] text-[var(--rp-text-500)]">Why this matters: shows monthly upside from shipped fixes.</div>
                 </div>
                 <div className="rounded-xl border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-3">
                   <div className="text-xs text-[var(--rp-text-500)]">Next best action</div>
-                  <div className="mt-1 text-sm font-semibold text-[var(--rp-text-900)]">{nextIncompleteStep?.label || "All core steps complete"}</div>
+                  <div className="mt-1 text-sm font-semibold text-[var(--rp-text-900)]">{primaryNextAction.label || "All core steps complete"}</div>
+                  <div className="mt-1 text-[11px] text-[var(--rp-text-500)]">{primaryNextAction.reason}</div>
                   <button
                     type="button"
-                    onClick={() => actionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                    onClick={primaryNextAction.onClick}
                     className="rp-btn-primary rp-btn-sm mt-2 h-8 px-3 text-xs"
                   >
-                    {nextIncompleteStep?.actionLabel || "Run next optimization"}
+                    {primaryNextAction.label || "Run next optimization"}
                   </button>
                 </div>
               </div>
@@ -1732,16 +1877,16 @@ export default function RankPage() {
                       <div className="mt-2 text-xs text-[var(--rp-text-600)]">{step.why}</div>
                       <div className="mt-2 flex flex-wrap gap-2">
                         <span className="inline-flex items-center rounded-full border border-[var(--rp-indigo-200)] bg-[var(--rp-indigo-50)] px-2 py-0.5 text-[11px] font-semibold text-[var(--rp-indigo-800)]">
-                          +{step.ctrLift}% CTR
+                          {getScenarioEstimateLabel("ctr_lift")}: +{step.ctrLift}% CTR
                         </span>
                         <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
-                          ≈ +{step.visits}/mo
+                          {getScenarioEstimateLabel("monthly_visits")}: +{step.visits}/mo
                         </span>
                       </div>
                       <button
                         type="button"
                         onClick={() => actionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
-                        className="rp-btn-primary rp-btn-sm mt-3 h-8 px-3 text-xs"
+                        className="rp-btn-secondary rp-btn-sm mt-3 h-8 px-3 text-xs"
                       >
                         {step.actionLabel}
                       </button>
@@ -1750,7 +1895,7 @@ export default function RankPage() {
                 })}
               </div>
               <div className="mt-3 rounded-xl border border-[var(--rp-border)] bg-white px-3 py-2 text-xs text-[var(--rp-text-600)]">
-                Estimated cumulative lift from completed actions: <span className="font-semibold text-[var(--rp-indigo-700)]">+{completedCtrGain}% CTR</span> and <span className="font-semibold text-[var(--rp-indigo-700)]">+{completedVisitsGain}/mo</span>.
+                {getScenarioEstimateLabel("cumulative_lift")}: <span className="font-semibold text-[var(--rp-indigo-700)]">+{completedCtrGain}% CTR</span> and <span className="font-semibold text-[var(--rp-indigo-700)]">+{completedVisitsGain}/mo</span>.
               </div>
             </div>
 
@@ -1923,9 +2068,15 @@ export default function RankPage() {
               <div className="rp-card p-4">
                 <div className="flex items-center justify-between gap-2">
                   <div className="text-[15px] font-semibold text-[var(--rp-text-900)]">Actionable SEO recipe (to reach page 1)</div>
-                  <span className="inline-flex items-center rounded-full border border-[var(--rp-indigo-200)] bg-[var(--rp-indigo-50)] px-2 py-0.5 text-[11px] font-semibold text-[var(--rp-indigo-800)]">
-                    Do this now
-                  </span>
+                  <ProvenanceBadge tag={provenanceByCard.actionableRecipe} />
+                </div>
+                <div className="mt-2 text-xs text-[var(--rp-text-500)]">
+                  <span className="mr-1 font-semibold uppercase tracking-[0.08em] text-[11px]">Observed facts:</span>
+                  {getObservedFactsIntro(provenanceByCard.actionableRecipe, "actionableRecipe")}
+                </div>
+                <div className="mt-1 text-xs text-[var(--rp-text-500)]">
+                  <span className="mr-1 font-semibold uppercase tracking-[0.08em] text-[11px]">Modeled recommendations:</span>
+                  {getModeledRecommendationIntro(provenanceByCard.actionableRecipe, "actionableRecipe")}
                 </div>
                 <div className="mt-3 space-y-3">
                   {actionableRecipe.map((fix) => (
@@ -1936,10 +2087,10 @@ export default function RankPage() {
                       </ul>
                       <div className="mt-3 flex flex-wrap items-center gap-2">
                         <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">
-                          +{fix.ctrLift}% CTR estimate
+                          {getScenarioEstimateLabel("ctr_lift")}: +{fix.ctrLift}% CTR
                         </span>
                         <span className="inline-flex items-center rounded-full border border-[var(--rp-indigo-200)] bg-[var(--rp-indigo-50)] px-2 py-0.5 text-xs font-semibold text-[var(--rp-indigo-800)]">
-                          ≈ +{fix.visits}/mo
+                          {getScenarioEstimateLabel("monthly_visits")}: +{fix.visits}/mo
                         </span>
                         <button
                           type="button"
@@ -1947,9 +2098,9 @@ export default function RankPage() {
                             const firstTopic = gap.missingTopics[0];
                             if (firstTopic) setKeyword(firstTopic.toLowerCase());
                           }}
-                          className="rp-btn-primary rp-btn-sm h-8 px-3 text-xs"
+                          className="rp-btn-secondary rp-btn-sm h-8 px-3 text-xs"
                         >
-                          {fix.actionLabel}
+                          Queue in action plan
                         </button>
                       </div>
                     </div>
@@ -1957,12 +2108,33 @@ export default function RankPage() {
                 </div>
               </div>
               <div className="rp-card p-4">
-                <div className="text-[15px] font-semibold text-[var(--rp-text-900)]">Rank movement explanation</div>
-                <div className="mt-2 text-xs text-[var(--rp-text-500)]">
-                  Why this changed, based on live rank change plus competitor pattern comparison.
+                <div className="flex items-center justify-between gap-2">
+                  <div className="text-[15px] font-semibold text-[var(--rp-text-900)]">Rank movement explanation</div>
+                  <ProvenanceBadge tag={provenanceByCard.rankMovementExplanation} />
                 </div>
+                <div className="mt-2 text-xs text-[var(--rp-text-500)]">
+                  {getObservedFactsIntro(provenanceByCard.rankMovementExplanation, "rankMovementExplanation")}
+                </div>
+                <div className="mt-1 text-xs text-[var(--rp-text-500)]">
+                  {getModeledRecommendationIntro(provenanceByCard.rankMovementExplanation, "rankMovementExplanation")}
+                </div>
+                <div className="mt-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--rp-text-500)]">Observed facts</div>
                 <div className="mt-3 space-y-2">
-                  {rankMovementExplanation.length ? rankMovementExplanation.map((line) => (
+                  {rankMovementFacts.length ? rankMovementFacts.map((line) => (
+                    <div key={`${line.source}-${line.metric}`} className="rounded-lg border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-2 text-sm text-[var(--rp-text-700)]">
+                      <div><span className="font-semibold">{line.source}</span> • <span className="font-semibold">Metric:</span> {line.metric}</div>
+                      <div className="mt-1"><span className="font-semibold">Interpretation:</span> {line.interpretation}</div>
+                      <div className="mt-1"><span className="font-semibold">Action:</span> {line.action}</div>
+                    </div>
+                  )) : (
+                    <div className="rounded-lg border border-dashed border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-4 text-sm text-[var(--rp-text-600)]">
+                      No direct live movement facts are available for this run.
+                    </div>
+                  )}
+                </div>
+                <div className="mt-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--rp-text-500)]">Modeled recommendations</div>
+                <div className="mt-3 space-y-2">
+                  {rankMovementRecommendations.length ? rankMovementRecommendations.map((line) => (
                     <div key={`${line.source}-${line.metric}`} className="rounded-lg border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-2 text-sm text-[var(--rp-text-700)]">
                       <div><span className="font-semibold">{line.source}</span> • <span className="font-semibold">Metric:</span> {line.metric}</div>
                       <div className="mt-1"><span className="font-semibold">Interpretation:</span> {line.interpretation}</div>
@@ -1974,16 +2146,9 @@ export default function RankPage() {
                     </div>
                   )}
                 </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (!auditTargetDomain) return;
-                    navigate(`/audit?url=${encodeURIComponent(`https://${auditTargetDomain}`)}`);
-                  }}
-                  className="rp-btn-primary rp-btn-sm mt-3 h-8 px-3 text-xs"
-                >
-                  Add missing headings now
-                </button>
+                <div className="mt-3 text-xs text-[var(--rp-text-500)]">
+                  Next action is centralized above: <span className="font-semibold text-[var(--rp-text-700)]">{primaryNextAction.label}</span>.
+                </div>
               </div>
             </div>
 
@@ -1991,12 +2156,39 @@ export default function RankPage() {
               <div className="rp-card p-4">
                 <div className="flex items-center justify-between gap-2">
                   <div className="text-[15px] font-semibold text-[var(--rp-text-900)]">Keyword opportunity insight</div>
-                  <ProvenanceBadge tag={opportunityTag} />
+                  <ProvenanceBadge tag={provenanceByCard.keywordOpportunity} />
                 </div>
                 <p className="mt-2 text-[15px] leading-relaxed text-[var(--rp-text-700)]">{opportunityInsight(shownRank)}</p>
-                {!!detailedRankReasons.length && (
+                <div className="mt-2 text-xs text-[var(--rp-text-500)]">
+                  {getObservedFactsIntro(provenanceByCard.keywordOpportunity, "keywordOpportunity")}
+                </div>
+                <div className="mt-1 text-xs text-[var(--rp-text-500)]">
+                  {getModeledRecommendationIntro(provenanceByCard.keywordOpportunity, "keywordOpportunity")}
+                </div>
+                <div className="mt-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--rp-text-500)]">Observed facts</div>
+                {keywordObservedFacts.length ? (
+                  <div className="mt-2 grid gap-1 text-xs text-[var(--rp-text-600)]">
+                    {keywordObservedFacts.map((fact) => (
+                      <div key={`fact-${fact.label}`}>
+                        <span className="font-semibold text-[var(--rp-text-700)]">{fact.label}:</span> {fact.value}
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+                {!!keywordLiveEvidence.length && (
                   <div className="mt-3 space-y-2">
-                    {detailedRankReasons.slice(0, 2).map((reason) => (
+                    {keywordLiveEvidence.slice(0, 2).map((reason) => (
+                      <div key={`opp-live-${reason.source}-${reason.metric}`} className="rounded-lg border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-2 text-sm text-[var(--rp-text-700)]">
+                        <div><span className="font-semibold">{reason.source}</span> • <span className="font-semibold">Metric:</span> {reason.metric}</div>
+                        <div className="mt-1"><span className="font-semibold">Interpretation:</span> {reason.interpretation}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div className="mt-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--rp-text-500)]">Modeled recommendations</div>
+                {!!keywordModeledRecommendations.length && (
+                  <div className="mt-2 space-y-2">
+                    {keywordModeledRecommendations.slice(0, 2).map((reason) => (
                       <div key={`opp-${reason.source}-${reason.metric}`} className="rounded-lg border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-2 text-sm text-[var(--rp-text-700)]">
                         <div><span className="font-semibold">{reason.source}</span> • <span className="font-semibold">Metric:</span> {reason.metric}</div>
                         <div className="mt-1"><span className="font-semibold">Interpretation:</span> {reason.interpretation}</div>
@@ -2011,9 +2203,7 @@ export default function RankPage() {
                   </div>
                 ) : null}
                 <div className="mt-2 text-xs text-[var(--rp-text-500)]">
-                  {hasLiveMetricScores
-                    ? "Metrics returned from live rank-check response."
-                    : "Benchmark model based on current keyword and SERP profile."}
+                  {getKeywordOpportunitySourceCopy(provenanceByCard.keywordOpportunity)}
                 </div>
                 <div className="mt-3 grid grid-cols-3 gap-2">
                   <div className="rounded-lg border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-2">
@@ -2029,7 +2219,7 @@ export default function RankPage() {
                   <div className="rounded-lg border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-2">
                     <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--rp-text-500)]">Traffic potential</div>
                     <div className="mt-1 text-sm font-semibold text-[var(--rp-text-900)]">{trafficPotential ? `~${trafficPotential}/mo` : "—"}</div>
-                    <div className="mt-1 text-[11px] text-[var(--rp-text-500)]">Estimated monthly visits from this keyword.</div>
+                    <div className="mt-1 text-[11px] text-[var(--rp-text-500)]">{getScenarioEstimateLabel("monthly_visits")}: modeled monthly visits from this keyword.</div>
                   </div>
                 </div>
                 <button
@@ -2038,16 +2228,16 @@ export default function RankPage() {
                     if (!auditTargetDomain) return;
                     navigate(`/audit?url=${encodeURIComponent(`https://${auditTargetDomain}`)}`);
                   }}
-                  className="rp-btn-primary rp-btn-sm mt-3 h-8 px-3 text-xs"
+                  className="rp-btn-secondary rp-btn-sm mt-3 h-8 px-3 text-xs"
                 >
-                  Generate improved title
+                  Review in action plan
                 </button>
               </div>
 
               <div className="rp-card p-4">
                 <div className="flex items-center justify-between gap-2">
                   <div className="text-[15px] font-semibold text-[var(--rp-text-900)]">Competitor snapshot (top 3)</div>
-                  <ProvenanceBadge tag={competitorTag} />
+                  <ProvenanceBadge tag={provenanceByCard.competitorSnapshot} />
                 </div>
                 <div className="mt-3 grid gap-2">
                   {topCompetitors.length ? (
@@ -2074,15 +2264,11 @@ export default function RankPage() {
             <div className="rp-card p-4">
               <div className="flex items-center justify-between gap-2">
                 <div className="text-[15px] font-semibold text-[var(--rp-text-900)]">SERP snapshot preview</div>
-                <ProvenanceBadge tag={serpTag} />
+                <ProvenanceBadge tag={provenanceByCard.serpSnapshot} />
               </div>
               <div className="mt-1 flex items-center justify-between gap-2">
                 <div className="text-xs text-[var(--rp-text-500)]">
-                  {allSerpEstimated
-                    ? "Preview generated from current signals; run again for fresh live SERP."
-                    : hasLiveSerpPreview
-                    ? "Live SERP preview from this rank check."
-                    : "Preview generated from current signal; run again for fresh live SERP with full snippet details."}
+                  {getSerpSnapshotSourceCopy(provenanceByCard.serpSnapshot)}
                 </div>
                 <div className="text-xs text-[var(--rp-text-500)]">
                   {COUNTRIES.find((x) => x.value === (result?.country || country))?.label || (result?.country || country)} • {(result?.device || device)} • {(result?.language || language).toUpperCase()}
@@ -2129,7 +2315,7 @@ export default function RankPage() {
               <div className="rp-card p-4">
                 <div className="flex items-center justify-between gap-2">
                   <div className="text-[15px] font-semibold text-[var(--rp-text-900)]">Backlink and authority comparison</div>
-                  <ProvenanceBadge tag={backlinkTag} />
+                  <ProvenanceBadge tag={provenanceByCard.backlinkComparison} />
                 </div>
                 <div className="mt-2 text-xs text-[var(--rp-text-500)]">
                   Benchmark estimate from competitor SERP patterns.
@@ -2176,8 +2362,25 @@ export default function RankPage() {
               </div>
 
               <div className="rp-card p-4">
-                <div className="text-[15px] font-semibold text-[var(--rp-text-900)]">Trend story</div>
-                <div className="mt-2 text-xs text-[var(--rp-text-500)]">What this movement likely means</div>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="text-[15px] font-semibold text-[var(--rp-text-900)]">Trend story</div>
+                  <ProvenanceBadge tag={provenanceByCard.trendStory} />
+                </div>
+                <div className="mt-2 text-xs text-[var(--rp-text-500)]">
+                  {getObservedFactsIntro(provenanceByCard.trendStory, "trendStory")}
+                </div>
+                <div className="mt-1 text-xs text-[var(--rp-text-500)]">
+                  {getModeledRecommendationIntro(provenanceByCard.trendStory, "trendStory")}
+                </div>
+                <div className="mt-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--rp-text-500)]">Observed facts</div>
+                <div className="mt-2 grid gap-1 text-xs text-[var(--rp-text-600)]">
+                  {trendObservedFacts.map((fact) => (
+                    <div key={`trend-fact-${fact.label}`}>
+                      <span className="font-semibold text-[var(--rp-text-700)]">{fact.label}:</span> {fact.value}
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--rp-text-500)]">Modeled recommendations</div>
                 <div className="mt-3 space-y-2">
                   {trendStory.length ? trendStory.map((line) => (
                     <div key={`${line.source}-${line.metric}`} className="rounded-lg border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-2 text-sm text-[var(--rp-text-700)]">
@@ -2197,7 +2400,7 @@ export default function RankPage() {
             <div className="rp-card p-4">
               <div className="flex items-center justify-between gap-2">
                 <div className="text-[15px] font-semibold text-[var(--rp-text-900)]">Content gap preview</div>
-                <ProvenanceBadge tag={contentGapTag} />
+                <ProvenanceBadge tag={provenanceByCard.contentGap} />
               </div>
               <div className="mt-2 text-xs text-[var(--rp-text-500)]">
                 Missing topics/headings inferred from competing SERP pages.
@@ -2251,9 +2454,9 @@ export default function RankPage() {
                     const first = gap.missingKeywords[0] || gap.missingTopics[0];
                     if (first) setKeyword(first.toLowerCase());
                   }}
-                  className="rp-btn-primary rp-btn-sm h-8 px-3 text-xs"
+                  className="rp-btn-secondary rp-btn-sm h-8 px-3 text-xs"
                 >
-                  Create optimized outline
+                  Queue in action plan
                 </button>
               </div>
             </div>
