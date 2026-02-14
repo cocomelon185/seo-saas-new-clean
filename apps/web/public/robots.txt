@@ -7,7 +7,6 @@ Disallow: /account/
 Disallow: /admin/
 Disallow: /embed/
 Disallow: /leads
-Disallow: /rank
 Disallow: /improve
 Disallow: /plan-change
 

@@ -253,6 +253,33 @@ function injectMeta(html, meta) {
         `$&\n    <meta property="og:description" content="${meta.ogDescription}">`
       );
     }
+
+  if (meta.ogImage) {
+    if (/<meta[^>]+property=["']og:image["']/i.test(output)) {
+      output = output.replace(
+        /<meta[^>]+property=["']og:image["'][^>]*>/i,
+        `<meta property="og:image" content="${meta.ogImage}">`
+      );
+    } else {
+      output = output.replace(
+        /<head[^>]*>/i,
+        `$&\n    <meta property="og:image" content="${meta.ogImage}">`
+      );
+    }
+  }
+  if (meta.twitterImage) {
+    if (/<meta[^>]+name=["']twitter:image["']/i.test(output)) {
+      output = output.replace(
+        /<meta[^>]+name=["']twitter:image["'][^>]*>/i,
+        `<meta name="twitter:image" content="${meta.twitterImage}">`
+      );
+    } else {
+      output = output.replace(
+        /<head[^>]*>/i,
+        `$&\n    <meta name="twitter:image" content="${meta.twitterImage}">`
+      );
+    }
+  }
   }
   if (meta.robots) {
     if (/<meta[^>]+name=["']robots["']/i.test(output)) {
@@ -271,9 +298,9 @@ function injectMeta(html, meta) {
 }
 
 function absoluteUrlFor(req) {
-  const host = req.get("host");
-  const protocol = req.protocol;
-  return `${protocol}://${host}${req.path}`;
+  const origin = (process.env.CANONICAL_ORIGIN || "https://rankypulse.com").replace(/\/$/, "");
+  const path = req.originalUrl || req.url || "/";
+  return origin + path;
 }
 
 function stripLeadingSlash(value) {
@@ -341,6 +368,23 @@ const publicMeta = [
     title: "Agency SEO Audit Workflow | RankyPulse",
     description: "Standardize audits with a repeatable workflow built for agencies."
   }
+  {
+    test: (path) => path === "/rank",
+    title: "Keyword Rank Checker | RankyPulse",
+    description:
+      "Check where your domain ranks for keywords. Track position over time and get actionable SEO recommendations.",
+    robots: "index,follow",
+    ogTitle: "Keyword Rank Checker | RankyPulse",
+    ogDescription:
+      "Check where your domain ranks for keywords. Track position over time and get actionable SEO recommendations.",
+    ogImage: "https://rankypulse.com/rankypulse-logo.svg",
+    twitterCard: "summary_large_image",
+    twitterTitle: "Keyword Rank Checker | RankyPulse",
+    twitterDescription:
+      "Check where your domain ranks for keywords. Track position over time and get actionable SEO recommendations.",
+    twitterImage: "https://rankypulse.com/rankypulse-logo.svg",
+  },
+
 ];
 
 const noindexPrefixes = [
