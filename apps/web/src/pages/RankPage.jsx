@@ -667,6 +667,10 @@ export default function RankPage() {
     const opportunityLive = Number.isFinite(Number(result?.opportunity_score)) && Number(result?.opportunity_score) > 0;
     return difficultyLive || trafficLive || opportunityLive;
   }, [result?.difficulty_score, result?.traffic_potential, result?.opportunity_score]);
+  const liveRankReasons = useMemo(() => {
+    if (!Array.isArray(result?.rank_reasons)) return [];
+    return result.rank_reasons.map((item) => String(item || "").trim()).filter(Boolean).slice(0, 4);
+  }, [result?.rank_reasons]);
 
   const serpPreview = useMemo(() => {
     if (Array.isArray(result?.serp_preview) && result.serp_preview.length) {
@@ -712,11 +716,6 @@ export default function RankPage() {
     const fromIdeas = ideas.slice(0, 5);
     return [...new Set([...fromTracked, ...fromIdeas])].filter(Boolean).slice(0, 8);
   }, [safeKeyword, ideas]);
-
-  const liveRankReasons = useMemo(() => {
-    if (!Array.isArray(result?.rank_reasons)) return [];
-    return result.rank_reasons.map((item) => String(item || "").trim()).filter(Boolean).slice(0, 4);
-  }, [result?.rank_reasons]);
   const detailedRankReasons = useMemo(() => {
     if (!hasValidRank(shownRank)) return [];
     if (liveRankReasons.length) {
