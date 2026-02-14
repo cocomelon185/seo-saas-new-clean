@@ -439,6 +439,8 @@ app.get("*", (req, res, next) => {
     let body = injectCanonical(html, absoluteUrl);
     body = injectMeta(body, getMetaForPath(req.path));
     body = injectNonce(body, nonce);
+    res.setHeader("X-Debug-Path", String(req.path || ""));
+    res.setHeader("X-Debug-OriginalUrl", String(req.originalUrl || ""));
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.send(body);
   });
