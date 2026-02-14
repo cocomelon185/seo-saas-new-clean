@@ -299,8 +299,8 @@ function injectMeta(html, meta) {
 
 function absoluteUrlFor(req) {
   const origin = (process.env.CANONICAL_ORIGIN || "https://rankypulse.com").replace(/\/$/, "");
-  const path = req.originalUrl || req.url || "/";
-  return origin + path;
+  const pathName = (req.path || "/").split("?")[0];
+  return origin + (pathName === "/" ? "/" : pathName);
 }
 
 function stripLeadingSlash(value) {
