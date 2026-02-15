@@ -29,8 +29,41 @@ function sanitizeEntry(entry) {
   const keyword = normalizeKeywordForStore(entry?.keyword);
   const domain = normalizeDomainForStore(entry?.domain);
   const rank = entry?.rank ?? entry?.position ?? null;
+  const country = String(entry?.country || "").trim().toUpperCase();
+  const city = String(entry?.city || "").trim();
+  const device = String(entry?.device || "").trim().toLowerCase();
+  const language = String(entry?.language || "").trim().toLowerCase();
+  const scopeKey = String(entry?.scopeKey || buildRankScopeKey({ keyword, domain, country, city, device, language }));
   const id = String(entry?.id || `${createdAt}__${keyword}__${domain}`);
-  return { id, createdAt, keyword, domain, rank };
+  return {
+    id,
+    createdAt,
+    keyword,
+    domain,
+    rank,
+    country,
+    city,
+    device,
+    language,
+    scopeKey,
+    served_from_cache: Boolean(entry?.served_from_cache),
+    cache_expires_at: entry?.cache_expires_at || null,
+    position_current: entry?.position_current ?? rank,
+    position_range_24h: entry?.position_range_24h || null,
+    trend_24h: entry?.trend_24h || null,
+    confidence: entry?.confidence || null
+  };
+}
+
+export function buildRankScopeKey({ keyword, domain, country = "US", city = "", device = "desktop", language = "en" }) {
+  return [
+    normalizeKeywordForStore(keyword),
+    normalizeDomainForStore(domain),
+    String(country || "").trim().toUpperCase(),
+    String(city || "").trim().toLowerCase(),
+    String(device || "").trim().toLowerCase(),
+    String(language || "").trim().toLowerCase()
+  ].join("|");
 }
 
 export function listRankChecks() {
@@ -49,13 +82,29 @@ export function saveRankCheck(entry) {
   const keyword = normalizeKeywordForStore(entry.keyword);
   const domain = normalizeDomainForStore(entry.domain);
   const rank = entry.rank ?? entry.position ?? null;
+  const country = String(entry?.country || "").trim().toUpperCase();
+  const city = String(entry?.city || "").trim();
+  const device = String(entry?.device || "").trim().toLowerCase();
+  const language = String(entry?.language || "").trim().toLowerCase();
+  const scopeKey = buildRankScopeKey({ keyword, domain, country, city, device, language });
 
   const item = {
     id: `${createdAt}__${keyword}__${domain}`,
     createdAt,
     keyword,
     domain,
-    rank
+    rank,
+    country,
+    city,
+    device,
+    language,
+    scopeKey,
+    served_from_cache: Boolean(entry?.served_from_cache),
+    cache_expires_at: entry?.cache_expires_at || null,
+    position_current: entry?.position_current ?? rank,
+    position_range_24h: entry?.position_range_24h || null,
+    trend_24h: entry?.trend_24h || null,
+    confidence: entry?.confidence || null
   };
 
   const all = listRankChecks().map(sanitizeEntry);
@@ -85,6 +134,11 @@ export function saveRankCheck(entry) {
 
   window.localStorage.setItem(KEY, JSON.stringify(next));
   return savedItem;
+}
+
+export function listRankChecksByScope(scope) {
+  const scopeKey = buildRankScopeKey(scope || {});
+  return listRankChecks().filter((item) => String(item?.scopeKey || "") === scopeKey);
 }
 
 export function deleteRankCheck(id) {

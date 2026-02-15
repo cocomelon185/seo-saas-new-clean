@@ -214,53 +214,228 @@ function scoreFromIssues(issues) {
 
 app.post("/api/page-report", pageReport);
 
+const RANK_WINDOW_MS = 24 * 60 * 60 * 1000;
+const RANK_MAX_CHECKS_PER_SCOPE = 30;
+const rankCheckScopeCache = new Map();
+
+function normalizeScopeValue(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function toScopeKey({ keyword, domain, country, city, device, language }) {
+  return [
+    normalizeScopeValue(keyword),
+    normalizeScopeValue(domain),
+    normalizeScopeValue(country),
+    normalizeScopeValue(city),
+    normalizeScopeValue(device),
+    normalizeScopeValue(language)
+  ].join("|");
+}
+
+function toTimestampMs(value) {
+  const ms = Date.parse(String(value || ""));
+  return Number.isFinite(ms) ? ms : null;
+}
+
+function deriveRankMetrics(checks, nowMs, fallbackPosition) {
+  const sorted = (Array.isArray(checks) ? checks : [])
+    .map((item) => ({
+      position: Number(item?.position),
+      checkedAtMs: toTimestampMs(item?.checked_at)
+    }))
+    .filter((item) => Number.isFinite(item.position) && Number.isFinite(item.checkedAtMs))
+    .sort((a, b) => a.checkedAtMs - b.checkedAtMs);
+
+  let positions = sorted.map((item) => item.position);
+  if (!positions.length && Number.isFinite(Number(fallbackPosition))) {
+    positions = [Number(fallbackPosition)];
+  }
+
+  const sampleCount = positions.length;
+  const min = sampleCount ? Math.min(...positions) : null;
+  const max = sampleCount ? Math.max(...positions) : null;
+  const first = sampleCount ? positions[0] : null;
+  const last = sampleCount ? positions[sampleCount - 1] : null;
+  const delta = Number.isFinite(first) && Number.isFinite(last) ? first - last : 0;
+
+  let direction = "stable";
+  if (delta >= 2) direction = "up";
+  if (delta <= -2) direction = "down";
+
+  const latestCheckMs = sorted.length ? sorted[sorted.length - 1].checkedAtMs : nowMs;
+  const recencyMs = Number.isFinite(latestCheckMs) ? nowMs - latestCheckMs : Number.POSITIVE_INFINITY;
+  const rangeWidth = Number.isFinite(min) && Number.isFinite(max) ? max - min : null;
+
+  let confidenceScore = 0;
+  const confidenceReasons = [];
+  if (sampleCount >= 4) {
+    confidenceScore += 2;
+    confidenceReasons.push("sample_count_high");
+  } else if (sampleCount >= 2) {
+    confidenceScore += 1;
+    confidenceReasons.push("sample_count_medium");
+  } else {
+    confidenceReasons.push("sample_count_low");
+  }
+  if (Number.isFinite(rangeWidth) && rangeWidth <= 3) {
+    confidenceScore += 1;
+    confidenceReasons.push("range_tight");
+  }
+  if (recencyMs <= 6 * 60 * 60 * 1000) {
+    confidenceScore += 1;
+    confidenceReasons.push("fresh_signal");
+  }
+
+  let confidence = "low";
+  if (confidenceScore >= 4) confidence = "high";
+  else if (confidenceScore >= 2) confidence = "medium";
+
+  return {
+    position_range_24h: {
+      min: Number.isFinite(min) ? Math.round(min) : null,
+      max: Number.isFinite(max) ? Math.round(max) : null,
+      sample_count: sampleCount
+    },
+    trend_24h: {
+      direction,
+      delta: Math.round(delta),
+      window_hours: 24
+    },
+    confidence,
+    confidence_reasons: confidenceReasons
+  };
+}
+
 app.post("/api/rank-check", (req, res) => {
-  const { keyword, domain, country = "US", city = "", device = "desktop", language = "en" } = req.body || {};
+  const {
+    keyword,
+    domain,
+    country = "US",
+    city = "",
+    device = "desktop",
+    language = "en",
+    force_fresh = false
+  } = req.body || {};
 
   if (!keyword || !domain) {
     return res.status(400).json({ error: "Missing keyword or domain" });
   }
 
-  const cleanDomain = String(domain).trim().toLowerCase();
-  const position = Math.floor(Math.random() * 50) + 1;
-  const competitorPool = [
-    "ahrefs.com",
-    "semrush.com",
-    "moz.com",
-    "backlinko.com",
-    "searchenginejournal.com",
-    "seo.com"
-  ].filter((d) => d !== cleanDomain);
-  const top_competitors = competitorPool.slice(0, 3).map((d, idx) => ({
-    domain: d,
-    position: idx + 1
-  }));
-
-  const difficulty_score = Math.max(1, Math.min(100, Math.round(35 + (100 - position) * 0.45)));
-  const opportunity_score = Math.max(1, Math.min(100, Math.round((70 - Math.min(60, position)) + (100 - difficulty_score) * 0.4)));
-  const traffic_potential = Math.max(120, Math.round((position <= 10 ? 1400 : 700) + (50 - Math.min(50, position)) * 16));
-  const serp_preview = [
-    { position: 1, title: `Top result for "${keyword}"`, domain: top_competitors[0]?.domain || "ahrefs.com", type: "Organic" },
-    { position: 2, title: `${keyword} guide`, domain: top_competitors[1]?.domain || "semrush.com", type: "Organic" },
-    { position: 3, title: `${keyword} checklist`, domain: top_competitors[2]?.domain || "moz.com", type: "Organic" },
-    { position: 4, title: `${keyword} examples`, domain: cleanDomain, type: "Organic" }
-  ];
-
-  return res.json({
-    keyword,
+  const cleanKeyword = String(keyword || "").trim();
+  const cleanDomain = String(domain || "").trim().toLowerCase();
+  const normalizedCountry = String(country || "US").toUpperCase();
+  const normalizedCity = String(city || "").trim();
+  const normalizedDevice = String(device || "desktop").toLowerCase() === "mobile" ? "mobile" : "desktop";
+  const normalizedLanguage = String(language || "en").toLowerCase();
+  const scopeKey = toScopeKey({
+    keyword: cleanKeyword,
     domain: cleanDomain,
-    position,
-    country: String(country || "US").toUpperCase(),
-    city: String(city || "").trim(),
-    device: String(device || "desktop").toLowerCase() === "mobile" ? "mobile" : "desktop",
-    language: String(language || "en").toLowerCase(),
-    difficulty_score,
-    opportunity_score,
-    traffic_potential,
-    serp_preview,
-    top_competitors,
-    checked_at: new Date().toISOString()
+    country: normalizedCountry,
+    city: normalizedCity,
+    device: normalizedDevice,
+    language: normalizedLanguage
   });
+
+  const nowMs = Date.now();
+  const cutoffMs = nowMs - RANK_WINDOW_MS;
+  const cachedScope = rankCheckScopeCache.get(scopeKey) || { scopeKey, checks: [], last_live_result: null };
+  cachedScope.checks = (Array.isArray(cachedScope.checks) ? cachedScope.checks : [])
+    .filter((item) => {
+      const checkedAtMs = toTimestampMs(item?.checked_at);
+      const position = Number(item?.position);
+      return Number.isFinite(checkedAtMs) && checkedAtMs >= cutoffMs && Number.isFinite(position);
+    })
+    .slice(-RANK_MAX_CHECKS_PER_SCOPE);
+
+  const lastLiveCheckedMs = toTimestampMs(cachedScope?.last_live_result?.checked_at);
+  const canReuseRecent =
+    force_fresh !== true &&
+    cachedScope?.last_live_result &&
+    Number.isFinite(lastLiveCheckedMs) &&
+    nowMs - lastLiveCheckedMs <= RANK_WINDOW_MS;
+
+  let baseResult = cachedScope?.last_live_result || null;
+  let servedFromCache = false;
+
+  if (!canReuseRecent) {
+    const position = Math.floor(Math.random() * 50) + 1;
+    const competitorPool = [
+      "ahrefs.com",
+      "semrush.com",
+      "moz.com",
+      "backlinko.com",
+      "searchenginejournal.com",
+      "seo.com"
+    ].filter((d) => d !== cleanDomain);
+    const top_competitors = competitorPool.slice(0, 3).map((d, idx) => ({
+      domain: d,
+      position: idx + 1
+    }));
+
+    const difficulty_score = Math.max(1, Math.min(100, Math.round(35 + (100 - position) * 0.45)));
+    const opportunity_score = Math.max(1, Math.min(100, Math.round((70 - Math.min(60, position)) + (100 - difficulty_score) * 0.4)));
+    const traffic_potential = Math.max(120, Math.round((position <= 10 ? 1400 : 700) + (50 - Math.min(50, position)) * 16));
+    const serp_preview = [
+      { position: 1, title: `Top result for "${cleanKeyword}"`, domain: top_competitors[0]?.domain || "ahrefs.com", type: "Organic" },
+      { position: 2, title: `${cleanKeyword} guide`, domain: top_competitors[1]?.domain || "semrush.com", type: "Organic" },
+      { position: 3, title: `${cleanKeyword} checklist`, domain: top_competitors[2]?.domain || "moz.com", type: "Organic" },
+      { position: 4, title: `${cleanKeyword} examples`, domain: cleanDomain, type: "Organic" }
+    ];
+
+    baseResult = {
+      keyword: cleanKeyword,
+      domain: cleanDomain,
+      country: normalizedCountry,
+      city: normalizedCity,
+      device: normalizedDevice,
+      language: normalizedLanguage,
+      position_current: position,
+      rank: position,
+      position,
+      difficulty_score,
+      opportunity_score,
+      traffic_potential,
+      serp_preview,
+      top_competitors,
+      checked_at: new Date(nowMs).toISOString()
+    };
+    cachedScope.last_live_result = baseResult;
+  } else {
+    servedFromCache = true;
+  }
+
+  const canonicalPosition = Number(baseResult?.position_current ?? baseResult?.rank ?? baseResult?.position);
+  const observation = {
+    position: canonicalPosition,
+    checked_at: new Date(nowMs).toISOString(),
+    source: servedFromCache ? "cache" : "live"
+  };
+  if (Number.isFinite(observation.position)) {
+    cachedScope.checks.push(observation);
+  }
+  cachedScope.checks = cachedScope.checks
+    .filter((item) => {
+      const checkedAtMs = toTimestampMs(item?.checked_at);
+      return Number.isFinite(checkedAtMs) && checkedAtMs >= cutoffMs;
+    })
+    .slice(-RANK_MAX_CHECKS_PER_SCOPE);
+
+  rankCheckScopeCache.set(scopeKey, cachedScope);
+
+  const metrics = deriveRankMetrics(cachedScope.checks, nowMs, canonicalPosition);
+  const sourceCheckedAtMs = toTimestampMs(baseResult?.checked_at) || nowMs;
+  const response = {
+    ...baseResult,
+    rank: canonicalPosition,
+    position: canonicalPosition,
+    position_current: canonicalPosition,
+    served_from_cache: servedFromCache,
+    cache_expires_at: new Date(sourceCheckedAtMs + RANK_WINDOW_MS).toISOString(),
+    ...metrics
+  };
+
+  return res.json(response);
 });
 
 

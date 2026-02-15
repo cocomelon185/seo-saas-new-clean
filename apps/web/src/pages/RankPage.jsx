@@ -5,7 +5,9 @@ import { IconArrowRight, IconCompass, IconChart, IconReport } from "../component
 import ShareRankButton from "../components/ShareRankButton.jsx";
 import DeferredRender from "../components/DeferredRender.jsx";
 import {
+  buildRankScopeKey,
   listRankChecks,
+  listRankChecksByScope,
   normalizeDomainForStore,
   normalizeKeywordForStore,
   saveRankCheck
@@ -154,6 +156,18 @@ function domainFromInput(s) {
   const raw = String(s || "").trim();
   if (!raw) return "";
   return normalizeDomainForStore(raw);
+}
+
+function normalizeDomainInput(value) {
+  const parsed = domainFromInput(value);
+  if (parsed) return parsed;
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  return raw
+    .replace(/^https?:\/\//i, "")
+    .replace(/^www\./i, "")
+    .split("/")[0]
+    .toLowerCase();
 }
 
 function keywordToTitleCase(keyword) {
@@ -441,6 +455,66 @@ function TrendMarkers({ checks = [] }) {
   return { best, worst };
 }
 
+function parseIsoMs(value) {
+  const ms = Date.parse(String(value || ""));
+  return Number.isFinite(ms) ? ms : null;
+}
+
+function deriveTrendRangeConfidenceFromChecks(checks, nowMs = Date.now(), fallbackRank = null) {
+  const sorted = (Array.isArray(checks) ? checks : [])
+    .map((item) => ({
+      rank: Number(item?.rank ?? item?.position ?? item?.position_current),
+      checkedAtMs: parseIsoMs(item?.createdAt || item?.checked_at || item?.checkedAt)
+    }))
+    .filter((item) => Number.isFinite(item.rank) && Number.isFinite(item.checkedAtMs))
+    .sort((a, b) => a.checkedAtMs - b.checkedAtMs);
+
+  let ranks = sorted.map((item) => item.rank);
+  if (!ranks.length && Number.isFinite(Number(fallbackRank))) {
+    ranks = [Number(fallbackRank)];
+  }
+
+  const sampleCount = ranks.length;
+  const min = sampleCount ? Math.min(...ranks) : null;
+  const max = sampleCount ? Math.max(...ranks) : null;
+  const first = sampleCount ? ranks[0] : null;
+  const last = sampleCount ? ranks[sampleCount - 1] : null;
+  const delta = Number.isFinite(first) && Number.isFinite(last) ? first - last : 0;
+  const direction = delta >= 2 ? "up" : delta <= -2 ? "down" : "stable";
+  const latestCheckMs = sorted.length ? sorted[sorted.length - 1].checkedAtMs : nowMs;
+  const rangeWidth = Number.isFinite(min) && Number.isFinite(max) ? max - min : null;
+
+  let score = 0;
+  if (sampleCount >= 4) score += 2;
+  else if (sampleCount >= 2) score += 1;
+  if (Number.isFinite(rangeWidth) && rangeWidth <= 3) score += 1;
+  if (nowMs - latestCheckMs <= 6 * 60 * 60 * 1000) score += 1;
+
+  let confidence = "low";
+  if (score >= 4) confidence = "high";
+  else if (score >= 2) confidence = "medium";
+
+  return {
+    position_range_24h: {
+      min: Number.isFinite(min) ? Math.round(min) : null,
+      max: Number.isFinite(max) ? Math.round(max) : null,
+      sample_count: sampleCount
+    },
+    trend_24h: {
+      direction,
+      delta: Math.round(delta),
+      window_hours: 24
+    },
+    confidence
+  };
+}
+
+function trendLabel(direction, delta) {
+  if (direction === "up") return `↑ improving (${delta > 0 ? "+" : ""}${delta})`;
+  if (direction === "down") return `↓ declining (${delta})`;
+  return "→ stable";
+}
+
 export default function RankPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -456,6 +530,7 @@ export default function RankPage() {
   const [city, setCity] = useState("");
   const [device, setDevice] = useState("desktop");
   const [language, setLanguage] = useState("en");
+  const [forceFresh, setForceFresh] = useState(false);
   const [status, setStatus] = useState("idle");
   const [error, setError] = useState("");
   const [result, setResult] = useState(null);
@@ -518,7 +593,7 @@ export default function RankPage() {
       const cityParam = (params.get("city") || "").trim();
 
       if (kw) setKeyword(kw);
-      if (dm) setDomain(dm);
+      if (dm) setDomain(normalizeDomainInput(dm));
       if (ctry) setCountry(ctry.toUpperCase());
       if (lang) setLanguage(lang.toLowerCase());
       if (dev) setDevice(dev.toLowerCase() === "mobile" ? "mobile" : "desktop");
@@ -529,7 +604,7 @@ export default function RankPage() {
         if (payload && payload.kind === "rank") {
           const normalized = {
             keyword: payload.keyword || kw || "",
-            domain: payload.domain || dm || "",
+            domain: normalizeDomainInput(payload.domain || dm || ""),
             rank: payload.rank ?? null,
             checked_at: payload.checked_at || payload.created_at || null
           };
@@ -543,15 +618,16 @@ export default function RankPage() {
   async function checkRank() {
     setError("");
     setResult(null);
+    const normalizedDomain = normalizeDomainInput(domain);
 
     if (!allowRank) {
       setStatus("error");
       setError("Rank Tracker disabled for your team.");
       return;
     }
-    if (!keyword.trim() || !domain.trim()) {
+    if (!keyword.trim() || !normalizedDomain) {
       setStatus("error");
-      setError("Enter both a keyword and a domain.");
+      setError("Enter both a keyword and a valid root domain.");
       return;
     }
     if (inlineErrors.keyword || inlineErrors.domain) {
@@ -560,18 +636,25 @@ export default function RankPage() {
       return;
     }
 
+    setDomain(normalizedDomain);
     setStatus("loading");
     try {
+      const requestScope = {
+        keyword: keyword.trim(),
+        domain: normalizedDomain,
+        country,
+        city: city.trim(),
+        device,
+        language
+      };
+      const scopeHash = buildRankScopeKey(requestScope);
       const res = await fetch(apiUrl("/api/rank-check"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          keyword: keyword.trim(),
-          domain: domainFromInput(domain),
-          country,
-          city: city.trim(),
-          device,
-          language
+          ...requestScope,
+          force_fresh: forceFresh,
+          scope_hash: scopeHash
         })
       });
 
@@ -588,7 +671,8 @@ export default function RankPage() {
         ...data,
         keyword: String(data?.keyword ?? keyword ?? "").trim(),
         domain: normalizeDomainForStore(data?.domain || domain),
-        rank: data.rank ?? data.position,
+        rank: data?.position_current ?? data.rank ?? data.position,
+        position_current: data?.position_current ?? data.rank ?? data.position,
         country: String(data?.country || country).toUpperCase(),
         city: String(data?.city || city || "").trim(),
         device: String(data?.device || device).toLowerCase() === "mobile" ? "mobile" : "desktop",
@@ -596,11 +680,34 @@ export default function RankPage() {
         serp_preview: Array.isArray(data?.serp_preview) ? data.serp_preview : [],
         traffic_potential: Number(data?.traffic_potential),
         difficulty_score: Number(data?.difficulty_score),
-        opportunity_score: Number(data?.opportunity_score)
+        opportunity_score: Number(data?.opportunity_score),
+        served_from_cache: Boolean(data?.served_from_cache),
+        cache_expires_at: String(data?.cache_expires_at || ""),
+        position_range_24h: data?.position_range_24h || null,
+        trend_24h: data?.trend_24h || null,
+        confidence: String(data?.confidence || "").toLowerCase()
       };
+      if (!normalized.position_range_24h || !normalized.trend_24h || !normalized.confidence) {
+        const fallbackChecks = listRankChecksByScope({
+          keyword: normalized.keyword,
+          domain: normalized.domain,
+          country: normalized.country,
+          city: normalized.city,
+          device: normalized.device,
+          language: normalized.language
+        }).filter((item) => {
+          const ts = parseIsoMs(item?.createdAt || item?.checked_at);
+          return Number.isFinite(ts) && ts >= Date.now() - (24 * 60 * 60 * 1000);
+        });
+        const fallbackMetrics = deriveTrendRangeConfidenceFromChecks(fallbackChecks, Date.now(), normalized.position_current);
+        normalized.position_range_24h = normalized.position_range_24h || fallbackMetrics.position_range_24h;
+        normalized.trend_24h = normalized.trend_24h || fallbackMetrics.trend_24h;
+        normalized.confidence = normalized.confidence || fallbackMetrics.confidence;
+      }
       setResult(normalized);
       try { saveRankCheck(normalized); } catch {}
       setLastCheckedAt(normalized?.checked_at || new Date().toISOString());
+      if (forceFresh) setForceFresh(false);
       setStatus("success");
     } catch (e) {
       setStatus("error");
@@ -608,7 +715,7 @@ export default function RankPage() {
     }
   }
 
-  const shownRank = result?.rank ?? result?.position ?? null;
+  const shownRank = result?.position_current ?? result?.rank ?? result?.position ?? null;
   const badge = rankBadge(shownRank);
 
   const ideas = useMemo(() => {
@@ -686,6 +793,68 @@ export default function RankPage() {
     if (!hasValidRank(shownRank) || !hasValidRank(previousRank)) return null;
     return Number(previousRank) - Number(shownRank);
   }, [shownRank, previousRank]);
+  const trend24h = useMemo(() => {
+    const direction = String(result?.trend_24h?.direction || "").toLowerCase();
+    const delta = Number(result?.trend_24h?.delta);
+    if (["up", "down", "stable"].includes(direction) && Number.isFinite(delta)) {
+      return { direction, delta };
+    }
+    const fallbackChecks = listRankChecksByScope({
+      keyword: safeKeyword || keyword,
+      domain: safeDomain || domainFromInput(domain),
+      country,
+      city,
+      device,
+      language
+    }).filter((item) => {
+      const ts = parseIsoMs(item?.createdAt || item?.checked_at);
+      return Number.isFinite(ts) && ts >= Date.now() - (24 * 60 * 60 * 1000);
+    });
+    return deriveTrendRangeConfidenceFromChecks(fallbackChecks, Date.now(), shownRank).trend_24h;
+  }, [result?.trend_24h, safeKeyword, keyword, safeDomain, domain, country, city, device, language, shownRank]);
+  const range24h = useMemo(() => {
+    const min = Number(result?.position_range_24h?.min);
+    const max = Number(result?.position_range_24h?.max);
+    const sampleCount = Number(result?.position_range_24h?.sample_count);
+    if (Number.isFinite(min) && Number.isFinite(max)) {
+      return {
+        min: Math.round(min),
+        max: Math.round(max),
+        sample_count: Number.isFinite(sampleCount) ? sampleCount : null
+      };
+    }
+    const fallbackChecks = listRankChecksByScope({
+      keyword: safeKeyword || keyword,
+      domain: safeDomain || domainFromInput(domain),
+      country,
+      city,
+      device,
+      language
+    }).filter((item) => {
+      const ts = parseIsoMs(item?.createdAt || item?.checked_at);
+      return Number.isFinite(ts) && ts >= Date.now() - (24 * 60 * 60 * 1000);
+    });
+    return deriveTrendRangeConfidenceFromChecks(fallbackChecks, Date.now(), shownRank).position_range_24h;
+  }, [result?.position_range_24h, safeKeyword, keyword, safeDomain, domain, country, city, device, language, shownRank]);
+  const confidenceLabel = useMemo(() => {
+    const confidence = String(result?.confidence || "").toLowerCase();
+    if (confidence === "high" || confidence === "medium" || confidence === "low") return confidence;
+    const fallbackChecks = listRankChecksByScope({
+      keyword: safeKeyword || keyword,
+      domain: safeDomain || domainFromInput(domain),
+      country,
+      city,
+      device,
+      language
+    }).filter((item) => {
+      const ts = parseIsoMs(item?.createdAt || item?.checked_at);
+      return Number.isFinite(ts) && ts >= Date.now() - (24 * 60 * 60 * 1000);
+    });
+    return deriveTrendRangeConfidenceFromChecks(fallbackChecks, Date.now(), shownRank).confidence;
+  }, [result?.confidence, safeKeyword, keyword, safeDomain, domain, country, city, device, language, shownRank]);
+  const freshnessCopy = result?.served_from_cache
+    ? "Reused check from within 24h window."
+    : "Fresh check completed.";
 
   const topCompetitors = useMemo(() => {
     const candidates = Array.isArray(result?.top_competitors) ? result.top_competitors : [];
@@ -840,8 +1009,13 @@ export default function RankPage() {
           ? `Improved by ${delta} positions over last 7 checks`
           : delta < 0
             ? `Dropped by ${Math.abs(delta)} positions over last 7 checks`
-            : "No movement across the last 7 checks"
+          : "No movement across the last 7 checks"
     };
+  }, [last7Checks]);
+  const trendSparkValues = useMemo(() => {
+    return last7Checks
+      .map((item) => Number(item?.rank))
+      .filter((value) => Number.isFinite(value));
   }, [last7Checks]);
   const trendStory = useMemo(() => {
     if (!last7Checks.length) return [];
@@ -955,6 +1129,11 @@ export default function RankPage() {
       domain: scopeDomain
     });
   }, [checksThisMonth, scopeDomain]);
+  const monthlySeoSparkValues = useMemo(() => {
+    return (Array.isArray(monthlySeoScoreSeries) ? monthlySeoScoreSeries : [])
+      .map((point) => Number(point?.value))
+      .filter((value) => Number.isFinite(value));
+  }, [monthlySeoScoreSeries]);
 
   const seoScoreHybrid = useMemo(() => {
     return computeHybridSeoScore({
@@ -1205,6 +1384,18 @@ export default function RankPage() {
     setTimeout(() => setAlertMessage(""), 2200);
   }
 
+  function queueKeywordFromActionPlan(nextKeyword) {
+    const normalized = normalizeKeywordForStore(nextKeyword);
+    if (!normalized) return;
+    setKeyword(normalized);
+    // Queueing creates the next run scope; reset current result view to avoid stale mixed-state UI.
+    setResult(null);
+    setError("");
+    setLastCheckedAt("");
+    setStatus("idle");
+    actionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
   const actionableRecipe = useMemo(() => {
     if (!hasValidRank(shownRank)) return [];
     const ownWords = competitorBench.own.words || 900;
@@ -1255,7 +1446,7 @@ export default function RankPage() {
       value: String(
         new Set(listRankChecks().map((x) => String(x.keyword || "").trim()).filter(Boolean)).size || 0
       ),
-      tone: "text-[var(--rp-indigo-700)]",
+      tone: "text-[#0f172a]",
       hint: "Open history",
       why: "Why this matters: more tracked keywords = more SEO opportunities discovered.",
       onClick: () => historyRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
@@ -1265,7 +1456,7 @@ export default function RankPage() {
       value: history.length
         ? (history.reduce((sum, row) => sum + Number(row.rank || 0), 0) / history.length).toFixed(1)
         : "—",
-      tone: "text-amber-600",
+      tone: "text-[#f97316]",
       hint: "View trend",
       why: "Why this matters: lower average position means stronger organic visibility.",
       onClick: () => trendRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
@@ -1273,7 +1464,7 @@ export default function RankPage() {
     {
       label: "Visibility lift",
       value: rankDelta === null ? "—" : `${rankDelta > 0 ? "+" : ""}${rankDelta}`,
-      tone: rankDelta !== null && rankDelta > 0 ? "text-emerald-600" : "text-[var(--rp-text-700)]",
+      tone: rankDelta !== null && rankDelta > 0 ? "text-emerald-600" : "text-[#0f172a]",
       hint: "See next action",
       why: "Why this matters: positive lift shows recent changes are working.",
       onClick: () => actionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
@@ -1295,6 +1486,36 @@ export default function RankPage() {
         </Suspense>
       ) : null}
 
+      <section className="mb-4 overflow-hidden rounded-2xl border border-[#1e293b] bg-[linear-gradient(120deg,#0b1220_0%,#16233a_60%,#1f3355_100%)] p-4 text-slate-100 md:p-5">
+        <div className="grid gap-3 md:grid-cols-[1.4fr_1fr] md:items-center">
+          <div>
+            <div className="inline-flex items-center rounded-full border border-[#334155] bg-[#0f172a]/80 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#fbbf24]">
+              Rank Tracker Command Center
+            </div>
+            <h2 className="mt-2 text-xl font-semibold tracking-tight text-white md:text-2xl">
+              Check rankings, inspect SERP leaders, and ship the next action fast.
+            </h2>
+            <p className="mt-2 text-sm text-slate-300">
+              Ahrefs-style workflow: run one keyword check, review competitors, then execute the highest-impact optimization.
+            </p>
+          </div>
+          <div className="grid gap-2 rounded-xl border border-[#334155] bg-[#0f172a]/70 p-3 text-xs text-slate-300">
+            <div className="flex items-center justify-between rounded-lg border border-[#334155] bg-[#111b2e] px-3 py-2">
+              <span>Tracking scope</span>
+              <span className="font-semibold text-slate-100">{formatScopeLabel(scopeDomain, scopeKeyword)}</span>
+            </div>
+            <div className="flex items-center justify-between rounded-lg border border-[#334155] bg-[#111b2e] px-3 py-2">
+              <span>Data freshness</span>
+              <span className="font-semibold text-slate-100">{lastCheckedAt ? "Just updated" : "Awaiting first run"}</span>
+            </div>
+            <div className="flex items-center justify-between rounded-lg border border-[#334155] bg-[#111b2e] px-3 py-2">
+              <span>Source</span>
+              <span className="font-semibold text-slate-100">Live rank check API</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <div className="mb-4 grid gap-3 md:gap-4 md:grid-cols-3">
         {kpis.map((item) => (
           <button
@@ -1302,18 +1523,18 @@ export default function RankPage() {
             type="button"
             onClick={item.onClick}
             className={[
-              "rp-kpi-card rounded-2xl border p-4 text-left shadow-sm transition focus:outline-none focus:ring-2 focus:ring-[var(--rp-indigo-300)]",
+              "rp-kpi-card rounded-2xl border p-4 text-left shadow-sm transition focus:outline-none focus:ring-2 focus:ring-[#93c5fd]",
               item.label === "Avg. position"
-                ? "border-[var(--rp-indigo-300)] bg-[linear-gradient(180deg,#ffffff_0%,#f7f3ff_100%)] shadow-[0_6px_18px_rgba(124,58,237,0.12)] hover:border-[var(--rp-indigo-400)] hover:shadow-[0_8px_22px_rgba(124,58,237,0.16)]"
-                : "border-[var(--rp-border)] bg-white hover:border-[var(--rp-indigo-300)] hover:shadow-md"
+                ? "border-[#fdba74] bg-[linear-gradient(180deg,#fff7ed_0%,#ffedd5_100%)] shadow-[0_10px_26px_rgba(249,115,22,0.12)] hover:border-[#fb923c]"
+                : "border-slate-200 bg-white hover:border-slate-300 hover:shadow-md"
             ].join(" ")}
           >
             <div className="flex items-center justify-between gap-2">
-              <div className="text-[13px] font-medium text-[var(--rp-text-600)]">{item.label}</div>
-              <span className="text-xs font-semibold text-[var(--rp-indigo-700)]">{item.hint}</span>
+              <div className="text-[13px] font-medium text-slate-600">{item.label}</div>
+              <span className="text-xs font-semibold text-[#1d4ed8]">{item.hint}</span>
             </div>
             <div className={`mt-2 text-2xl font-semibold tracking-tight ${item.tone}`}>{item.value}</div>
-            <div className="mt-1 text-[11px] text-[var(--rp-text-500)]">{item.why}</div>
+            <div className="mt-1 text-[11px] text-slate-500">{item.why}</div>
           </button>
         ))}
       </div>
@@ -1370,7 +1591,7 @@ export default function RankPage() {
         <div ref={historyRef}>
           <DeferredRender>
             <Suspense fallback={null}>
-              <RankHistoryPanel onPick={({ keyword, domain }) => { setKeyword(keyword); setDomain(domain); }} />
+              <RankHistoryPanel onPick={({ keyword, domain }) => { setKeyword(keyword); setDomain(normalizeDomainInput(domain)); }} />
             </Suspense>
           </DeferredRender>
         </div>
@@ -1393,7 +1614,19 @@ export default function RankPage() {
           </div>
         </div>
 
-        <div ref={actionRef} className="rp-card border border-[var(--rp-border)] bg-white p-4 md:p-5">
+        <div
+          ref={actionRef}
+          className="rp-card overflow-hidden border border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] p-4 shadow-[0_8px_28px_rgba(15,23,42,0.08)] md:p-5"
+        >
+          <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <div className="text-[15px] font-semibold text-slate-900">Keyword Rank Checker</div>
+              <div className="mt-1 text-xs text-slate-500">Run a live SERP check and compare against top domains in one view.</div>
+            </div>
+            <div className="inline-flex items-center rounded-full border border-[#fed7aa] bg-[#fff7ed] px-3 py-1 text-[11px] font-semibold text-[#9a3412]">
+              Live mode enabled
+            </div>
+          </div>
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -1439,6 +1672,7 @@ export default function RankPage() {
               id="rank-domain"
               value={domain}
               onChange={(e) => setDomain(e.target.value)}
+              onBlur={() => setDomain((prev) => normalizeDomainInput(prev))}
               placeholder=""
               autoComplete="off"
               className={"rp-input " + (inlineErrors.domain ? "border-rose-300 focus:border-rose-400" : "")}
@@ -1451,13 +1685,21 @@ export default function RankPage() {
             type="submit"
             disabled={status === "loading"}
             className={[
-              "rp-btn-primary h-11 w-full text-sm md:h-10 md:w-auto",
+              "inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#f97316] px-4 text-sm font-semibold text-white transition hover:bg-[#ea580c] disabled:cursor-not-allowed disabled:opacity-50 md:h-10 md:w-auto",
               status === "loading" ? "opacity-50 cursor-not-allowed" : ""
             ].join(" ")}
           >
             <IconCompass size={14} />
             {status === "loading" ? "Checking..." : "Check Rank"}
           </button>
+          <label className="md:col-span-3 inline-flex items-center gap-2 rounded-lg border border-[var(--rp-border)] bg-white px-3 py-2 text-xs font-medium text-[var(--rp-text-700)]">
+            <input
+              type="checkbox"
+              checked={forceFresh}
+              onChange={(e) => setForceFresh(e.target.checked)}
+            />
+            Force fresh check (skip 24h smoothing cache)
+          </label>
           <div className="md:col-span-3 grid gap-3 md:grid-cols-4">
             <div>
               <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-[var(--rp-text-500)]">Country</label>
@@ -1656,7 +1898,28 @@ export default function RankPage() {
 
         {status === "success" && (
           <div className="grid gap-3 md:gap-4">
-            <div className="rp-card p-4 md:p-5">
+            <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+              <div className="flex flex-wrap items-center gap-2">
+                {[
+                  ["overview", "Overview"],
+                  ["dashboard", "Dashboard"],
+                  ["trend", "Trend"],
+                  ["recipe", "Action plan"],
+                  ["serp", "SERP"]
+                ].map(([id, label]) => (
+                  <button
+                    key={`jump-${id}`}
+                    type="button"
+                    onClick={() => document.getElementById(`rank-${id}`)?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                    className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-white"
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div id="rank-overview" className="rp-card border border-slate-200 bg-white p-4 md:p-5">
               <div className="flex flex-wrap items-center gap-2">
                 <div className="rp-section-title">Rank result</div>
                 {badge && (
@@ -1669,34 +1932,43 @@ export default function RankPage() {
               <div className="mt-2 text-xs text-[var(--rp-text-500)]">
                 Last checked: {lastCheckedAt ? new Date(lastCheckedAt).toLocaleString() : "Just now"}
               </div>
+              <div className="mt-1 text-xs text-[var(--rp-text-500)]">
+                {freshnessCopy}
+                {result?.cache_expires_at ? ` Cache expires: ${new Date(result.cache_expires_at).toLocaleString()}` : ""}
+              </div>
 
               <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                <div className="rounded-xl border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-3">
-                  <div className="text-xs text-[var(--rp-text-500)]">Current position</div>
-                  <div className="mt-1 text-2xl font-semibold text-[var(--rp-text-900)]">{shownRank ?? "—"}</div>
-                </div>
-                <div className="rounded-xl border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-3">
-                  <div className="text-xs text-[var(--rp-text-500)]">Change vs last check</div>
-                  <div className={"mt-1 text-2xl font-semibold " + (rankDelta && rankDelta > 0 ? "text-emerald-600" : "text-[var(--rp-text-900)]")}>
-                    {rankDelta === null ? "—" : `${rankDelta > 0 ? "+" : ""}${rankDelta}`}
+                <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+                  <div className="text-xs text-slate-500">Trend</div>
+                  <div className={"mt-1 text-2xl font-semibold " + (trend24h?.direction === "up" ? "text-emerald-600" : trend24h?.direction === "down" ? "text-rose-600" : "text-slate-900")}>
+                    {trendLabel(trend24h?.direction, Number(trend24h?.delta || 0))}
                   </div>
                 </div>
-                <div className="rounded-xl border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-3">
-                  <div className="text-xs text-[var(--rp-text-500)]">Top competitor</div>
-                  <div className="mt-1 text-sm font-semibold leading-snug text-[var(--rp-text-900)]">{inferredCompetitor}</div>
-                  {!topCompetitors.length ? (
-                    <div className="mt-1 text-[11px] text-[var(--rp-text-500)]">Appears after first successful live competitor fetch.</div>
-                  ) : null}
+                <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+                  <div className="text-xs text-slate-500">Position</div>
+                  <div className="mt-1 text-2xl font-semibold text-slate-900">{shownRank ?? "—"}</div>
                 </div>
-                <div className="rounded-xl border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-3">
-                  <div className="text-xs text-[var(--rp-text-500)]">{getScenarioEstimateLabel("clicks_opportunity")}</div>
-                  <div className="mt-1 text-2xl font-semibold text-[var(--rp-indigo-700)]">+{estimatedClicksGain}/mo</div>
+                <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+                  <div className="text-xs text-slate-500">Observed range (24h)</div>
+                  <div className="mt-1 text-2xl font-semibold text-slate-900">
+                    {Number.isFinite(Number(range24h?.min)) && Number.isFinite(Number(range24h?.max))
+                      ? `${range24h.min}-${range24h.max}`
+                      : "—"}
+                  </div>
+                  <div className="mt-1 text-[11px] text-slate-500">
+                    {Number.isFinite(Number(range24h?.sample_count)) ? `${range24h.sample_count} checks` : "Sample count pending"}
+                  </div>
+                </div>
+                <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+                  <div className="text-xs text-slate-500">Confidence</div>
+                  <div className="mt-1 text-2xl font-semibold capitalize text-slate-900">{confidenceLabel || "low"}</div>
                 </div>
               </div>
 
               <div className="mt-3 grid gap-2 text-[var(--rp-text-800)]">
                 <div><span className="text-[var(--rp-text-500)]">Keyword:</span> {displayKeyword || "-"}</div>
                 <div><span className="text-[var(--rp-text-500)]">Domain:</span> {safeDomain || "-"}</div>
+                <div><span className="text-[var(--rp-text-500)]">Top competitor:</span> {inferredCompetitor}</div>
                 <div><span className="text-[var(--rp-text-500)]">Keyword intent:</span> {keywordIntent}</div>
                 <div className="break-all">
                   <span className="text-[var(--rp-text-500)]">Ranking URL:</span>{" "}
@@ -1705,6 +1977,11 @@ export default function RankPage() {
 
                 <div className="text-2xl font-semibold text-[var(--rp-text-900)]">
                   <span className="text-[var(--rp-text-500)] text-base font-medium">Rank:</span> {shownRank ?? "-"}
+                </div>
+
+                <div className="rounded-xl border border-[#fdba74] bg-[#fff7ed] p-3 shadow-sm">
+                  <div className="text-xs text-[#9a3412]">{getScenarioEstimateLabel("clicks_opportunity")}</div>
+                  <div className="mt-1 text-2xl font-semibold text-[#ea580c]">+{estimatedClicksGain}/mo</div>
                 </div>
 
                 <div className="text-sm text-[var(--rp-text-700)]">
@@ -1743,7 +2020,7 @@ export default function RankPage() {
               </div>
             </div>
 
-            <div className="rp-card p-4 md:p-5">
+            <div id="rank-dashboard" className="rp-card border border-slate-200 p-4 md:p-5">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <div className="text-[15px] font-semibold text-[var(--rp-text-900)]">SEO Progress Dashboard</div>
@@ -1807,8 +2084,8 @@ export default function RankPage() {
                     <div className="text-[11px] text-[var(--rp-text-500)]">{checksThisMonth.length} checks this month</div>
                   </div>
                   <div className="mt-2 h-16">
-                    {monthlySeoScoreSeries.length ? (
-                      <ApexSparkline values={monthlySeoScoreSeries.map((point) => Number(point.value))} />
+                    {monthlySeoSparkValues.length >= 2 ? (
+                      <ApexSparkline values={monthlySeoSparkValues} />
                     ) : (
                       <div className="flex h-full items-center text-xs text-[var(--rp-text-500)]">Run checks to build monthly score trend.</div>
                     )}
@@ -1957,7 +2234,7 @@ export default function RankPage() {
               {alertMessage ? <div className="mt-2 text-xs text-emerald-600">{alertMessage}</div> : null}
             </div>
 
-            <div ref={trendRef} className="grid gap-4 md:grid-cols-3">
+            <div id="rank-trend" ref={trendRef} className="grid gap-4 md:grid-cols-3">
               <div className="rp-card rp-kpi-card p-4">
                 <div className="flex items-center gap-2 text-xs text-[var(--rp-text-500)]">
                   <IconChart size={14} />
@@ -1986,10 +2263,10 @@ export default function RankPage() {
                   Last 7 checks trend
                 </div>
                 <div className="rp-chart-card mt-3 h-14 rounded-xl border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-2">
-                  {last7Checks.length ? (
-                    <ApexSparkline values={last7Checks.map((item) => item.rank)} inverted />
+                  {trendSparkValues.length >= 2 ? (
+                    <ApexSparkline values={trendSparkValues} inverted />
                   ) : (
-                    <div className="text-xs text-[var(--rp-text-500)]">No trend data yet.</div>
+                    <div className="text-xs text-[var(--rp-text-500)]">Need at least 2 checks to show trend movement.</div>
                   )}
                 </div>
                 {trendMovement ? (
@@ -2007,13 +2284,13 @@ export default function RankPage() {
                   </div>
                 ) : (
                   <div className="mt-2 rp-body-xsmall text-[var(--rp-text-500)]">
-                    Lower numbers are better.
+                    Need at least 2 checks to show trend direction.
                   </div>
                 )}
               </div>
             </div>
 
-            {last7Checks.length ? (
+            {last7Checks.length >= 2 ? (
               <div className="rp-card p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="text-sm font-semibold text-[var(--rp-text-800)]">Position trend (last 7 checks)</div>
@@ -2067,7 +2344,7 @@ export default function RankPage() {
             ) : null}
 
             <div className="grid gap-4 md:grid-cols-2">
-              <div className="rp-card p-4">
+              <div id="rank-recipe" className="rp-card p-4">
                 <div className="flex items-center justify-between gap-2">
                   <div className="text-[15px] font-semibold text-[var(--rp-text-900)]">Actionable SEO recipe (to reach page 1)</div>
                   <ProvenanceBadge tag={provenanceByCard.actionableRecipe} />
@@ -2098,7 +2375,7 @@ export default function RankPage() {
                           type="button"
                           onClick={() => {
                             const firstTopic = gap.missingTopics[0];
-                            if (firstTopic) setKeyword(firstTopic.toLowerCase());
+                            if (firstTopic) queueKeywordFromActionPlan(firstTopic);
                           }}
                           className="rp-btn-secondary rp-btn-sm h-8 px-3 text-xs"
                         >
@@ -2263,7 +2540,7 @@ export default function RankPage() {
               </div>
             </div>
 
-            <div className="rp-card p-4">
+            <div id="rank-serp" className="rp-card p-4">
               <div className="flex items-center justify-between gap-2">
                 <div className="text-[15px] font-semibold text-[var(--rp-text-900)]">SERP snapshot preview</div>
                 <ProvenanceBadge tag={provenanceByCard.serpSnapshot} />
@@ -2454,7 +2731,7 @@ export default function RankPage() {
                   type="button"
                   onClick={() => {
                     const first = gap.missingKeywords[0] || gap.missingTopics[0];
-                    if (first) setKeyword(first.toLowerCase());
+                    if (first) queueKeywordFromActionPlan(first);
                   }}
                   className="rp-btn-secondary rp-btn-sm h-8 px-3 text-xs"
                 >
