@@ -572,6 +572,7 @@ export default function RankPage() {
   const [alertPrefs, setAlertPrefsUI] = useState(() => getAlertPrefs());
   const [alertMessage, setAlertMessage] = useState("");
   const [alertErrors, setAlertErrors] = useState({ email: "" });
+  const [queuedActionMessage, setQueuedActionMessage] = useState("");
   const authUser = getAuthUser();
   const [requestStatus, setRequestStatus] = useState("");
   const [allowRank, setAllowRank] = useState(true);
@@ -647,6 +648,7 @@ export default function RankPage() {
   }, [location.search]);
 
   async function checkRank() {
+    setQueuedActionMessage("");
     setError("");
     setResult(null);
     const normalizedDomain = normalizeDomainInput(domain);
@@ -1527,11 +1529,8 @@ export default function RankPage() {
     const normalized = normalizeKeywordForStore(nextKeyword);
     if (!normalized) return;
     setKeyword(normalized);
-    // Queueing creates the next run scope; reset current result view to avoid stale mixed-state UI.
-    setResult(null);
-    setError("");
-    setLastCheckedAt("");
-    setStatus("idle");
+    setForceFresh(true);
+    setQueuedActionMessage(`"${keywordToTitleCase(normalized)}" queued. Click Check Rank to run a fresh check.`);
     actionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
@@ -1541,6 +1540,9 @@ export default function RankPage() {
     const targetWords = Math.max(1200, (competitorBench.avgWords || ownWords + 900) - ownWords);
     const backlinksGap = Math.max(2, Math.ceil(((competitorBench.avgBacklinks || 600) - (competitorBench.own.backlinks || 80)) / 200));
     const internalPath = `/${normalizeKeywordForStore(safeKeyword).replace(/\s+/g, "-") || "seo-audit"}`;
+    const firstGapKeyword = gap?.missingKeywords?.[0] || gap?.missingTopics?.[0] || safeKeyword;
+    const authorityKeyword = gap?.missingKeywords?.[1] || `${safeKeyword} backlinks`;
+    const technicalKeyword = gap?.missingKeywords?.[2] || `${safeKeyword} title optimization`;
     return [
       {
         title: "Add depth and intent coverage",
@@ -1552,7 +1554,8 @@ export default function RankPage() {
         ],
         ctrLift: 12,
         visits: estimateFixImpactClicks(estimatedClicksGain, 0.42),
-        actionLabel: "Create optimized outline"
+        actionLabel: "Create optimized outline",
+        queueKeyword: firstGapKeyword
       },
       {
         title: "Close authority gap",
@@ -1563,7 +1566,8 @@ export default function RankPage() {
         ],
         ctrLift: 8,
         visits: estimateFixImpactClicks(estimatedClicksGain, 0.3),
-        actionLabel: "Generate improved title"
+        actionLabel: "Generate improved title",
+        queueKeyword: authorityKeyword
       },
       {
         title: "Ship quick technical wins",
@@ -1574,13 +1578,15 @@ export default function RankPage() {
         ],
         ctrLift: 5,
         visits: estimateFixImpactClicks(estimatedClicksGain, 0.2),
-        actionLabel: "Add missing headings now"
+        actionLabel: "Add missing headings now",
+        queueKeyword: technicalKeyword
       }
     ];
-  }, [shownRank, competitorBench, safeKeyword, estimatedClicksGain]);
+  }, [shownRank, competitorBench, safeKeyword, estimatedClicksGain, gap]);
   const predictedActionRows = useMemo(() => {
     const baseGain = Number(bestMove?.gain) || 4;
-    return actionableRecipe.map((fix, index) => {
+    const recipeRows = Array.isArray(actionableRecipe) ? actionableRecipe : [];
+    return recipeRows.map((fix, index) => {
       const factor = index === 0 ? 1 : index === 1 ? 0.72 : 0.5;
       const predictedRankLift = Math.max(1, Math.round(baseGain * factor));
       const confidence = index === 0
@@ -1926,6 +1932,11 @@ export default function RankPage() {
           {status === "loading" ? (
             <div className="md:col-span-3 rounded-lg border border-[var(--rp-indigo-200)] bg-[var(--rp-indigo-50)] px-3 py-2 text-sm text-[var(--rp-indigo-800)]">
               Running live rank check...
+            </div>
+          ) : null}
+          {queuedActionMessage ? (
+            <div className="md:col-span-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+              {queuedActionMessage}
             </div>
           ) : null}
           </form>
@@ -2571,10 +2582,10 @@ export default function RankPage() {
                     Predicted gain per recommended action
                   </div>
                   <div className="mt-2 grid gap-2">
-                    {predictedActionRows.map((row) => (
-                      <div key={`pred-${row.title}`} className="rounded-lg border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-2">
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="text-sm font-semibold text-[var(--rp-text-900)]">{row.title}</div>
+                  {(Array.isArray(predictedActionRows) ? predictedActionRows : []).map((row) => (
+                    <div key={`pred-${row.title}`} className="rounded-lg border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="text-sm font-semibold text-[var(--rp-text-900)]">{row.title}</div>
                           <span className="inline-flex items-center rounded-full border border-[var(--rp-border)] bg-white px-2 py-0.5 text-[11px] capitalize text-[var(--rp-text-600)]">
                             {row.confidence} confidence
                           </span>
@@ -2582,16 +2593,16 @@ export default function RankPage() {
                         <div className="mt-1 text-xs text-[var(--rp-text-600)]">
                           Predicted movement: +{row.predictedRankLift} positions • +{row.predictedCtrLift}% CTR • +{row.predictedVisits}/mo
                         </div>
-                      </div>
-                    ))}
-                  </div>
+                    </div>
+                  ))}
                 </div>
-                <div className="mt-3 space-y-3">
-                  {actionableRecipe.map((fix) => (
+              </div>
+              <div className="mt-3 space-y-3">
+                  {(Array.isArray(actionableRecipe) ? actionableRecipe : []).map((fix) => (
                     <div key={fix.title} className="rounded-xl border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-3">
                       <div className="text-sm font-semibold text-[var(--rp-text-900)]">{fix.title}</div>
                       <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-[var(--rp-text-700)]">
-                        {fix.steps.map((step) => <li key={`${fix.title}-${step}`}>{step}</li>)}
+                        {(Array.isArray(fix.steps) ? fix.steps : []).map((step) => <li key={`${fix.title}-${step}`}>{step}</li>)}
                       </ul>
                       <div className="mt-3 flex flex-wrap items-center gap-2">
                         <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">
@@ -2603,8 +2614,7 @@ export default function RankPage() {
                         <button
                           type="button"
                           onClick={() => {
-                            const firstTopic = gap.missingTopics[0];
-                            if (firstTopic) queueKeywordFromActionPlan(firstTopic);
+                            if (fix.queueKeyword) queueKeywordFromActionPlan(fix.queueKeyword);
                           }}
                           className="rp-btn-secondary rp-btn-sm h-8 px-3 text-xs"
                         >
