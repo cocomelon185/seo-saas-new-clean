@@ -1516,11 +1516,16 @@ function AuditPageInner() {
                   return (
                     <>
 
-        {result?.url ? (
-          <div className="rp-share-fab fixed bottom-4 right-4 z-50">
+        
+        <div className="rp-share-fab fixed bottom-4 right-4 z-[9999] flex items-center gap-2 rounded-xl border border-black/10 bg-white/95 px-3 py-2 shadow-lg">
+          <div className="text-xs font-semibold text-[var(--rp-text-800)]">Share</div>
+          {result?.url ? (
             <ShareAuditButton result={result} />
-          </div>
-        ) : null}
+          ) : (
+            <div className="text-xs text-[var(--rp-text-500)]">waiting…</div>
+          )}
+        </div>
+
 
                       <div className="rounded-lg border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-2">
                         <div className="text-[11px] uppercase tracking-wide text-[var(--rp-text-500)]">Score</div>
