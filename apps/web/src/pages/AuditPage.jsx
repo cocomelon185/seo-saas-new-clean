@@ -1515,6 +1515,13 @@ function AuditPageInner() {
                   const fixNow = issues.filter((it) => it?.priority === "fix_now").length;
                   return (
                     <>
+
+        {result?.url ? (
+          <div className="rp-share-fab fixed bottom-4 right-4 z-50">
+            <ShareAuditButton result={result} />
+          </div>
+        ) : null}
+
                       <div className="rounded-lg border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-2">
                         <div className="text-[11px] uppercase tracking-wide text-[var(--rp-text-500)]">Score</div>
                         <div className="text-sm font-semibold text-[var(--rp-text-800)]">
