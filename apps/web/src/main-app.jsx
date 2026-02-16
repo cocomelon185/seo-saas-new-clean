@@ -4,6 +4,7 @@ import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import routes from "./routes/appRoutes.jsx";
 import "./index.css";
 import "./styles/app.css";
+import { initTelemetry } from "./lib/telemetry.js";
 
 if (typeof window !== "undefined") {
   const disableApex = String(import.meta.env.VITE_DISABLE_APEX || "").toLowerCase() === "true";
@@ -43,7 +44,9 @@ const router = createBrowserRouter(routes);
 const root = document.getElementById("root");
 
 if (root) {
-  ReactDOM.createRoot(root).render(
+  initTelemetry({ sampleRate: 1.0, consoleErrorForwarding: true });
+
+ReactDOM.createRoot(root).render(
     <React.StrictMode>
       <RouterProvider router={router} />
     </React.StrictMode>
