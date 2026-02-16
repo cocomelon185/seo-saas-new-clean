@@ -515,6 +515,37 @@ function trendLabel(direction, delta) {
   return "→ stable";
 }
 
+function pathFromUrlLike(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  try {
+    const parsed = new URL(raw.startsWith("http") ? raw : `https://${raw}`);
+    const pathname = String(parsed.pathname || "/").trim();
+    return pathname || "/";
+  } catch {
+    if (raw.startsWith("/")) return raw;
+    return "";
+  }
+}
+
+function deriveRankingUrlForEntry({ payload, domain, keyword }) {
+  const direct = String(payload?.ranking_url || payload?.rankingUrl || payload?.url || "").trim();
+  if (direct) return direct;
+
+  const serpRows = Array.isArray(payload?.serp_preview) ? payload.serp_preview : [];
+  const cleanDomain = normalizeDomainForStore(domain);
+  const ownRow = serpRows.find((row) => {
+    const rowDomain = normalizeDomainForStore(row?.domain || row?.url || "");
+    return cleanDomain && rowDomain === cleanDomain;
+  });
+  const ownUrl = String(ownRow?.url || "").trim();
+  if (ownUrl) return ownUrl;
+
+  const normalizedKeyword = normalizeKeywordForStore(keyword).replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+  if (!cleanDomain) return "";
+  return `https://${cleanDomain}/${normalizedKeyword || ""}`.replace(/\/$/, "");
+}
+
 export default function RankPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -667,12 +698,19 @@ export default function RankPage() {
       if (!data || typeof data !== "object") {
         throw new Error("Unexpected response.");
       }
+      const rankingUrlFromData = deriveRankingUrlForEntry({
+        payload: data,
+        domain: data?.domain || normalizedDomain,
+        keyword: data?.keyword || keyword
+      });
       const normalized = {
         ...data,
         keyword: String(data?.keyword ?? keyword ?? "").trim(),
         domain: normalizeDomainForStore(data?.domain || domain),
         rank: data?.position_current ?? data.rank ?? data.position,
         position_current: data?.position_current ?? data.rank ?? data.position,
+        ranking_url: rankingUrlFromData,
+        ranking_path: pathFromUrlLike(rankingUrlFromData) || "/",
         country: String(data?.country || country).toUpperCase(),
         city: String(data?.city || city || "").trim(),
         device: String(data?.device || device).toLowerCase() === "mobile" ? "mobile" : "desktop",
@@ -855,6 +893,107 @@ export default function RankPage() {
   const freshnessCopy = result?.served_from_cache
     ? "Reused check from within 24h window."
     : "Fresh check completed.";
+  const topUrlsByScope = useMemo(() => {
+    const scopeChecks = listRankChecksByScope({
+      keyword: safeKeyword || keyword,
+      domain: safeDomain || domainFromInput(domain),
+      country,
+      city,
+      device,
+      language
+    });
+    const byPath = new Map();
+    scopeChecks.forEach((entry) => {
+      const rankValue = Number(entry?.rank ?? entry?.position_current ?? entry?.position);
+      if (!Number.isFinite(rankValue)) return;
+      const urlPath = pathFromUrlLike(entry?.ranking_path || entry?.ranking_url || entry?.url) || "/";
+      const current = byPath.get(urlPath) || {
+        path: urlPath,
+        checks: 0,
+        sumRank: 0,
+        bestRank: Number.POSITIVE_INFINITY,
+        latestRank: null
+      };
+      current.checks += 1;
+      current.sumRank += rankValue;
+      current.bestRank = Math.min(current.bestRank, rankValue);
+      current.latestRank = rankValue;
+      byPath.set(urlPath, current);
+    });
+    const rows = Array.from(byPath.values())
+      .map((entry) => ({
+        path: entry.path,
+        checks: entry.checks,
+        bestRank: Math.round(entry.bestRank),
+        avgRank: Number((entry.sumRank / entry.checks).toFixed(1)),
+        latestRank: Number.isFinite(entry.latestRank) ? Math.round(entry.latestRank) : null
+      }))
+      .sort((a, b) => {
+        if (a.bestRank !== b.bestRank) return a.bestRank - b.bestRank;
+        return a.avgRank - b.avgRank;
+      })
+      .slice(0, 4);
+    if (!rows.length) {
+      const fallbackUrl = deriveRankingUrlForEntry({
+        payload: result || {},
+        domain: safeDomain || domainFromInput(domain),
+        keyword: safeKeyword || keyword
+      });
+      if (!fallbackUrl) return rows;
+      const fallbackPath = pathFromUrlLike(fallbackUrl) || "/";
+      return [{ path: fallbackPath, checks: 1, bestRank: Number(shownRank) || null, avgRank: Number(shownRank) || null, latestRank: Number(shownRank) || null }];
+    }
+    return rows;
+  }, [safeKeyword, keyword, safeDomain, domain, country, city, device, language, shownRank, result]);
+  const causeEffectTimeline = useMemo(() => {
+    const entries = [];
+    const completedSteps = SUCCESS_STEPS.filter((step) => Boolean(progressState?.stepState?.[step.key]));
+    const latestCheckTs = Date.parse(String(lastCheckedAt || result?.checked_at || ""));
+    const progressTs = Date.parse(String(progressState?.updatedAt || ""));
+
+    if (Number.isFinite(latestCheckTs)) {
+      entries.push({
+        ts: latestCheckTs,
+        title: result?.served_from_cache ? "Checkpoint reused from 24h window" : "Fresh ranking checkpoint captured",
+        detail: `Position ${shownRank ?? "—"} (${trendLabel(trend24h?.direction, Number(trend24h?.delta || 0))}).`
+      });
+    }
+    if (completedSteps.length) {
+      const labels = completedSteps.map((step) => step.label).join(", ");
+      const movementCopy = Number.isFinite(rankDelta)
+        ? rankDelta > 0
+          ? `Rank improved by ${rankDelta} after these actions.`
+          : rankDelta < 0
+            ? `Rank dropped by ${Math.abs(rankDelta)} despite these actions; prioritize intent alignment.`
+            : "Rank is currently flat after these actions."
+        : "Run another check to measure movement after these actions.";
+      entries.push({
+        ts: Number.isFinite(progressTs) ? progressTs : Date.now(),
+        title: "Optimization actions shipped",
+        detail: `${labels}. ${movementCopy}`
+      });
+    }
+    if (topUrlsByScope.length > 1) {
+      entries.push({
+        ts: Date.now() - 1000,
+        title: "URL rotation detected",
+        detail: `Multiple URLs are competing for this keyword scope (${topUrlsByScope[0].path} vs ${topUrlsByScope[1].path}). Consolidate intent to reduce cannibalization.`
+      });
+    } else if (topUrlsByScope.length === 1) {
+      entries.push({
+        ts: Date.now() - 1000,
+        title: "Single dominant URL",
+        detail: `${topUrlsByScope[0].path} is the primary ranking URL for this scope.`
+      });
+    }
+    return entries
+      .sort((a, b) => b.ts - a.ts)
+      .slice(0, 5)
+      .map((entry) => ({
+        ...entry,
+        when: new Date(entry.ts).toLocaleString()
+      }));
+  }, [progressState, lastCheckedAt, result?.checked_at, result?.served_from_cache, shownRank, trend24h?.direction, trend24h?.delta, rankDelta, topUrlsByScope]);
 
   const topCompetitors = useMemo(() => {
     const candidates = Array.isArray(result?.top_competitors) ? result.top_competitors : [];
@@ -1439,6 +1578,25 @@ export default function RankPage() {
       }
     ];
   }, [shownRank, competitorBench, safeKeyword, estimatedClicksGain]);
+  const predictedActionRows = useMemo(() => {
+    const baseGain = Number(bestMove?.gain) || 4;
+    return actionableRecipe.map((fix, index) => {
+      const factor = index === 0 ? 1 : index === 1 ? 0.72 : 0.5;
+      const predictedRankLift = Math.max(1, Math.round(baseGain * factor));
+      const confidence = index === 0
+        ? (confidenceLabel === "high" ? "high" : "medium")
+        : index === 1
+          ? "medium"
+          : "low";
+      return {
+        title: fix.title,
+        predictedRankLift,
+        predictedVisits: Math.max(1, Number(fix.visits) || 0),
+        predictedCtrLift: Math.max(1, Number(fix.ctrLift) || 0),
+        confidence
+      };
+    });
+  }, [actionableRecipe, bestMove?.gain, confidenceLabel]);
 
   const kpis = useMemo(() => ([
     {
@@ -1902,6 +2060,8 @@ export default function RankPage() {
               <div className="flex flex-wrap items-center gap-2">
                 {[
                   ["overview", "Overview"],
+                  ["urls", "Top URLs"],
+                  ["timeline", "Timeline"],
                   ["dashboard", "Dashboard"],
                   ["trend", "Trend"],
                   ["recipe", "Action plan"],
@@ -2016,6 +2176,55 @@ export default function RankPage() {
                   >
                     Track weekly
                   </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div id="rank-urls" className="rp-card border border-slate-200 bg-white p-4">
+                <div className="text-[15px] font-semibold text-[var(--rp-text-900)]">Top URLs from your domain</div>
+                <div className="mt-2 text-xs text-[var(--rp-text-500)]">
+                  Best rank and average rank for this keyword scope ({COUNTRIES.find((x) => x.value === country)?.label || country}{city ? ` • ${city}` : ""}).
+                </div>
+                <div className="mt-3 space-y-2">
+                  {topUrlsByScope.length ? topUrlsByScope.map((row, index) => (
+                    <div key={`top-url-${row.path}`} className="rounded-lg border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="text-sm font-semibold text-[var(--rp-text-900)]">{index + 1}. {row.path}</div>
+                        <span className="inline-flex items-center rounded-full border border-[var(--rp-border)] bg-white px-2 py-0.5 text-[11px] text-[var(--rp-text-600)]">
+                          {row.checks} checks
+                        </span>
+                      </div>
+                      <div className="mt-1 text-xs text-[var(--rp-text-600)]">
+                        Best #{row.bestRank ?? "—"} • Avg #{Number.isFinite(Number(row.avgRank)) ? row.avgRank : "—"}
+                      </div>
+                    </div>
+                  )) : (
+                    <div className="rounded-lg border border-dashed border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-4 text-sm text-[var(--rp-text-600)]">
+                      Run another check to map URL-level consistency.
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div id="rank-timeline" className="rp-card border border-slate-200 bg-white p-4">
+                <div className="text-[15px] font-semibold text-[var(--rp-text-900)]">Cause → effect timeline</div>
+                <div className="mt-2 text-xs text-[var(--rp-text-500)]">
+                  Modeled timeline linking shipped actions to ranking movement.
+                </div>
+                <div className="mt-3 space-y-2">
+                  {causeEffectTimeline.length ? causeEffectTimeline.map((event) => (
+                    <div key={`${event.title}-${event.when}`} className="rounded-lg border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="text-sm font-semibold text-[var(--rp-text-900)]">{event.title}</div>
+                        <span className="text-[11px] text-[var(--rp-text-500)]">{event.when}</span>
+                      </div>
+                      <div className="mt-1 text-xs text-[var(--rp-text-600)]">{event.detail}</div>
+                    </div>
+                  )) : (
+                    <div className="rounded-lg border border-dashed border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-4 text-sm text-[var(--rp-text-600)]">
+                      Timeline appears after at least one scoped check.
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -2356,6 +2565,26 @@ export default function RankPage() {
                 <div className="mt-1 text-xs text-[var(--rp-text-500)]">
                   <span className="mr-1 font-semibold uppercase tracking-[0.08em] text-[11px]">Modeled recommendations:</span>
                   {getModeledRecommendationIntro(provenanceByCard.actionableRecipe, "actionableRecipe")}
+                </div>
+                <div className="mt-3 rounded-xl border border-[var(--rp-border)] bg-white p-3">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--rp-text-500)]">
+                    Predicted gain per recommended action
+                  </div>
+                  <div className="mt-2 grid gap-2">
+                    {predictedActionRows.map((row) => (
+                      <div key={`pred-${row.title}`} className="rounded-lg border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-2">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="text-sm font-semibold text-[var(--rp-text-900)]">{row.title}</div>
+                          <span className="inline-flex items-center rounded-full border border-[var(--rp-border)] bg-white px-2 py-0.5 text-[11px] capitalize text-[var(--rp-text-600)]">
+                            {row.confidence} confidence
+                          </span>
+                        </div>
+                        <div className="mt-1 text-xs text-[var(--rp-text-600)]">
+                          Predicted movement: +{row.predictedRankLift} positions • +{row.predictedCtrLift}% CTR • +{row.predictedVisits}/mo
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
                 <div className="mt-3 space-y-3">
                   {actionableRecipe.map((fix) => (

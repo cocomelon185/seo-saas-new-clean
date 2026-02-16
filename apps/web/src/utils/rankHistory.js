@@ -34,6 +34,8 @@ function sanitizeEntry(entry) {
   const device = String(entry?.device || "").trim().toLowerCase();
   const language = String(entry?.language || "").trim().toLowerCase();
   const scopeKey = String(entry?.scopeKey || buildRankScopeKey({ keyword, domain, country, city, device, language }));
+  const rankingUrl = String(entry?.ranking_url || entry?.rankingUrl || entry?.url || "").trim();
+  const rankingPath = String(entry?.ranking_path || entry?.rankingPath || "").trim();
   const id = String(entry?.id || `${createdAt}__${keyword}__${domain}`);
   return {
     id,
@@ -46,6 +48,8 @@ function sanitizeEntry(entry) {
     device,
     language,
     scopeKey,
+    ranking_url: rankingUrl,
+    ranking_path: rankingPath,
     served_from_cache: Boolean(entry?.served_from_cache),
     cache_expires_at: entry?.cache_expires_at || null,
     position_current: entry?.position_current ?? rank,
@@ -87,6 +91,8 @@ export function saveRankCheck(entry) {
   const device = String(entry?.device || "").trim().toLowerCase();
   const language = String(entry?.language || "").trim().toLowerCase();
   const scopeKey = buildRankScopeKey({ keyword, domain, country, city, device, language });
+  const rankingUrl = String(entry?.ranking_url || entry?.rankingUrl || entry?.url || "").trim();
+  const rankingPath = String(entry?.ranking_path || entry?.rankingPath || "").trim();
 
   const item = {
     id: `${createdAt}__${keyword}__${domain}`,
@@ -99,6 +105,8 @@ export function saveRankCheck(entry) {
     device,
     language,
     scopeKey,
+    ranking_url: rankingUrl,
+    ranking_path: rankingPath,
     served_from_cache: Boolean(entry?.served_from_cache),
     cache_expires_at: entry?.cache_expires_at || null,
     position_current: entry?.position_current ?? rank,

@@ -193,6 +193,16 @@ function deriveRankMetrics(checks, nowMs, fallbackPosition) {
   };
 }
 
+function slugifyKeyword(keyword) {
+  return String(keyword || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+}
+
+function deriveRankingPath(keyword, position) {
+  const slug = slugifyKeyword(keyword) || "seo-audit-tool";
+  const alternate = slug.includes("-") ? slug.split("-").reverse().join("-") : `${slug}-guide`;
+  return Number(position) % 3 === 0 ? `/${alternate}` : `/${slug}`;
+}
+
 app.post("/api/rank-check", (req, res) => {
   const {
     keyword,
@@ -268,6 +278,8 @@ app.post("/api/rank-check", (req, res) => {
       { position: 3, title: `${cleanKeyword} checklist`, domain: top_competitors[2]?.domain || "moz.com", type: "Organic" },
       { position: 4, title: `${cleanKeyword} examples`, domain: cleanDomain, type: "Organic" }
     ];
+    const ranking_path = deriveRankingPath(cleanKeyword, position);
+    const ranking_url = `https://${cleanDomain}${ranking_path}`;
 
     baseResult = {
       keyword: cleanKeyword,
@@ -282,6 +294,8 @@ app.post("/api/rank-check", (req, res) => {
       difficulty_score,
       opportunity_score,
       traffic_potential,
+      ranking_path,
+      ranking_url,
       serp_preview,
       top_competitors,
       checked_at: new Date(nowMs).toISOString()
