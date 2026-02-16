@@ -1,22 +1,24 @@
 import { expect, test } from "@playwright/test";
 
-test("rank route renders without TDZ runtime fallback", async ({ page }) => {
+test("core routes render without hydration or chart runtime fallback", async ({ page }) => {
   const consoleFailures = [];
+  const failurePattern = /hydration failed|server html was replaced|expected server html|cannot read properties of undefined.*(?:map|length)/i;
   page.on("console", (msg) => {
     if (msg.type() !== "error" && msg.type() !== "warning") return;
     const text = String(msg.text() || "");
-    const isHydrationError = /hydration failed|server html was replaced|expected server html/i.test(text);
-    const isRouteCrash = /cannot read properties of undefined.*(?:map|length)/i.test(text);
-    if (isHydrationError || isRouteCrash) consoleFailures.push(text);
+    if (failurePattern.test(text)) consoleFailures.push(text);
   });
   page.on("pageerror", (err) => {
     const text = String(err || "");
-    const isHydrationError = /hydration failed|server html was replaced|expected server html/i.test(text);
-    const isRouteCrash = /cannot read properties of undefined.*(?:map|length)/i.test(text);
-    if (isHydrationError || isRouteCrash) consoleFailures.push(text);
+    if (failurePattern.test(text)) consoleFailures.push(text);
   });
 
-  await page.goto("/rank", { waitUntil: "domcontentloaded" });
+  for (const route of ["/", "/audit", "/rank"]) {
+    await page.goto(route, { waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(250);
+    await expect(page.getByText("Unexpected Application Error!")).toHaveCount(0);
+    await expect(page.getByText(/cannot read properties of undefined/i)).toHaveCount(0);
+  }
 
   const hasRankHeading = await page.getByRole("heading", { name: "Rank Checker" }).count();
   if (hasRankHeading > 0) {

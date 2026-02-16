@@ -16,7 +16,9 @@ function toCategoryArray(value) {
     .filter(Boolean);
 }
 
-function normalizeSeries(seriesInput) {
+const NON_AXIS_TYPES = new Set(["donut", "pie", "radialbar", "polararea"]);
+
+function normalizeAxisSeries(seriesInput) {
   const rawSeries = asArray(seriesInput);
   return rawSeries
     .map((entry, index) => {
@@ -35,10 +37,29 @@ function normalizeSeries(seriesInput) {
     .filter((entry) => Array.isArray(entry.data) && entry.data.length > 0);
 }
 
-function normalizeOptions(optionsInput) {
+function normalizeNonAxisSeries(seriesInput) {
+  if (Array.isArray(seriesInput) && seriesInput.some((entry) => typeof entry === "number" || typeof entry === "string")) {
+    return toNumberArray(seriesInput);
+  }
+  return asArray(seriesInput)
+    .flatMap((entry) => {
+      if (entry && typeof entry === "object" && !Array.isArray(entry)) {
+        if (Array.isArray(entry.data)) return toNumberArray(entry.data);
+        if ("value" in entry) {
+          const value = Number(entry.value);
+          return Number.isFinite(value) ? [value] : [];
+        }
+      }
+      const value = Number(entry);
+      return Number.isFinite(value) ? [value] : [];
+    });
+}
+
+function normalizeOptions(optionsInput, axisChart) {
   const options = optionsInput && typeof optionsInput === "object" && !Array.isArray(optionsInput)
     ? optionsInput
     : {};
+  if (!axisChart) return options;
   const xaxis = options.xaxis && typeof options.xaxis === "object" && !Array.isArray(options.xaxis)
     ? options.xaxis
     : {};
@@ -53,9 +74,19 @@ function normalizeOptions(optionsInput) {
 
 export default function SafeApexChart({ series, options, ...restProps }) {
   const [ApexChart, setApexChart] = useState(null);
-  const normalizedSeries = useMemo(() => normalizeSeries(series), [series]);
-  const normalizedOptions = useMemo(() => normalizeOptions(options), [options]);
-  const hasRenderableSeries = normalizedSeries.some((entry) => asArray(entry?.data).length > 0);
+  const chartType = useMemo(() => {
+    const fromType = String(restProps?.type || "").trim().toLowerCase();
+    if (fromType) return fromType;
+    return String(options?.chart?.type || "").trim().toLowerCase();
+  }, [restProps?.type, options?.chart?.type]);
+  const axisChart = !NON_AXIS_TYPES.has(chartType);
+  const normalizedSeries = useMemo(() => {
+    return axisChart ? normalizeAxisSeries(series) : normalizeNonAxisSeries(series);
+  }, [axisChart, series]);
+  const normalizedOptions = useMemo(() => normalizeOptions(options, axisChart), [options, axisChart]);
+  const hasRenderableSeries = axisChart
+    ? normalizedSeries.some((entry) => asArray(entry?.data).length > 0)
+    : toNumberArray(normalizedSeries).length > 0;
 
   useEffect(() => {
     let mounted = true;
@@ -73,10 +104,9 @@ export default function SafeApexChart({ series, options, ...restProps }) {
 
   useEffect(() => {
     if (!import.meta.env.DEV || typeof window === "undefined") return;
-    if (!window.location.pathname.startsWith("/rank")) return;
     if (hasRenderableSeries) return;
-    console.warn("[rank.chart.guard] Skipped chart render due to invalid or empty series payload.");
-  }, [hasRenderableSeries]);
+    console.warn(`[chart.guard] Skipped ${chartType || "unknown"} chart render due to invalid or empty series payload.`);
+  }, [hasRenderableSeries, chartType]);
 
   if (!ApexChart || !hasRenderableSeries) {
     return <div className="h-full w-full rounded bg-[var(--rp-gray-50)]" aria-hidden="true" />;
