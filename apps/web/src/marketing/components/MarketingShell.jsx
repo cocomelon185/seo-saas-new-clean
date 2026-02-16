@@ -5,8 +5,8 @@ import CookieConsent from "../../components/CookieConsent.jsx";
 import { clearAuthSession, getAuthDisplayName, getAuthToken, getAuthUser } from "../../lib/authClient.js";
 
 export default function MarketingShell({ title, subtitle, children }) {
-  const [authUser, setAuthUser] = useState(getAuthUser());
-  const [authed, setAuthed] = useState(Boolean(getAuthToken()));
+  const [authUser, setAuthUser] = useState(null);
+  const [authed, setAuthed] = useState(false);
 
   useEffect(() => {
     const sync = () => {

@@ -90,6 +90,7 @@ function AuditPageInner() {
     }
   ];
   const [pricingOpen, setPricingOpen] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
 
   const [url, setUrl] = useState("");
   const hasUrl = Boolean(url?.trim());
@@ -166,6 +167,10 @@ function AuditPageInner() {
           : status === "loading"
             ? "Audit is running..."
             : "";
+
+  useEffect(() => {
+    setHydrated(true);
+  }, []);
 
   useEffect(() => {
     try {
@@ -1277,6 +1282,23 @@ function AuditPageInner() {
         fix
       };
     });
+  }
+
+  if (!hydrated) {
+    return (
+      <AppShell
+        data-testid="audit-page"
+        title="SEO Page Audit"
+        subtitle="SEO tools that feel instant. Paste a URL and get a score, quick wins, and a prioritized list of issues."
+        seoTitle="SEO Audit | RankyPulse"
+        seoDescription="Run a full-site SEO audit, get prioritized fixes, and export a client-ready report in minutes."
+        seoCanonical={`${base}/audit`}
+        seoRobots="index,follow"
+        seoJsonLd={structuredData}
+      >
+        <div className="rp-card p-6 text-sm text-[var(--rp-text-600)]">Loading audit workspace...</div>
+      </AppShell>
+    );
   }
 
   return (

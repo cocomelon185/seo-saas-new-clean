@@ -72,8 +72,29 @@ function normalizeOptions(optionsInput, axisChart) {
   };
 }
 
+function hasValidAxisSeries(seriesInput) {
+  return Array.isArray(seriesInput)
+    && seriesInput.length > 0
+    && seriesInput.every((entry) => (
+      entry
+      && typeof entry === "object"
+      && !Array.isArray(entry)
+      && typeof entry.name === "string"
+      && Array.isArray(entry.data)
+      && entry.data.length > 0
+      && entry.data.every((value) => Number.isFinite(value))
+    ));
+}
+
+function hasValidNonAxisSeries(seriesInput) {
+  return Array.isArray(seriesInput)
+    && seriesInput.length > 0
+    && seriesInput.every((value) => Number.isFinite(value));
+}
+
 export default function SafeApexChart({ series, options, ...restProps }) {
   const [ApexChart, setApexChart] = useState(null);
+  const apexDisabled = typeof window !== "undefined" && window.__DISABLE_APEX__ === true;
   const chartType = useMemo(() => {
     const fromType = String(restProps?.type || "").trim().toLowerCase();
     if (fromType) return fromType;
@@ -85,10 +106,14 @@ export default function SafeApexChart({ series, options, ...restProps }) {
   }, [axisChart, series]);
   const normalizedOptions = useMemo(() => normalizeOptions(options, axisChart), [options, axisChart]);
   const hasRenderableSeries = axisChart
-    ? normalizedSeries.some((entry) => asArray(entry?.data).length > 0)
-    : toNumberArray(normalizedSeries).length > 0;
+    ? hasValidAxisSeries(normalizedSeries)
+    : hasValidNonAxisSeries(normalizedSeries);
 
   useEffect(() => {
+    if (apexDisabled) {
+      setApexChart(() => null);
+      return undefined;
+    }
     let mounted = true;
     import("react-apexcharts")
       .then((mod) => {
@@ -100,7 +125,7 @@ export default function SafeApexChart({ series, options, ...restProps }) {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [apexDisabled]);
 
   useEffect(() => {
     if (!import.meta.env.DEV || typeof window === "undefined") return;
@@ -108,7 +133,7 @@ export default function SafeApexChart({ series, options, ...restProps }) {
     console.warn(`[chart.guard] Skipped ${chartType || "unknown"} chart render due to invalid or empty series payload.`);
   }, [hasRenderableSeries, chartType]);
 
-  if (!ApexChart || !hasRenderableSeries) {
+  if (apexDisabled || !ApexChart || !hasRenderableSeries) {
     return <div className="h-full w-full rounded bg-[var(--rp-gray-50)]" aria-hidden="true" />;
   }
 

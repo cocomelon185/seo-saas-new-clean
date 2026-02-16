@@ -71,18 +71,30 @@ async function main() {
 
   await context.addInitScript(
     ({ token, user }) => {
-      localStorage.setItem("rp_auth_token", token);
-      localStorage.setItem("rp_auth_user", JSON.stringify(user));
+      try {
+        localStorage.setItem("rp_auth_token", token);
+      } catch {}
+      try {
+        localStorage.setItem("rp_auth_user", JSON.stringify(user));
+      } catch {}
     },
     { token: guestSession.token, user: guestSession.user }
   );
 
   const page = await context.newPage();
+  let currentRoute = "init";
   page.on("pageerror", (err) => {
-    results.push({ type: "pageerror", message: err?.message || String(err) });
+    results.push({
+      type: "pageerror",
+      route: currentRoute,
+      url: page.url(),
+      message: err?.message || String(err),
+      stack: err?.stack || ""
+    });
   });
 
   for (const route of routes) {
+    currentRoute = route;
     const url = `${baseUrl}${route}`;
     const routeResult = { route, url, buttons: 0, links: 0, issues: [] };
     try {

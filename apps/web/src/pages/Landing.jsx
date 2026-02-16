@@ -7,8 +7,6 @@ import CookieConsent from "../components/CookieConsent.jsx";
 import Seo from "../components/Seo.jsx";
 import { clearAuthSession, getAuthDisplayName, getAuthToken, getAuthUser } from "../lib/authClient.js";
 import { getSignupAuditHref } from "../lib/auditGate.js";
-import ApexSparkline from "../components/charts/ApexSparkline.jsx";
-import ApexSemiDonutScore from "../components/charts/ApexSemiDonutScore.jsx";
 
 const HERO_POINTS = [
   "Prioritized fixes, not a wall of errors",
@@ -76,8 +74,8 @@ const FEATURE_ROWS = [
 
 export default function Landing() {
   const base = typeof window !== "undefined" ? window.location.origin : "https://rankypulse.com";
-  const [authUser, setAuthUser] = useState(getAuthUser());
-  const [authed, setAuthed] = useState(Boolean(getAuthToken()));
+  const [authUser, setAuthUser] = useState(null);
+  const [authed, setAuthed] = useState(false);
   const [auditUrl, setAuditUrl] = useState("https://www.example.com/");
   const [showStickyCta, setShowStickyCta] = useState(false);
   const [footerVisible, setFooterVisible] = useState(false);
@@ -381,14 +379,19 @@ export default function Landing() {
         <section className="mt-4 grid gap-4 md:grid-cols-[1.2fr_0.8fr]">
           <div className="rounded-2xl border border-[#e4d7fe] bg-white p-4 shadow-[0_8px_20px_rgba(45,18,91,0.06)]">
             <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[#7863aa]">7-audit trend preview</div>
-            <div className="mt-2 h-20">
-              <ApexSparkline values={[49, 53, 52, 58, 61, 64, 69]} height={80} />
+            <div className="mt-2 h-20 rounded-xl bg-[linear-gradient(180deg,#ecfeff_0%,#ffffff_100%)] p-3">
+              <svg viewBox="0 0 220 64" className="h-full w-full" aria-hidden="true">
+                <path d="M8 50 L36 44 L64 46 L92 34 L120 28 L148 22 L176 16 L208 12" fill="none" stroke="#22d3ee" strokeWidth="4" strokeLinecap="round" />
+              </svg>
             </div>
           </div>
           <div className="rounded-2xl border border-[#e4d7fe] bg-white p-4 shadow-[0_8px_20px_rgba(45,18,91,0.06)]">
             <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[#7863aa]">First-fix confidence</div>
-            <div className="mt-2">
-              <ApexSemiDonutScore value={78} height={125} />
+            <div className="mt-2 flex h-[125px] items-center justify-center rounded-xl bg-[linear-gradient(180deg,#f5efff_0%,#ffffff_100%)]">
+              <div className="text-center">
+                <div className="text-3xl font-semibold text-[#2a1648]">78%</div>
+                <div className="text-xs font-semibold uppercase tracking-[0.12em] text-[#7f68af]">Confidence</div>
+              </div>
             </div>
           </div>
         </section>

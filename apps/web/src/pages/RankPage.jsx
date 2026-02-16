@@ -1382,8 +1382,8 @@ export default function RankPage() {
     });
   }, [gap]);
 
-  const gapMissingKeywords = asArray(gap?.missingKeywords);
-  const gapMissingTopics = asArray(gap?.missingTopics);
+  const gapMissingKeywords = useMemo(() => toCategoryArray(gap?.missingKeywords), [gap?.missingKeywords]);
+  const gapMissingTopics = useMemo(() => toCategoryArray(gap?.missingTopics), [gap?.missingTopics]);
 
   const missingTopicRows = useMemo(() => {
     return gapMissingTopics.slice(0, 6).map((topic, index) => {
@@ -1598,9 +1598,9 @@ export default function RankPage() {
     const targetWords = Math.max(1200, (competitorBench.avgWords || ownWords + 900) - ownWords);
     const backlinksGap = Math.max(2, Math.ceil(((competitorBench.avgBacklinks || 600) - (competitorBench.own.backlinks || 80)) / 200));
     const internalPath = `/${normalizeKeywordForStore(safeKeyword).replace(/\s+/g, "-") || "seo-audit"}`;
-    const firstGapKeyword = gap?.missingKeywords?.[0] || gap?.missingTopics?.[0] || safeKeyword;
-    const authorityKeyword = gap?.missingKeywords?.[1] || `${safeKeyword} backlinks`;
-    const technicalKeyword = gap?.missingKeywords?.[2] || `${safeKeyword} title optimization`;
+    const firstGapKeyword = gapMissingKeywords[0] || gapMissingTopics[0] || safeKeyword;
+    const authorityKeyword = gapMissingKeywords[1] || `${safeKeyword} backlinks`;
+    const technicalKeyword = gapMissingKeywords[2] || `${safeKeyword} title optimization`;
     return [
       {
         title: "Add depth and intent coverage",
@@ -1640,7 +1640,7 @@ export default function RankPage() {
         queueKeyword: technicalKeyword
       }
     ];
-  }, [shownRank, competitorBench, safeKeyword, estimatedClicksGain, gap]);
+  }, [shownRank, competitorBench, safeKeyword, estimatedClicksGain, gapMissingKeywords, gapMissingTopics]);
   const predictedActionRows = useMemo(() => {
     const baseGain = Number(bestMove?.gain) || 4;
     const recipeRows = Array.isArray(actionableRecipe) ? actionableRecipe : [];
