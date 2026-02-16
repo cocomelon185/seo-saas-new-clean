@@ -220,6 +220,10 @@ function hasValidRank(rank) {
   return Number.isFinite(r) && r > 0;
 }
 
+function asArray(value) {
+  return Array.isArray(value) ? value : [];
+}
+
 function latestKeywordIdeasForDomain(domain) {
   const d = domainFromInput(domain);
   if (!d) return [];
@@ -446,8 +450,9 @@ function ProvenanceBadge({ tag }) {
 }
 
 function TrendMarkers({ checks = [] }) {
-  if (!checks.length) return { best: null, worst: null };
-  const mapped = checks.map((item, index) => ({ index, label: item.label, rank: Number(item.rank) }))
+  const safeChecks = asArray(checks);
+  if (!safeChecks.length) return { best: null, worst: null };
+  const mapped = safeChecks.map((item, index) => ({ index, label: item.label, rank: Number(item.rank) }))
     .filter((item) => Number.isFinite(item.rank));
   if (!mapped.length) return { best: null, worst: null };
   const best = mapped.reduce((acc, cur) => (cur.rank < acc.rank ? cur : acc), mapped[0]);
@@ -767,7 +772,7 @@ export default function RankPage() {
   const safeDomain = normalizeDomainForStore(result?.domain || domainFromInput(domain) || "");
   const auditTargetDomain = safeDomain || domainFromInput(domain);
   const displayKeyword = keywordToTitleCase(safeKeyword);
-  const allChecks = useMemo(() => listRankChecks(), [result, lastCheckedAt, status]);
+  const allChecks = useMemo(() => asArray(listRankChecks()), [result, lastCheckedAt, status]);
   const scopeDomain = safeDomain || domainFromInput(domain);
   const scopeKeyword = safeKeyword || keyword;
 
@@ -776,7 +781,7 @@ export default function RankPage() {
   }, [scopeDomain, scopeKeyword]);
 
   const history = useMemo(() => {
-    const all = allChecks;
+    const all = asArray(allChecks);
     if (!safeKeyword && !safeDomain) return all.slice(0, 12);
     return all.filter((x) => {
       const kwMatch = safeKeyword ? String(x.keyword || "").toLowerCase() === safeKeyword.toLowerCase() : true;
@@ -787,7 +792,7 @@ export default function RankPage() {
 
   const checks30d = useMemo(() => {
     const cutoff = Date.now() - (30 * 24 * 60 * 60 * 1000);
-    return allChecks.filter((item) => {
+    return asArray(allChecks).filter((item) => {
       const ts = Date.parse(String(item?.createdAt || item?.checked_at || ""));
       if (!Number.isFinite(ts) || ts < cutoff) return false;
       if (!scopeDomain) return true;
@@ -808,7 +813,7 @@ export default function RankPage() {
   }, [checks30d]);
 
   const last7Checks = useMemo(() => {
-    return history
+    return asArray(history)
       .slice(0, 7)
       .reverse()
       .map((item, idx) => ({
@@ -821,8 +826,8 @@ export default function RankPage() {
   }, [history]);
 
   const previousRank = useMemo(() => {
-    if (!history.length || !hasValidRank(shownRank)) return null;
-    const previous = history
+    if (!asArray(history).length || !hasValidRank(shownRank)) return null;
+    const previous = asArray(history)
       .map((x) => Number(x.rank))
       .filter((x) => Number.isFinite(x))
       .find((x) => x !== Number(shownRank));
@@ -1071,7 +1076,7 @@ export default function RankPage() {
           : []
       }));
     }
-    return topCompetitors.map((entry, idx) => ({
+    return asArray(topCompetitors).map((entry, idx) => ({
       position: Number(entry.position ?? idx + 1),
       title:
         idx === 0
@@ -1162,7 +1167,7 @@ export default function RankPage() {
   }, [last7Checks]);
   const trendStory = useMemo(() => {
     if (!last7Checks.length) return [];
-    const ranks = last7Checks.map((x) => Number(x.rank)).filter((x) => Number.isFinite(x));
+    const ranks = asArray(last7Checks).map((x) => Number(x.rank)).filter((x) => Number.isFinite(x));
     if (!ranks.length) return [];
     const start = ranks[0];
     const end = ranks[ranks.length - 1];
@@ -1204,7 +1209,8 @@ export default function RankPage() {
   }, [last7Checks]);
 
   const competitorBench = useMemo(() => {
-    const domains = (topCompetitors.length ? topCompetitors : serpPreview.slice(0, 3)).map((entry) => entry.domain);
+    const domains = (asArray(topCompetitors).length ? asArray(topCompetitors) : asArray(serpPreview).slice(0, 3))
+      .map((entry) => entry.domain);
     const buildSignals = (domainName, rankBoost = 0) => {
       const seed = String(domainName || "").split("").reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
       return {
@@ -1234,7 +1240,7 @@ export default function RankPage() {
   }, [shownRank]);
 
   const bestRank = useMemo(() => {
-    const ranks = history.map((x) => Number(x.rank)).filter((x) => Number.isFinite(x));
+    const ranks = asArray(history).map((x) => Number(x.rank)).filter((x) => Number.isFinite(x));
     if (!ranks.length) return null;
     return Math.min(...ranks);
   }, [history]);
@@ -1281,7 +1287,7 @@ export default function RankPage() {
   const seoScoreHybrid = useMemo(() => {
     return computeHybridSeoScore({
       latestRank: latestRankValue,
-      rankHistory: history.slice(0, 7),
+      rankHistory: asArray(history).slice(0, 7),
       auditScore: activeSnapshotScore
     });
   }, [latestRankValue, history, activeSnapshotScore]);
@@ -1348,15 +1354,15 @@ export default function RankPage() {
   }, [winsStats.completed, checksThisMonth.length]);
 
   const contentGapDiffRows = useMemo(() => {
-    const headings = gap.competitors.flatMap((c) => c.headings).slice(0, 6);
+    const headings = asArray(gap?.competitors).flatMap((c) => asArray(c?.headings)).slice(0, 6);
     return headings.map((heading) => {
-      const coverageCount = gap.competitors.filter((c) => c.headings.includes(heading)).length;
+      const coverageCount = asArray(gap?.competitors).filter((c) => asArray(c?.headings).includes(heading)).length;
       return { heading, coverageCount };
     });
   }, [gap]);
 
   const missingTopicRows = useMemo(() => {
-    return gap.missingTopics.slice(0, 6).map((topic, index) => {
+    return asArray(gap?.missingTopics).slice(0, 6).map((topic, index) => {
       let confidence = "Low";
       let score = 1;
       if (index === 0 || index === 1) {
@@ -1368,7 +1374,7 @@ export default function RankPage() {
       }
       return { topic, confidence, score };
     }).sort((a, b) => b.score - a.score);
-  }, [gap.missingTopics]);
+  }, [gap?.missingTopics]);
 
   const primaryNextAction = useMemo(() => {
     return resolvePrimaryNextAction({
@@ -1636,7 +1642,7 @@ export default function RankPage() {
     {
       label: "Tracked keywords",
       value: String(
-        new Set(listRankChecks().map((x) => String(x.keyword || "").trim()).filter(Boolean)).size || 0
+        new Set(asArray(listRankChecks()).map((x) => String(x.keyword || "").trim()).filter(Boolean)).size || 0
       ),
       tone: "text-[#0f172a]",
       hint: "Open history",
@@ -1645,8 +1651,8 @@ export default function RankPage() {
     },
     {
       label: "Avg. position",
-      value: history.length
-        ? (history.reduce((sum, row) => sum + Number(row.rank || 0), 0) / history.length).toFixed(1)
+      value: asArray(history).length
+        ? (asArray(history).reduce((sum, row) => sum + Number(row.rank || 0), 0) / asArray(history).length).toFixed(1)
         : "—",
       tone: "text-[#f97316]",
       hint: "View trend",
@@ -1840,9 +1846,9 @@ export default function RankPage() {
             />
             <div className="mt-1 text-xs text-[var(--rp-text-600)]">One query at a time for the cleanest signal.</div>
             {inlineErrors.keyword ? <div className="mt-1 text-xs text-rose-600">{inlineErrors.keyword}</div> : null}
-            {!!ideas.length && (
+            {!!asArray(ideas).length && (
               <div className="mt-2 flex flex-wrap gap-2">
-                {ideas.map((x) => (
+                {asArray(ideas).map((x) => (
                   <button
                     key={x}
                     onClick={() => setKeyword(x)}
@@ -2053,9 +2059,9 @@ export default function RankPage() {
                     grid: { borderColor: "#ede9fe" },
                     markers: { size: 4, strokeWidth: 2, colors: ["#7c3aed"] },
                     yaxis: { reversed: true, min: 1, forceNiceScale: true, labels: { style: { colors: "#6b5b95" } } },
-                    xaxis: { categories: last7Checks.map((point) => point.label), labels: { style: { colors: "#6b5b95" } } }
+                    xaxis: { categories: asArray(last7Checks).map((point) => point.label), labels: { style: { colors: "#6b5b95" } } }
                   }}
-                  series={[{ name: "Position", data: last7Checks.map((point) => point.rank) }]}
+                  series={[{ name: "Position", data: asArray(last7Checks).map((point) => point.rank) }]}
                 />
               ) : (
                 <div className="flex h-full items-center justify-center text-sm text-[var(--rp-text-500)]">
@@ -2577,7 +2583,7 @@ export default function RankPage() {
                         labels: { style: { colors: "#6b5b95" } }
                       },
                       xaxis: {
-                        categories: last7Checks.map((point) => point.label),
+                        categories: asArray(last7Checks).map((point) => point.label),
                         labels: { style: { colors: "#6b5b95" } }
                       },
                       tooltip: {
@@ -2585,7 +2591,7 @@ export default function RankPage() {
                         y: { formatter: (v) => `Position ${Math.round(v)}` }
                       }
                     }}
-                    series={[{ name: "Position", data: last7Checks.map((point) => point.rank) }]}
+                    series={[{ name: "Position", data: asArray(last7Checks).map((point) => point.rank) }]}
                   />
                 </div>
               </div>
@@ -2666,7 +2672,7 @@ export default function RankPage() {
                 </div>
                 <div className="mt-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--rp-text-500)]">Observed facts</div>
                 <div className="mt-3 space-y-2">
-                  {rankMovementFacts.length ? rankMovementFacts.map((line) => (
+                  {asArray(rankMovementFacts).length ? asArray(rankMovementFacts).map((line) => (
                     <div key={`${line.source}-${line.metric}`} className="rounded-lg border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-2 text-sm text-[var(--rp-text-700)]">
                       <div><span className="font-semibold">{line.source}</span> • <span className="font-semibold">Metric:</span> {line.metric}</div>
                       <div className="mt-1"><span className="font-semibold">Interpretation:</span> {line.interpretation}</div>
@@ -2680,7 +2686,7 @@ export default function RankPage() {
                 </div>
                 <div className="mt-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--rp-text-500)]">Modeled recommendations</div>
                 <div className="mt-3 space-y-2">
-                  {rankMovementRecommendations.length ? rankMovementRecommendations.map((line) => (
+                  {asArray(rankMovementRecommendations).length ? asArray(rankMovementRecommendations).map((line) => (
                     <div key={`${line.source}-${line.metric}`} className="rounded-lg border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-2 text-sm text-[var(--rp-text-700)]">
                       <div><span className="font-semibold">{line.source}</span> • <span className="font-semibold">Metric:</span> {line.metric}</div>
                       <div className="mt-1"><span className="font-semibold">Interpretation:</span> {line.interpretation}</div>
@@ -2712,18 +2718,18 @@ export default function RankPage() {
                   {getModeledRecommendationIntro(provenanceByCard.keywordOpportunity, "keywordOpportunity")}
                 </div>
                 <div className="mt-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--rp-text-500)]">Observed facts</div>
-                {keywordObservedFacts.length ? (
+                {asArray(keywordObservedFacts).length ? (
                   <div className="mt-2 grid gap-1 text-xs text-[var(--rp-text-600)]">
-                    {keywordObservedFacts.map((fact) => (
+                    {asArray(keywordObservedFacts).map((fact) => (
                       <div key={`fact-${fact.label}`}>
                         <span className="font-semibold text-[var(--rp-text-700)]">{fact.label}:</span> {fact.value}
                       </div>
                     ))}
                   </div>
                 ) : null}
-                {!!keywordLiveEvidence.length && (
+                {!!asArray(keywordLiveEvidence).length && (
                   <div className="mt-3 space-y-2">
-                    {keywordLiveEvidence.slice(0, 2).map((reason) => (
+                    {asArray(keywordLiveEvidence).slice(0, 2).map((reason) => (
                       <div key={`opp-live-${reason.source}-${reason.metric}`} className="rounded-lg border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-2 text-sm text-[var(--rp-text-700)]">
                         <div><span className="font-semibold">{reason.source}</span> • <span className="font-semibold">Metric:</span> {reason.metric}</div>
                         <div className="mt-1"><span className="font-semibold">Interpretation:</span> {reason.interpretation}</div>
@@ -2732,9 +2738,9 @@ export default function RankPage() {
                   </div>
                 )}
                 <div className="mt-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--rp-text-500)]">Modeled recommendations</div>
-                {!!keywordModeledRecommendations.length && (
+                {!!asArray(keywordModeledRecommendations).length && (
                   <div className="mt-2 space-y-2">
-                    {keywordModeledRecommendations.slice(0, 2).map((reason) => (
+                    {asArray(keywordModeledRecommendations).slice(0, 2).map((reason) => (
                       <div key={`opp-${reason.source}-${reason.metric}`} className="rounded-lg border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-2 text-sm text-[var(--rp-text-700)]">
                         <div><span className="font-semibold">{reason.source}</span> • <span className="font-semibold">Metric:</span> {reason.metric}</div>
                         <div className="mt-1"><span className="font-semibold">Interpretation:</span> {reason.interpretation}</div>
@@ -2786,8 +2792,8 @@ export default function RankPage() {
                   <ProvenanceBadge tag={provenanceByCard.competitorSnapshot} />
                 </div>
                 <div className="mt-3 grid gap-2">
-                  {topCompetitors.length ? (
-                    topCompetitors.map((entry) => (
+                  {asArray(topCompetitors).length ? (
+                    asArray(topCompetitors).map((entry) => (
                       <div
                         key={`${entry.position}-${entry.domain}`}
                         className="flex items-center justify-between rounded-lg border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-2 text-[15px]"
@@ -2821,8 +2827,8 @@ export default function RankPage() {
                 </div>
               </div>
               <div className="mt-3 grid gap-2">
-                {serpPreview.length ? (
-                  serpPreview.slice(0, 5).map((row) => (
+                {asArray(serpPreview).length ? (
+                  asArray(serpPreview).slice(0, 5).map((row) => (
                     <div key={`serp-${row.position}-${row.domain}`} className="rounded-lg border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-2">
                       <div className="flex items-center justify-between gap-3">
                         <div className="truncate text-sm font-semibold text-[var(--rp-text-900)]">#{row.position} {row.title}</div>
@@ -2835,9 +2841,9 @@ export default function RankPage() {
                           {row.snippetSource}
                         </span>
                       </div>
-                      {Array.isArray(row.sitelinks) && row.sitelinks.length ? (
+                      {asArray(row?.sitelinks).length ? (
                         <div className="mt-2 flex flex-wrap gap-1.5">
-                          {row.sitelinks.slice(0, 4).map((link) => (
+                          {asArray(row?.sitelinks).slice(0, 4).map((link) => (
                             <span
                               key={`${row.position}-${row.domain}-${link}`}
                               className="inline-flex items-center rounded-full border border-[var(--rp-border)] bg-white px-2 py-0.5 text-[11px] text-[var(--rp-text-600)]"
@@ -2920,7 +2926,7 @@ export default function RankPage() {
                 </div>
                 <div className="mt-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--rp-text-500)]">Observed facts</div>
                 <div className="mt-2 grid gap-1 text-xs text-[var(--rp-text-600)]">
-                  {trendObservedFacts.map((fact) => (
+                  {asArray(trendObservedFacts).map((fact) => (
                     <div key={`trend-fact-${fact.label}`}>
                       <span className="font-semibold text-[var(--rp-text-700)]">{fact.label}:</span> {fact.value}
                     </div>
@@ -2928,7 +2934,7 @@ export default function RankPage() {
                 </div>
                 <div className="mt-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--rp-text-500)]">Modeled recommendations</div>
                 <div className="mt-3 space-y-2">
-                  {trendStory.length ? trendStory.map((line) => (
+                  {asArray(trendStory).length ? asArray(trendStory).map((line) => (
                     <div key={`${line.source}-${line.metric}`} className="rounded-lg border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-2 text-sm text-[var(--rp-text-700)]">
                       <div><span className="font-semibold">{line.source}</span> • <span className="font-semibold">Metric:</span> {line.metric}</div>
                       <div className="mt-1"><span className="font-semibold">Interpretation:</span> {line.interpretation}</div>
@@ -2955,7 +2961,7 @@ export default function RankPage() {
                 <div className="rounded-lg border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-3">
                   <div className="text-xs font-semibold uppercase tracking-[0.08em] text-[var(--rp-text-500)]">Missing topics</div>
                   <div className="mt-2 space-y-2 text-sm">
-                    {missingTopicRows.slice(0, 4).map((row) => (
+                    {asArray(missingTopicRows).slice(0, 4).map((row) => (
                       <div key={`topic-${row.topic}`} className="flex items-center justify-between rounded-md border border-rose-200 bg-rose-50 px-2 py-1 text-rose-700">
                         <span>{row.topic}</span>
                         <span className="text-[11px] font-semibold">Missing • {row.confidence}</span>
@@ -2966,7 +2972,7 @@ export default function RankPage() {
                 <div className="rounded-lg border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-3">
                   <div className="text-xs font-semibold uppercase tracking-[0.08em] text-[var(--rp-text-500)]">Competitor heading coverage</div>
                   <div className="mt-2 space-y-1 text-sm text-[var(--rp-text-700)]">
-                    {contentGapDiffRows.slice(0, 4).map((row) => (
+                    {asArray(contentGapDiffRows).slice(0, 4).map((row) => (
                       <div key={`head-${row.heading}`} className="rounded-md border border-[var(--rp-border)] bg-white px-2 py-1">
                         <div className="font-medium">{row.heading}</div>
                         <div className="text-[11px] text-[var(--rp-text-500)]">{row.coverageCount}/3 competitors include this heading</div>
@@ -2977,7 +2983,7 @@ export default function RankPage() {
                 <div className="rounded-lg border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-3">
                   <div className="text-xs font-semibold uppercase tracking-[0.08em] text-[var(--rp-text-500)]">Missing keywords</div>
                   <div className="mt-2 flex flex-wrap gap-2">
-                    {gap.missingKeywords.slice(0, 6).map((kw) => (
+                    {asArray(gap?.missingKeywords).slice(0, 6).map((kw) => (
                       <button
                         key={`gap-kw-${kw}`}
                         type="button"

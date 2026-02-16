@@ -166,7 +166,7 @@ function computeStdDev(values) {
 export function computeRankDerivedScore(latestRank, rankHistoryLast7 = []) {
   const rank = Number(latestRank);
   if (!Number.isFinite(rank) || rank <= 0) return null;
-  const values = rankHistoryLast7
+  const values = (Array.isArray(rankHistoryLast7) ? rankHistoryLast7 : [])
     .map((item) => Number(item?.rank ?? item))
     .filter((value) => Number.isFinite(value) && value > 0)
     .slice(-7);
