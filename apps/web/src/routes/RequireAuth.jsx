@@ -1,15 +1,18 @@
+import { useEffect, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { getAuthToken, getAuthUser } from "../lib/authClient.js";
 import AppShell from "../components/AppShell.jsx";
 
 export default function RequireAuth({ children, role }) {
   const location = useLocation();
-  const token = getAuthToken();
-  // Only treat true server render as SSR fallback.
-  // In browser, import.meta.env.SSR can be misleading in some build modes.
-  const isSsg = typeof window === "undefined";
+  const isServerRender = import.meta.env.SSR || typeof document === "undefined";
+  const [isHydrated, setIsHydrated] = useState(false);
 
-  if (isSsg) {
+  useEffect(() => {
+    setIsHydrated(true);
+  }, []);
+
+  if (isServerRender || !isHydrated) {
     return (
       <AppShell
         title="Sign in required"
@@ -21,6 +24,8 @@ export default function RequireAuth({ children, role }) {
       </AppShell>
     );
   }
+
+  const token = getAuthToken();
   if (!token) {
     return <Navigate to={`/auth/signin?next=${encodeURIComponent(location.pathname)}`} replace />;
   }
