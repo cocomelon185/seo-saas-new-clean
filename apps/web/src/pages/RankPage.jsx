@@ -1361,8 +1361,11 @@ export default function RankPage() {
     });
   }, [gap]);
 
+  const gapMissingKeywords = asArray(gap?.missingKeywords);
+  const gapMissingTopics = asArray(gap?.missingTopics);
+
   const missingTopicRows = useMemo(() => {
-    return asArray(gap?.missingTopics).slice(0, 6).map((topic, index) => {
+    return gapMissingTopics.slice(0, 6).map((topic, index) => {
       let confidence = "Low";
       let score = 1;
       if (index === 0 || index === 1) {
@@ -1374,7 +1377,7 @@ export default function RankPage() {
       }
       return { topic, confidence, score };
     }).sort((a, b) => b.score - a.score);
-  }, [gap?.missingTopics]);
+  }, [gapMissingTopics]);
 
   const primaryNextAction = useMemo(() => {
     return resolvePrimaryNextAction({
@@ -2508,7 +2511,7 @@ export default function RankPage() {
                   {bestRank ?? "—"}
                 </div>
                 <div className="mt-2 rp-body-xsmall text-[var(--rp-text-500)]">
-                  Based on the last {history.length || 0} checks.
+                  Based on the last {asArray(history).length || 0} checks.
                 </div>
               </div>
               <div className="rp-card rp-kpi-card p-4">
@@ -2983,7 +2986,7 @@ export default function RankPage() {
                 <div className="rounded-lg border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-3">
                   <div className="text-xs font-semibold uppercase tracking-[0.08em] text-[var(--rp-text-500)]">Missing keywords</div>
                   <div className="mt-2 flex flex-wrap gap-2">
-                    {asArray(gap?.missingKeywords).slice(0, 6).map((kw) => (
+                    {gapMissingKeywords.slice(0, 6).map((kw) => (
                       <button
                         key={`gap-kw-${kw}`}
                         type="button"
@@ -3003,7 +3006,7 @@ export default function RankPage() {
                 <button
                   type="button"
                   onClick={() => {
-                    const first = gap.missingKeywords[0] || gap.missingTopics[0];
+                    const first = gapMissingKeywords[0] || gapMissingTopics[0];
                     if (first) queueKeywordFromActionPlan(first, "content_gap_queue");
                   }}
                   className="rp-btn-secondary rp-btn-sm h-8 px-3 text-xs"

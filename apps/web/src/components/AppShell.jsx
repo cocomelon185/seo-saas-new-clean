@@ -34,8 +34,8 @@ function NavItem({ to, label }) {
 
 export default function AppShell({ title, subtitle, seoTitle, seoDescription, seoCanonical, seoRobots, seoJsonLd, children }) {
   const navigate = useNavigate();
-  const [authUser, setAuthUser] = useState(getAuthUser());
-  const [authed, setAuthed] = useState(Boolean(getAuthToken()));
+  const [authUser, setAuthUser] = useState(null);
+  const [authed, setAuthed] = useState(false);
   const [toolAccess, setToolAccess] = useState({ allow_audit: true, allow_rank: true, allow_improve: true });
   const lockedTools = [];
   if (authUser?.role !== "admin") {

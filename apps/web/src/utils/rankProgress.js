@@ -188,7 +188,9 @@ export function computeHybridSeoScore({ latestRank, rankHistory = [], auditScore
 
 export function computeMonthlyScoreSeries({ rankHistory = [], auditSnapshots = [], domain } = {}) {
   const cleanDomain = normalizeDomainForStore(domain);
-  const monthlyChecks = rankHistory
+  const safeRankHistory = Array.isArray(rankHistory) ? rankHistory : [];
+  const safeAuditSnapshots = Array.isArray(auditSnapshots) ? auditSnapshots : [];
+  const monthlyChecks = safeRankHistory
     .filter((item) => {
       const ts = Date.parse(String(item?.createdAt || item?.checked_at || ""));
       if (!Number.isFinite(ts)) return false;
@@ -198,7 +200,7 @@ export function computeMonthlyScoreSeries({ rankHistory = [], auditSnapshots = [
     .sort((a, b) => Date.parse(String(a?.createdAt || a?.checked_at || "")) - Date.parse(String(b?.createdAt || b?.checked_at || "")));
 
   const snapshotScore = (() => {
-    const snap = (Array.isArray(auditSnapshots) ? auditSnapshots : []).find((entry) => {
+    const snap = safeAuditSnapshots.find((entry) => {
       const url = String(entry?.url || "");
       return cleanDomain && url.includes(cleanDomain);
     });
@@ -230,9 +232,10 @@ export function computeWinsStats({ stepState, checks30d = [] } = {}) {
   const completed = STEP_KEYS.filter((key) => Boolean(state[key])).length;
   const total = STEP_KEYS.length;
   const pending = total - completed;
+  const safeChecks30d = Array.isArray(checks30d) ? checks30d : [];
 
   const daySet = new Set(
-    checks30d
+    safeChecks30d
       .map((item) => {
         const ts = Date.parse(String(item?.createdAt || item?.checked_at || ""));
         if (!Number.isFinite(ts)) return "";
