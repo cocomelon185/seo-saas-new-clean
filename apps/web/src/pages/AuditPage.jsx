@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, Link } from "react-router-dom";
 import ShareAuditButton from "../components/ShareAuditButton.jsx";
+import LeadCapturePanel from "../components/LeadCapturePanel.jsx";
 import AppShell from "../components/AppShell.jsx";
 import { isMonitored, listMonitors, removeMonitor, updateMonitorFromAudit, upsertMonitor } from "../utils/monitoring.js";
 import { getAnonId } from "../utils/anonId.js";
@@ -1548,7 +1549,7 @@ function AuditPageInner() {
               </span>
             </summary>
             <div className="mt-3 flex flex-wrap items-center gap-2">
-              {result?.url ? <ShareAuditButton result={result} /> : null}
+              {result?.url ? (<><ShareAuditButton result={result} /><LeadCapturePanel reportUrl={result.url} /></>) : null}
               {result?.url ? (
                 <button
                   onClick={async () => {
