@@ -10,6 +10,7 @@ import { getSignupAuditHref } from "../lib/auditGate.js";
 import { apiUrl } from "../lib/api.js";
 import ApexDonutScore from "../components/charts/ApexDonutScore.jsx";
 import ApexMetricBars from "../components/charts/ApexMetricBars.jsx";
+import LeadCapturePanel from "../components/LeadCapturePanel.jsx";
 
 const IssuesPanel = lazy(() => import("../components/IssuesPanel.jsx"));
 
@@ -127,6 +128,8 @@ export default function SharedReportPage() {
         </div>
       </div>
       <AppShell title="Shared SEO Audit Report" subtitle={isReady ? `Report for ${report.url || "unknown URL"}` : "Shared report"}>
+        {report?.url ? <LeadCapturePanel reportUrl={report.url} /> : null}
+
         <div className="flex flex-col gap-4">
           {loading && (
             <div className="rp-card p-5 text-[var(--rp-text-600)]">
