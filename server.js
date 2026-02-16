@@ -111,6 +111,25 @@ if (process.env.ENABLE_TRUSTED_TYPES === "true") {
 app.use(compression());
 app.use(cookieParser());
 app.use(express.json({ limit: "2mb" }));
+app.post("/api/telemetry", express.json({ limit: "50kb" }), (req, res) => {
+  try {
+    const evt = {
+      kind: "client_telemetry",
+      ts: new Date().toISOString(),
+      ip: req.headers["x-forwarded-for"] || req.socket?.remoteAddress || "",
+      ua: req.headers["user-agent"] || "",
+      referer: req.headers["referer"] || "",
+      ...req.body
+    };
+
+    console.log(JSON.stringify(evt));
+    res.json({ ok: true });
+  } catch (e) {
+    console.error("telemetry_handler_error", e?.message || String(e));
+    res.json({ ok: true });
+  }
+});
+
 app.use(express.urlencoded({ extended: true }));
 
 app.use(
