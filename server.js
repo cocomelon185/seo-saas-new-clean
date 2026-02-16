@@ -111,6 +111,10 @@ if (process.env.ENABLE_TRUSTED_TYPES === "true") {
 app.use(compression());
 app.use(cookieParser());
 app.use(express.json({ limit: "2mb" }));
+app.get("/api/_ping", (req, res) => {
+  res.json({ ok: true, from: "server.js", ts: new Date().toISOString() });
+});
+
 app.post("/api/telemetry", express.json({ limit: "50kb" }), (req, res) => {
   try {
     const evt = {
