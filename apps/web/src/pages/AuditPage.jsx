@@ -1515,18 +1515,6 @@ function AuditPageInner() {
                   const fixNow = issues.filter((it) => it?.priority === "fix_now").length;
                   return (
                     <>
-
-        
-        <div className="rp-share-fab fixed bottom-4 right-4 z-[9999] flex items-center gap-2 rounded-xl border border-black/10 bg-white/95 px-3 py-2 shadow-lg">
-          <div className="text-xs font-semibold text-[var(--rp-text-800)]">Share</div>
-          {result?.url ? (
-            <ShareAuditButton result={result} />
-          ) : (
-            <div className="text-xs text-[var(--rp-text-500)]">waiting…</div>
-          )}
-        </div>
-
-
                       <div className="rounded-lg border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-2">
                         <div className="text-[11px] uppercase tracking-wide text-[var(--rp-text-500)]">Score</div>
                         <div className="text-sm font-semibold text-[var(--rp-text-800)]">
@@ -1554,7 +1542,21 @@ function AuditPageInner() {
         </div>
 
         {(result?.url || (status !== "loading" && hasResumeSnapshot) || status === "success") && (
-          <details className="rp-card p-4">
+          
+
+        
+        <div className="rp-share-fab fixed bottom-4 right-4 z-[9999] flex items-center gap-2 rounded-xl border border-black/10 bg-white/95 px-3 py-2 shadow-lg">
+          <div className="text-xs font-semibold text-[var(--rp-text-800)]">Share</div>
+          {result?.url ? (
+            <ShareAuditButton result={result} />
+          ) : (
+            <div className="text-xs text-[var(--rp-text-500)]">waiting…</div>
+          )}
+        </div>
+
+
+
+<details className="rp-card p-4">
             <summary className="cursor-pointer list-none select-none">
               <span className="rp-btn-secondary rp-btn-sm h-8 px-3 text-xs inline-flex items-center">
                 More actions
