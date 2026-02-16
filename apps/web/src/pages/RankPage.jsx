@@ -996,6 +996,8 @@ export default function RankPage() {
         when: new Date(entry.ts).toLocaleString()
       }));
   }, [progressState, lastCheckedAt, result?.checked_at, result?.served_from_cache, shownRank, trend24h?.direction, trend24h?.delta, rankDelta, topUrlsByScope]);
+  const safeTopUrlsByScope = Array.isArray(topUrlsByScope) ? topUrlsByScope : [];
+  const safeCauseEffectTimeline = Array.isArray(causeEffectTimeline) ? causeEffectTimeline : [];
 
   const topCompetitors = useMemo(() => {
     const candidates = Array.isArray(result?.top_competitors) ? result.top_competitors : [];
@@ -1525,13 +1527,39 @@ export default function RankPage() {
     setTimeout(() => setAlertMessage(""), 2200);
   }
 
-  function queueKeywordFromActionPlan(nextKeyword) {
-    const normalized = normalizeKeywordForStore(nextKeyword);
-    if (!normalized) return;
-    setKeyword(normalized);
-    setForceFresh(true);
-    setQueuedActionMessage(`"${keywordToTitleCase(normalized)}" queued. Click Check Rank to run a fresh check.`);
-    actionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  function queueKeywordFromActionPlan(nextKeyword, actionLabel = "action_plan") {
+    try {
+      const normalized = normalizeKeywordForStore(nextKeyword);
+      if (!normalized) {
+        setQueuedActionMessage("Unable to queue this action right now. Please select a keyword and run Check Rank.");
+        return;
+      }
+      setKeyword(normalized);
+      setForceFresh(true);
+      setQueuedActionMessage(`"${keywordToTitleCase(normalized)}" queued. Click Check Rank to run a fresh check.`);
+      actionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+
+      const diagnostic = {
+        event: "rank_queue_action",
+        action: actionLabel,
+        queued_keyword: normalized,
+        status,
+        has_result: Boolean(result),
+        actionable_recipe_count: Array.isArray(actionableRecipe) ? actionableRecipe.length : null,
+        predicted_rows_count: Array.isArray(predictedActionRows) ? predictedActionRows.length : null,
+        top_urls_count: Array.isArray(topUrlsByScope) ? topUrlsByScope.length : null,
+        timeline_count: Array.isArray(causeEffectTimeline) ? causeEffectTimeline.length : null,
+        timestamp: new Date().toISOString()
+      };
+      try {
+        console.info(`[rank.queue] ${JSON.stringify(diagnostic)}`);
+      } catch {}
+    } catch (err) {
+      try {
+        console.error("[rank.queue.error]", err);
+      } catch {}
+      setQueuedActionMessage("Action queue failed safely. Your current results are preserved.");
+    }
   }
 
   const actionableRecipe = useMemo(() => {
@@ -2198,7 +2226,7 @@ export default function RankPage() {
                   Best rank and average rank for this keyword scope ({COUNTRIES.find((x) => x.value === country)?.label || country}{city ? ` • ${city}` : ""}).
                 </div>
                 <div className="mt-3 space-y-2">
-                  {topUrlsByScope.length ? topUrlsByScope.map((row, index) => (
+                  {safeTopUrlsByScope.length ? safeTopUrlsByScope.map((row, index) => (
                     <div key={`top-url-${row.path}`} className="rounded-lg border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-2">
                       <div className="flex items-center justify-between gap-2">
                         <div className="text-sm font-semibold text-[var(--rp-text-900)]">{index + 1}. {row.path}</div>
@@ -2223,7 +2251,7 @@ export default function RankPage() {
                   Modeled timeline linking shipped actions to ranking movement.
                 </div>
                 <div className="mt-3 space-y-2">
-                  {causeEffectTimeline.length ? causeEffectTimeline.map((event) => (
+                  {safeCauseEffectTimeline.length ? safeCauseEffectTimeline.map((event) => (
                     <div key={`${event.title}-${event.when}`} className="rounded-lg border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-2">
                       <div className="flex items-center justify-between gap-2">
                         <div className="text-sm font-semibold text-[var(--rp-text-900)]">{event.title}</div>
@@ -2614,7 +2642,7 @@ export default function RankPage() {
                         <button
                           type="button"
                           onClick={() => {
-                            if (fix.queueKeyword) queueKeywordFromActionPlan(fix.queueKeyword);
+                            if (fix.queueKeyword) queueKeywordFromActionPlan(fix.queueKeyword, fix.title);
                           }}
                           className="rp-btn-secondary rp-btn-sm h-8 px-3 text-xs"
                         >
@@ -2970,7 +2998,7 @@ export default function RankPage() {
                   type="button"
                   onClick={() => {
                     const first = gap.missingKeywords[0] || gap.missingTopics[0];
-                    if (first) queueKeywordFromActionPlan(first);
+                    if (first) queueKeywordFromActionPlan(first, "content_gap_queue");
                   }}
                   className="rp-btn-secondary rp-btn-sm h-8 px-3 text-xs"
                 >

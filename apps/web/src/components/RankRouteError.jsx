@@ -9,7 +9,7 @@ export default function RankRouteError() {
       <div className="rounded-2xl border border-[var(--rp-border)] bg-white p-5 shadow-sm">
         <div className="text-lg font-semibold text-[var(--rp-text-900)]">Rank Checker temporarily unavailable</div>
         <p className="mt-2 text-sm text-[var(--rp-text-600)]">
-          Something went wrong while opening this page. Please retry, or go back to Audit.
+          Action queue failed safely. Your current results are preserved. Please retry, or go back to Audit.
         </p>
         <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
           {message}
@@ -17,7 +17,10 @@ export default function RankRouteError() {
         <div className="mt-4 flex flex-wrap gap-2">
           <button
             type="button"
-            onClick={() => window.location.reload()}
+            onClick={() => {
+              const search = typeof window !== "undefined" ? window.location.search : "";
+              window.location.assign(`/rank${search}`);
+            }}
             className="rp-btn-primary rp-btn-sm h-9 px-3 text-xs"
           >
             Retry Rank Checker
