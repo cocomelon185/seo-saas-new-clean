@@ -224,6 +224,24 @@ function asArray(value) {
   return Array.isArray(value) ? value : [];
 }
 
+function toNumberArray(value) {
+  return asArray(value)
+    .map((item) => Number(item))
+    .filter((item) => Number.isFinite(item));
+}
+
+function toCategoryArray(value) {
+  return asArray(value)
+    .map((item) => String(item ?? "").trim())
+    .filter(Boolean);
+}
+
+function toApexSeries(value, name = "Series") {
+  const numeric = toNumberArray(value);
+  if (!numeric.length) return [];
+  return [{ name: String(name || "Series"), data: numeric }];
+}
+
 function latestKeywordIdeasForDomain(domain) {
   const d = domainFromInput(domain);
   if (!d) return [];
@@ -733,14 +751,14 @@ export default function RankPage() {
         confidence: String(data?.confidence || "").toLowerCase()
       };
       if (!normalized.position_range_24h || !normalized.trend_24h || !normalized.confidence) {
-        const fallbackChecks = listRankChecksByScope({
+        const fallbackChecks = asArray(listRankChecksByScope({
           keyword: normalized.keyword,
           domain: normalized.domain,
           country: normalized.country,
           city: normalized.city,
           device: normalized.device,
           language: normalized.language
-        }).filter((item) => {
+        })).filter((item) => {
           const ts = parseIsoMs(item?.createdAt || item?.checked_at);
           return Number.isFinite(ts) && ts >= Date.now() - (24 * 60 * 60 * 1000);
         });
@@ -824,6 +842,12 @@ export default function RankPage() {
       }))
       .filter((item) => Number.isFinite(item.rank));
   }, [history]);
+  const last7ChartCategories = useMemo(() => {
+    return toCategoryArray(last7Checks.map((item) => item?.label));
+  }, [last7Checks]);
+  const last7ChartSeries = useMemo(() => {
+    return toApexSeries(last7Checks.map((item) => item?.rank), "Position");
+  }, [last7Checks]);
 
   const previousRank = useMemo(() => {
     if (!asArray(history).length || !hasValidRank(shownRank)) return null;
@@ -844,14 +868,14 @@ export default function RankPage() {
     if (["up", "down", "stable"].includes(direction) && Number.isFinite(delta)) {
       return { direction, delta };
     }
-    const fallbackChecks = listRankChecksByScope({
+    const fallbackChecks = asArray(listRankChecksByScope({
       keyword: safeKeyword || keyword,
       domain: safeDomain || domainFromInput(domain),
       country,
       city,
       device,
       language
-    }).filter((item) => {
+    })).filter((item) => {
       const ts = parseIsoMs(item?.createdAt || item?.checked_at);
       return Number.isFinite(ts) && ts >= Date.now() - (24 * 60 * 60 * 1000);
     });
@@ -868,14 +892,14 @@ export default function RankPage() {
         sample_count: Number.isFinite(sampleCount) ? sampleCount : null
       };
     }
-    const fallbackChecks = listRankChecksByScope({
+    const fallbackChecks = asArray(listRankChecksByScope({
       keyword: safeKeyword || keyword,
       domain: safeDomain || domainFromInput(domain),
       country,
       city,
       device,
       language
-    }).filter((item) => {
+    })).filter((item) => {
       const ts = parseIsoMs(item?.createdAt || item?.checked_at);
       return Number.isFinite(ts) && ts >= Date.now() - (24 * 60 * 60 * 1000);
     });
@@ -884,14 +908,14 @@ export default function RankPage() {
   const confidenceLabel = useMemo(() => {
     const confidence = String(result?.confidence || "").toLowerCase();
     if (confidence === "high" || confidence === "medium" || confidence === "low") return confidence;
-    const fallbackChecks = listRankChecksByScope({
+    const fallbackChecks = asArray(listRankChecksByScope({
       keyword: safeKeyword || keyword,
       domain: safeDomain || domainFromInput(domain),
       country,
       city,
       device,
       language
-    }).filter((item) => {
+    })).filter((item) => {
       const ts = parseIsoMs(item?.createdAt || item?.checked_at);
       return Number.isFinite(ts) && ts >= Date.now() - (24 * 60 * 60 * 1000);
     });
@@ -901,14 +925,14 @@ export default function RankPage() {
     ? "Reused check from within 24h window."
     : "Fresh check completed.";
   const topUrlsByScope = useMemo(() => {
-    const scopeChecks = listRankChecksByScope({
+    const scopeChecks = asArray(listRankChecksByScope({
       keyword: safeKeyword || keyword,
       domain: safeDomain || domainFromInput(domain),
       country,
       city,
       device,
       language
-    });
+    }));
     const byPath = new Map();
     scopeChecks.forEach((entry) => {
       const rankValue = Number(entry?.rank ?? entry?.position_current ?? entry?.position);
@@ -1017,13 +1041,14 @@ export default function RankPage() {
     }
     return [];
   }, [result?.top_competitors]);
+  const safeTopCompetitors = asArray(topCompetitors);
   const inferredCompetitor = useMemo(() => {
     if (hasValidRank(shownRank) && Number(shownRank) <= 1) return "You are currently leading";
-    if (topCompetitors[0]?.domain) return topCompetitors[0].domain;
+    if (safeTopCompetitors[0]?.domain) return safeTopCompetitors[0].domain;
     const known = String(result?.top_competitor || result?.competitor || "").trim();
     if (known) return known;
     return "Not available yet";
-  }, [shownRank, topCompetitors, result?.top_competitor, result?.competitor]);
+  }, [shownRank, safeTopCompetitors, result?.top_competitor, result?.competitor]);
 
   const difficultyScore = useMemo(() => {
     const apiValue = Number(result?.difficulty_score);
@@ -1076,7 +1101,7 @@ export default function RankPage() {
           : []
       }));
     }
-    return asArray(topCompetitors).map((entry, idx) => ({
+    return safeTopCompetitors.map((entry, idx) => ({
       position: Number(entry.position ?? idx + 1),
       title:
         idx === 0
@@ -1092,7 +1117,7 @@ export default function RankPage() {
         ? ["Checklist", "Tools comparison", "Pricing", "FAQ"]
         : defaultSitelinks(safeKeyword).slice(0, 4)
     }));
-  }, [rawSerpPreview, topCompetitors, safeKeyword]);
+  }, [rawSerpPreview, safeTopCompetitors, safeKeyword]);
 
   const relatedKeywordCluster = useMemo(() => {
     const fromTracked = clusterKeywords(safeKeyword);
@@ -1109,7 +1134,7 @@ export default function RankPage() {
         action: "Prioritize the next best action below and rerun rank check after publish."
       }));
     }
-    const firstCompetitor = topCompetitors[0]?.domain || serpPreview[0]?.domain || "top competitors";
+    const firstCompetitor = safeTopCompetitors[0]?.domain || serpPreview[0]?.domain || "top competitors";
     const seed = String(firstCompetitor).split("").reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
     const compWords = 1900 + (seed % 700);
     const ownWords = Math.max(500, Math.round(compWords * 0.55));
@@ -1129,7 +1154,7 @@ export default function RankPage() {
         action: "Build 3-5 contextual links from relevant pages to this URL."
       }
     ];
-  }, [shownRank, liveRankReasons, topCompetitors, serpPreview]);
+  }, [shownRank, liveRankReasons, safeTopCompetitors, serpPreview]);
   const bestMove = useMemo(() => nextBestMove(shownRank), [shownRank]);
   const keywordIntent = useMemo(() => inferKeywordIntent(safeKeyword), [safeKeyword]);
   const rankingUrl = useMemo(() => {
@@ -1161,9 +1186,7 @@ export default function RankPage() {
     };
   }, [last7Checks]);
   const trendSparkValues = useMemo(() => {
-    return last7Checks
-      .map((item) => Number(item?.rank))
-      .filter((value) => Number.isFinite(value));
+    return toNumberArray(last7Checks.map((item) => item?.rank));
   }, [last7Checks]);
   const trendStory = useMemo(() => {
     if (!last7Checks.length) return [];
@@ -1209,7 +1232,7 @@ export default function RankPage() {
   }, [last7Checks]);
 
   const competitorBench = useMemo(() => {
-    const domains = (asArray(topCompetitors).length ? asArray(topCompetitors) : asArray(serpPreview).slice(0, 3))
+    const domains = (safeTopCompetitors.length ? safeTopCompetitors : asArray(serpPreview).slice(0, 3))
       .map((entry) => entry.domain);
     const buildSignals = (domainName, rankBoost = 0) => {
       const seed = String(domainName || "").split("").reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
@@ -1233,7 +1256,7 @@ export default function RankPage() {
       schema: false
     };
     return { competitors, avgWords, avgBacklinks, avgDr, own };
-  }, [topCompetitors, serpPreview, safeDomain]);
+  }, [safeTopCompetitors, serpPreview, safeDomain]);
 
   const estimatedClicksGain = useMemo(() => {
     return estimateMonthlyClicksGain(shownRank, 10, 1200);
@@ -1265,7 +1288,7 @@ export default function RankPage() {
   const activeSnapshotScore = useMemo(() => {
     const clean = normalizeDomainForStore(scopeDomain);
     if (!clean) return null;
-    const snapshots = listSnapshots();
+    const snapshots = asArray(listSnapshots());
     const hit = snapshots.find((item) => String(item?.url || "").includes(clean));
     const score = Number(hit?.score ?? hit?.seo_score);
     return Number.isFinite(score) ? score : null;
@@ -1279,9 +1302,7 @@ export default function RankPage() {
     });
   }, [checksThisMonth, scopeDomain]);
   const monthlySeoSparkValues = useMemo(() => {
-    return (Array.isArray(monthlySeoScoreSeries) ? monthlySeoScoreSeries : [])
-      .map((point) => Number(point?.value))
-      .filter((value) => Number.isFinite(value));
+    return toNumberArray(asArray(monthlySeoScoreSeries).map((point) => point?.value));
   }, [monthlySeoScoreSeries]);
 
   const seoScoreHybrid = useMemo(() => {
@@ -1554,10 +1575,10 @@ export default function RankPage() {
         queued_keyword: normalized,
         status,
         has_result: Boolean(result),
-        actionable_recipe_count: Array.isArray(actionableRecipe) ? actionableRecipe.length : null,
-        predicted_rows_count: Array.isArray(predictedActionRows) ? predictedActionRows.length : null,
-        top_urls_count: Array.isArray(topUrlsByScope) ? topUrlsByScope.length : null,
-        timeline_count: Array.isArray(causeEffectTimeline) ? causeEffectTimeline.length : null,
+        actionable_recipe_count: asArray(actionableRecipe).length,
+        predicted_rows_count: asArray(predictedActionRows).length,
+        top_urls_count: safeTopUrlsByScope.length,
+        timeline_count: safeCauseEffectTimeline.length,
         timestamp: new Date().toISOString()
       };
       try {
@@ -1640,6 +1661,8 @@ export default function RankPage() {
       };
     });
   }, [actionableRecipe, bestMove?.gain, confidenceLabel]);
+  const safeActionableRecipe = asArray(actionableRecipe);
+  const safePredictedActionRows = asArray(predictedActionRows);
 
   const kpis = useMemo(() => ([
     {
@@ -2051,7 +2074,7 @@ export default function RankPage() {
               <div className="text-xs text-[var(--rp-text-500)]">Run Check Rank to load live movement and competitor analysis.</div>
             </div>
             <div className="mt-3 h-48 rounded-xl border border-[var(--rp-border)] bg-white p-2">
-              {last7Checks.length ? (
+              {last7ChartSeries.length ? (
                 <SafeApexChart
                   type="line"
                   height={176}
@@ -2062,9 +2085,9 @@ export default function RankPage() {
                     grid: { borderColor: "#ede9fe" },
                     markers: { size: 4, strokeWidth: 2, colors: ["#7c3aed"] },
                     yaxis: { reversed: true, min: 1, forceNiceScale: true, labels: { style: { colors: "#6b5b95" } } },
-                    xaxis: { categories: asArray(last7Checks).map((point) => point.label), labels: { style: { colors: "#6b5b95" } } }
+                    xaxis: { categories: last7ChartCategories, labels: { style: { colors: "#6b5b95" } } }
                   }}
-                  series={[{ name: "Position", data: asArray(last7Checks).map((point) => point.rank) }]}
+                  series={last7ChartSeries}
                 />
               ) : (
                 <div className="flex h-full items-center justify-center text-sm text-[var(--rp-text-500)]">
@@ -2547,7 +2570,7 @@ export default function RankPage() {
               </div>
             </div>
 
-            {last7Checks.length >= 2 ? (
+            {last7ChartSeries[0]?.data?.length >= 2 ? (
               <div className="rp-card p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="text-sm font-semibold text-[var(--rp-text-800)]">Position trend (last 7 checks)</div>
@@ -2586,7 +2609,7 @@ export default function RankPage() {
                         labels: { style: { colors: "#6b5b95" } }
                       },
                       xaxis: {
-                        categories: asArray(last7Checks).map((point) => point.label),
+                        categories: last7ChartCategories,
                         labels: { style: { colors: "#6b5b95" } }
                       },
                       tooltip: {
@@ -2594,7 +2617,7 @@ export default function RankPage() {
                         y: { formatter: (v) => `Position ${Math.round(v)}` }
                       }
                     }}
-                    series={[{ name: "Position", data: asArray(last7Checks).map((point) => point.rank) }]}
+                    series={last7ChartSeries}
                   />
                 </div>
               </div>
@@ -2619,7 +2642,7 @@ export default function RankPage() {
                     Predicted gain per recommended action
                   </div>
                   <div className="mt-2 grid gap-2">
-                  {(Array.isArray(predictedActionRows) ? predictedActionRows : []).map((row) => (
+                  {safePredictedActionRows.map((row) => (
                     <div key={`pred-${row.title}`} className="rounded-lg border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-2">
                       <div className="flex items-center justify-between gap-2">
                         <div className="text-sm font-semibold text-[var(--rp-text-900)]">{row.title}</div>
@@ -2635,7 +2658,7 @@ export default function RankPage() {
                 </div>
               </div>
               <div className="mt-3 space-y-3">
-                  {(Array.isArray(actionableRecipe) ? actionableRecipe : []).map((fix) => (
+                  {safeActionableRecipe.map((fix) => (
                     <div key={fix.title} className="rounded-xl border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-3">
                       <div className="text-sm font-semibold text-[var(--rp-text-900)]">{fix.title}</div>
                       <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-[var(--rp-text-700)]">
@@ -2795,8 +2818,8 @@ export default function RankPage() {
                   <ProvenanceBadge tag={provenanceByCard.competitorSnapshot} />
                 </div>
                 <div className="mt-3 grid gap-2">
-                  {asArray(topCompetitors).length ? (
-                    asArray(topCompetitors).map((entry) => (
+                  {safeTopCompetitors.length ? (
+                    safeTopCompetitors.map((entry) => (
                       <div
                         key={`${entry.position}-${entry.domain}`}
                         className="flex items-center justify-between rounded-lg border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-3 py-2 text-[15px]"

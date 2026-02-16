@@ -17,6 +17,10 @@ function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
 
+function asArray(value) {
+  return Array.isArray(value) ? value : [];
+}
+
 function defaultProgressState() {
   return {
     stepState: {
@@ -166,7 +170,7 @@ function computeStdDev(values) {
 export function computeRankDerivedScore(latestRank, rankHistoryLast7 = []) {
   const rank = Number(latestRank);
   if (!Number.isFinite(rank) || rank <= 0) return null;
-  const values = (Array.isArray(rankHistoryLast7) ? rankHistoryLast7 : [])
+  const values = asArray(rankHistoryLast7)
     .map((item) => Number(item?.rank ?? item))
     .filter((value) => Number.isFinite(value) && value > 0)
     .slice(-7);
@@ -188,8 +192,8 @@ export function computeHybridSeoScore({ latestRank, rankHistory = [], auditScore
 
 export function computeMonthlyScoreSeries({ rankHistory = [], auditSnapshots = [], domain } = {}) {
   const cleanDomain = normalizeDomainForStore(domain);
-  const safeRankHistory = Array.isArray(rankHistory) ? rankHistory : [];
-  const safeAuditSnapshots = Array.isArray(auditSnapshots) ? auditSnapshots : [];
+  const safeRankHistory = asArray(rankHistory);
+  const safeAuditSnapshots = asArray(auditSnapshots);
   const monthlyChecks = safeRankHistory
     .filter((item) => {
       const ts = Date.parse(String(item?.createdAt || item?.checked_at || ""));
@@ -232,7 +236,7 @@ export function computeWinsStats({ stepState, checks30d = [] } = {}) {
   const completed = STEP_KEYS.filter((key) => Boolean(state[key])).length;
   const total = STEP_KEYS.length;
   const pending = total - completed;
-  const safeChecks30d = Array.isArray(checks30d) ? checks30d : [];
+  const safeChecks30d = asArray(checks30d);
 
   const daySet = new Set(
     safeChecks30d

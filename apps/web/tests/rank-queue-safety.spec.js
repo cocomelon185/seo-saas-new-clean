@@ -29,8 +29,10 @@ test("action plan and content gap queue actions are action-specific", async () =
 
   expect(source).toContain("queueKeywordFromActionPlan(fix.queueKeyword, fix.title)");
   expect(source).toContain('queueKeywordFromActionPlan(first, "content_gap_queue")');
-  expect(source).toContain("(Array.isArray(actionableRecipe) ? actionableRecipe : []).map");
-  expect(source).toContain("(Array.isArray(predictedActionRows) ? predictedActionRows : []).map");
+  expect(source).toContain("const safeActionableRecipe = asArray(actionableRecipe);");
+  expect(source).toContain("const safePredictedActionRows = asArray(predictedActionRows);");
+  expect(source).toContain("safeActionableRecipe.map((fix) => (");
+  expect(source).toContain("safePredictedActionRows.map((row) => (");
   expect(source).toContain("safeTopUrlsByScope.length ? safeTopUrlsByScope.map");
   expect(source).toContain("safeCauseEffectTimeline.length ? safeCauseEffectTimeline.map");
 });
