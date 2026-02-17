@@ -404,21 +404,14 @@ function AuditPageInner() {
       if (!Array.isArray(issues)) return null;
       return issues.filter((it) => it?.priority === "fix_now" || it?.priority === "fix_next").length;
     })();
-    const liftPoints = Array.isArray(issues) ? estimateScoreLiftFromIssues(issues) : null;
-    const liftPercent = (typeof liftPoints === "number" && score !== null)
-      ? Math.max(0, Math.round((liftPoints / Math.max(1, score)) * 100))
-      : null;
-    const liftDisplay = liftPercent === null
-      ? "—"
-      : liftPercent <= 0
-        ? "Calculating…"
-        : `+${liftPercent}%`;
+    const liftPoints = Array.isArray(issues) ? Math.max(0, Math.round(estimateScoreLiftFromIssues(issues))) : null;
+    const liftDisplay = liftPoints === null ? "—" : `+${liftPoints}`;
 
     return [
       { label: "SEO health", value: score !== null ? String(score) : "—", tone: "text-emerald-700", anchor: "#score-insights", hint: "View score breakdown" },
       { label: "Problems to fix", value: issuesCount !== null ? String(issuesCount) : "—", tone: "text-rose-600", anchor: "[data-testid='key-issues']", hint: "Open prioritized issues" },
       { label: "Fast fixes", value: quickWinsCount !== null ? String(quickWinsCount) : "—", tone: "text-amber-700", anchor: "#quick-wins", hint: "Jump to quick wins" },
-      { label: "Estimated lift", value: liftDisplay, tone: "text-[var(--rp-indigo-700)]", anchor: "#top-fixes", hint: liftPercent === null || liftPercent <= 0 ? "Needs more fix data" : "Projected impact from top fixes" }
+      { label: "Estimated lift", value: liftDisplay, tone: "text-[var(--rp-indigo-700)]", anchor: "#top-fixes", hint: liftPoints === null ? "Needs more fix data" : "Projected score points from top fixes" }
     ];
   }, [issues, quickWins, result?.score, scoreValue]);
 
@@ -1637,7 +1630,6 @@ function AuditPageInner() {
           ) : (
             <>
               <div className="rp-share-fab fixed bottom-4 right-4 z-[9999] flex items-center gap-2 rounded-xl border border-black/10 bg-white/95 px-3 py-2 shadow-lg">
-                <div className="text-xs font-semibold text-[var(--rp-text-800)]">Share</div>
                 {result?.url ? (
                   <ShareAuditButton result={result} />
                 ) : (
@@ -1720,11 +1712,6 @@ function AuditPageInner() {
                   ) : null}
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  {status === "success" && topPriorityIssue ? (
-                    <button type="button" className="rp-btn-primary rp-btn-sm h-9 px-3 text-xs" onClick={focusTopIssue}>
-                      Fix top issue now
-                    </button>
-                  ) : null}
                   <button
                     type="button"
                     className="rp-btn-secondary rp-btn-sm h-9 px-3 text-xs"
@@ -1799,24 +1786,6 @@ function AuditPageInner() {
                         <div className="mt-3 flex flex-wrap gap-2">
                           <button
                             type="button"
-                            className="rp-btn-primary rp-btn-sm h-8 px-3 text-xs"
-                            onClick={() => {
-                              try {
-                                const sp = new URLSearchParams(window.location.search || "");
-                                sp.set("p", "fix_now");
-                                if (issue?.issue_id) sp.set("q", String(issue.issue_id));
-                                const qs = sp.toString();
-                                const nextUrl = qs ? `${window.location.pathname}?${qs}` : window.location.pathname;
-                                window.history.replaceState(null, "", nextUrl);
-                              } catch {}
-                              const el = document.querySelector("[data-testid='key-issues']");
-                              if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-                            }}
-                          >
-                            Fix this now
-                          </button>
-                          <button
-                            type="button"
                             className="rp-btn-secondary rp-btn-sm h-8 px-3 text-xs"
                             onClick={async () => {
                               const text = ux.snippet || String(issue?.example_fix || issue?.fix || ux.detail);
@@ -1861,18 +1830,6 @@ function AuditPageInner() {
                             <div className="mt-1 text-xs text-[var(--rp-text-600)]">1. Open the issue details.</div>
                             <div className="text-xs text-[var(--rp-text-600)]">2. Copy the exact fix code.</div>
                             <div className="text-xs text-[var(--rp-text-600)]">3. Publish and re-run audit.</div>
-                          </div>
-                          <div className="mt-3">
-                            <button
-                              type="button"
-                              className="rp-btn-primary rp-btn-sm h-8 px-3 text-xs"
-                              onClick={() => {
-                                const el = document.querySelector("[data-testid='key-issues']");
-                                if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-                              }}
-                            >
-                              Open issue and fix now
-                            </button>
                           </div>
                         </div>
                       ) : null}
@@ -2215,16 +2172,6 @@ function AuditPageInner() {
                               </div>
                             </div>
                             <div className="mt-3 flex flex-wrap items-center gap-2">
-                              <button
-                                type="button"
-                                className="rp-btn-primary rp-btn-sm h-8 px-3 text-xs"
-                                onClick={() => {
-                                  const el = document.querySelector("[data-testid='key-issues']");
-                                  if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-                                }}
-                              >
-                                Fix this now
-                              </button>
                               <span className="text-xs text-[var(--rp-text-500)]">One action can improve score and visibility.</span>
                             </div>
                           </div>
