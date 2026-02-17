@@ -1,6 +1,7 @@
-import React from "react";
+import React, { useEffect } from "react";
 import ReactDOM from "react-dom/client";
-import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import { setCanonical } from "./lib/canonical.js";
+import { createBrowserRouter, RouterProvider, useLocation } from "react-router-dom";
 import routes from "./routes/appRoutes.jsx";
 import "./index.css";
 import "./styles/app.css";
@@ -41,10 +42,21 @@ if (typeof window !== "undefined") {
 }
 
 const router = createBrowserRouter(routes);
+
+
+function CanonicalUpdater() {
+  const location = useLocation();
+  useEffect(() => {
+    setCanonical(window.location.href);
+  }, [location.pathname]);
+  return null;
+}
+
 const root = document.getElementById("root");
 
 if (root) {
   initTelemetry({ sampleRate: 1.0, consoleErrorForwarding: true });
+setCanonical(window.location.href);
 
 ReactDOM.createRoot(root).render(
     <React.StrictMode>
