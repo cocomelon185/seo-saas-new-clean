@@ -80,16 +80,19 @@ export default function Seo({
     setMeta('meta[name="twitter:card"]', { name: "twitter:card" }, twitterCard);
     setMeta('meta[name="robots"]', { name: "robots" }, robots);
     const canonicalOrigin =
-      (typeof window !== "undefined" && window.location && window.location.origin)
-        ? window.location.origin
-        : "https://rankypulse.com";
+      (typeof window !== "undefined" && window.location && window.location.origin) ||
+      "https://rankypulse.com";
+
+    const path =
+      (typeof window !== "undefined" && window.location && window.location.pathname) || "/";
+
     const canonicalHref =
-      canonical ||
-      (typeof window !== "undefined" && window.location
-        ? canonicalOrigin + window.location.pathname
-        : canonicalOrigin + "/");
+      canonical && /^https?:\/\//i.test(String(canonical).trim())
+        ? String(canonical).trim()
+        : canonicalOrigin + (path === "/" ? "/" : path);
+
     setCanonical(canonicalHref);
-  }, [title, description, canonical, robots, twitterCard]);
+}, [title, description, canonical, robots, twitterCard]);
 
   useEffect(() => {
     if (typeof document === "undefined") return;
