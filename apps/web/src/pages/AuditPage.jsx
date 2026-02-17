@@ -1364,14 +1364,14 @@ function AuditPageInner() {
         seoJsonLd={structuredData}
       >
         <div className="rp-card p-6 text-sm text-[var(--rp-text-600)]">Loading audit workspace...</div>
-            <div className="rp-share-fab fixed bottom-4 right-4 z-[9999] flex items-center gap-2 rounded-xl border border-black/10 bg-white/95 px-3 py-2 shadow-lg">
-              <div className="text-xs font-semibold text-[var(--rp-text-800)]">Share</div>
-              {result?.url ? (
-                <ShareAuditButton result={result} />
-              ) : (
-                <div className="text-xs text-[var(--rp-text-500)]">waiting…</div>
-              )}
-            </div>
+      <div className="rp-share-fab fixed bottom-4 right-4 z-[9999] flex items-center gap-2 rounded-xl border border-black/10 bg-white/95 px-3 py-2 shadow-lg">
+        <div className="text-xs font-semibold text-[var(--rp-text-800)]">Share</div>
+        {result?.url ? (
+          <ShareAuditButton result={result} />
+        ) : (
+          <div className="text-xs text-[var(--rp-text-500)]">waiting…</div>
+        )}
+      </div>
 
       </AppShell>
     );
