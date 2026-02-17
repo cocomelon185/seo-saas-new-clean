@@ -51,6 +51,7 @@ import registerAnalytics from "./api/analytics.js";
 import { createUser, getUserByEmail, setVerified } from "./api/auth-store.js";
 
 const app = express();
+app.use((req,res,next)=>{res.setHeader('x-rp-server','1');next();});
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
