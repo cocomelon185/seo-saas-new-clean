@@ -459,7 +459,10 @@ app.get("*", (req, res, next) => {
   fs.readFile(htmlPath, "utf8", (err, html) => {
     if (err) return next();
     const nonce = res.locals.cspNonce;
-    const absoluteUrl = absoluteUrlFor(req);
+    const abs = new URL(req.originalUrl || req.url || "/", baseUrl);
+abs.hash = "";
+abs.search = "";
+const absoluteUrl = abs.toString();
     let body = injectCanonical(html, absoluteUrl);
     body = injectMeta(body, getMetaForPath(req.path));
     body = injectNonce(body, nonce);
@@ -544,7 +547,10 @@ app.get("*", (req, res, next) => {
       return;
     }
     const nonce = res.locals.cspNonce;
-    const absoluteUrl = absoluteUrlFor(req);
+    const abs = new URL(req.originalUrl || req.url || "/", baseUrl);
+abs.hash = "";
+abs.search = "";
+const absoluteUrl = abs.toString();
     let body = injectCanonical(html, absoluteUrl);
     body = injectMeta(body, getMetaForPath(req.path));
     body = injectNonce(body, nonce);
