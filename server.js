@@ -469,7 +469,7 @@ app.get("*", (req, res, next) => {
   });
 });
 
-app.use(express.static(FRONTEND_DIST));
+app.use(express.static(FRONTEND_DIST, { index: false }));
 
 // ---- API routes (from your earlier server.js list) ----
 app.post("/api/page-report", pageReport);
