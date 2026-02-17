@@ -1,7 +1,7 @@
-import React, { useEffect } from "react";
+import React from "react";
 import ReactDOM from "react-dom/client";
 import { setCanonical } from "./lib/canonical.js";
-import { createBrowserRouter, RouterProvider, useLocation } from "react-router-dom";
+import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import routes from "./routes/appRoutes.jsx";
 import "./index.css";
 import "./styles/app.css";
@@ -44,12 +44,15 @@ if (typeof window !== "undefined") {
 const router = createBrowserRouter(routes);
 
 
-function CanonicalUpdater() {
-  const location = useLocation();
-  useEffect(() => {
+
+
+if (typeof window !== "undefined") {
+  try {
     setCanonical(window.location.href);
-  }, [location.pathname]);
-  return null;
+    router.subscribe(() => {
+      setCanonical(window.location.href);
+    });
+  } catch (_) {}
 }
 
 const root = document.getElementById("root");
