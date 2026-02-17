@@ -459,11 +459,8 @@ app.get("*", (req, res, next) => {
   fs.readFile(htmlPath, "utf8", (err, html) => {
     if (err) return next();
     const nonce = res.locals.cspNonce;
-    const abs = new URL(req.originalUrl || req.url || "/", baseUrl);
-abs.hash = "";
-abs.search = "";
-const absoluteUrl = abs.toString();
-    let body = injectCanonical(html, absoluteUrl);
+    const absoluteUrl = absoluteUrlFor(req);
+let body = injectCanonical(html, absoluteUrl);
     body = injectMeta(body, getMetaForPath(req.path));
     body = injectNonce(body, nonce);
     res.setHeader("X-Debug-Path", String(req.path || ""));
