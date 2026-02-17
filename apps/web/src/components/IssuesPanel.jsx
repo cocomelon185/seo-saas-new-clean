@@ -508,7 +508,26 @@ function writeQuery(next) {
   } catch {}
 }
 
-export default function IssuesPanel({ issues: rawIssues = [], advanced = false, finalUrl = "" }) {
+function flowSortWeight(issue) {
+  const priority = String(issue?.priority || "");
+  const severity = String(issue?.severity || "");
+  if (priority === "fix_now") return 0;
+  if (severity === "High") return 1;
+  if (priority === "fix_next") return 2;
+  if (severity === "Medium") return 3;
+  return 4;
+}
+
+export default function IssuesPanel({
+  issues: rawIssues = [],
+  advanced = false,
+  finalUrl = "",
+  simplified = false,
+  intent = "",
+  intentIssueId = "",
+  autoCopy = false,
+  intentNonce = 0
+}) {
   const init = useMemo(() => readQuery(), []);
   const [q, setQ] = useState(init.q);
   const [priority, setPriority] = useState(init.p);
@@ -521,6 +540,7 @@ export default function IssuesPanel({ issues: rawIssues = [], advanced = false, 
   const [explainMode, setExplainMode] = useState({});
   const [whyOpen, setWhyOpen] = useState({});
   const [actionNote, setActionNote] = useState({});
+  const [showAdvancedControls, setShowAdvancedControls] = useState(false);
 
   useEffect(() => {
     const onPop = () => {
@@ -594,6 +614,48 @@ export default function IssuesPanel({ issues: rawIssues = [], advanced = false, 
     }
     return order.map((k) => ({ key: k, label: bucketLabel(k), items: buckets.get(k) || [] }));
   }, [filtered]);
+
+  useEffect(() => {
+    if (!intent || !intentNonce) return;
+    if (!Array.isArray(rawIssues) || rawIssues.length === 0) return;
+
+    const sorted = [...rawIssues].sort((a, b) => flowSortWeight(a) - flowSortWeight(b));
+    let target = null;
+    if (intentIssueId) {
+      target = rawIssues.find((it) => String(it?.issue_id || "") === String(intentIssueId));
+    }
+    if (!target) target = sorted[0] || rawIssues[0];
+    if (!target) return;
+
+    const issueKey = String(target?.issue_id || target?.title || "");
+    if (target?.priority) setPriority(String(target.priority));
+    if (target?.issue_id) setQ(String(target.issue_id));
+    setSeverity("all");
+    setImpact("all");
+
+    if (intent === "open_solution_mode") {
+      setIssueView((prev) => ({ ...prev, [issueKey]: "fix" }));
+      setActionNote((prev) => ({ ...prev, [issueKey]: "Viewing: Fix steps" }));
+      if (autoCopy) {
+        const simple = simpleFixGuide(target);
+        const text = simple.snippet || `${simple.intro}\n- ${simple.steps.join("\n- ")}`;
+        copyTextSafe(text).then((ok) => {
+          setToast(ok ? "Solution copied." : "Copy blocked. Please allow clipboard access.");
+          setTimeout(() => setToast(""), 1800);
+        });
+      }
+    } else {
+      setIssueView((prev) => ({ ...prev, [issueKey]: "issue" }));
+    }
+
+    setTimeout(() => {
+      try {
+        const safeKey = issueKey.replace(/"/g, '\\"');
+        const el = document.querySelector(`[data-issue-key="${safeKey}"]`);
+        if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+      } catch {}
+    }, 40);
+  }, [intent, intentNonce, intentIssueId, autoCopy, rawIssues]);
 
   async function exportSummary() {
     const text = buildSummaryText(
@@ -731,7 +793,17 @@ export default function IssuesPanel({ issues: rawIssues = [], advanced = false, 
           </div>
           <div className="mt-1 text-[var(--rp-text-400)]">Timeline color follows severity</div>
         </details>
-        <div className="ml-auto flex flex-wrap items-end gap-3 rounded-xl border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-2">
+        {simplified ? (
+          <button
+            type="button"
+            className="ml-auto rp-btn-secondary rp-btn-sm h-9 px-3 text-xs"
+            onClick={() => setShowAdvancedControls((prev) => !prev)}
+          >
+            {showAdvancedControls ? "Hide advanced" : "Advanced controls"}
+          </button>
+        ) : null}
+        {(!simplified || showAdvancedControls) && (
+          <div className="ml-auto flex flex-wrap items-end gap-3 rounded-xl border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-2">
           <button
             className="rp-btn-secondary rp-btn-sm h-10 px-3 text-xs"
             type="button"
@@ -793,9 +865,11 @@ export default function IssuesPanel({ issues: rawIssues = [], advanced = false, 
               ))}
             </select>
           </div>
-        </div>
+          </div>
+        )}
       </div>
 
+      {(!simplified || showAdvancedControls) && (
       <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
         <button
           type="button"
@@ -849,8 +923,9 @@ export default function IssuesPanel({ issues: rawIssues = [], advanced = false, 
           <div className="mt-1 text-[11px] text-rose-700/80">Needs attention</div>
         </button>
       </div>
+      )}
 
-      {nextActions.length > 0 && (
+      {(!simplified || showAdvancedControls) && nextActions.length > 0 && (
         <div className="mb-4 mt-4 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-4">
           <div className="flex flex-wrap items-center gap-2">
             <div className="rp-section-title">Recommended next actions</div>
@@ -938,7 +1013,7 @@ export default function IssuesPanel({ issues: rawIssues = [], advanced = false, 
                   const summary = evidenceSummary(evidence);
                   const simple = simpleFixGuide(issue);
                   const business = issueBusinessModel(issue, evidence, finalUrl);
-                  const activeView = issueView[issueKey] || "fix";
+                  const activeView = issueView[issueKey] || (simplified ? "issue" : "fix");
                   const explanationView = explainMode[issueKey] || "expert";
                   const isBeginnerView = explanationView === "simple";
                   const visualBullets = (isBeginnerView ? business.beginnerBullets : business.bullets) || business.bullets;
@@ -958,11 +1033,15 @@ export default function IssuesPanel({ issues: rawIssues = [], advanced = false, 
                       : "from-emerald-400/70 border-emerald-400/40 bg-emerald-400/20";
 
                   return (
-                    <div key={(issue.issue_id || "issue") + "-" + idx} className="relative rounded-2xl border border-[var(--rp-border)] bg-white p-4 shadow-sm rp-card-hover">
+                    <div
+                      key={(issue.issue_id || "issue") + "-" + idx}
+                      data-issue-key={issueKey}
+                      className="relative rounded-2xl border border-[var(--rp-border)] bg-white p-4 shadow-sm rp-card-hover"
+                    >
                       <div className={`absolute left-2 top-4 h-[calc(100%-1.5rem)] w-px bg-gradient-to-b ${timelineClass} via-transparent to-transparent`}></div>
                       <div className={`absolute left-1.5 top-5 h-3 w-3 rounded-full border ${timelineClass}`}></div>
                       <div className="flex flex-wrap items-center gap-2">
-                        {issue?.priority && issue.priority !== "fix_later" && (
+                        {(!simplified || showAdvancedControls) && issue?.priority && issue.priority !== "fix_later" && (
                           <button
                             type="button"
                             className={"inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-semibold hover:opacity-90 " + bucketClass(issue.priority)}
@@ -974,7 +1053,7 @@ export default function IssuesPanel({ issues: rawIssues = [], advanced = false, 
                           </button>
                         )}
 
-                        {sev && (
+                        {(!simplified || showAdvancedControls) && sev && (
                           <button
                             type="button"
                             className={"inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold hover:opacity-90 " + sevClass(sev)}
@@ -988,11 +1067,13 @@ export default function IssuesPanel({ issues: rawIssues = [], advanced = false, 
                         <span className={"inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold " + business.impactTone}>
                           {business.tierLabel}
                         </span>
-                        <span className={"inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold " + roiTag(issue).cls}>
-                          {roiTag(issue).label}
-                        </span>
+                        {(!simplified || showAdvancedControls) ? (
+                          <span className={"inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold " + roiTag(issue).cls}>
+                            {roiTag(issue).label}
+                          </span>
+                        ) : null}
 
-                        {impacts.map((t) => (
+                        {(!simplified || showAdvancedControls) && impacts.map((t) => (
                           <button
                             key={t}
                             type="button"
@@ -1044,84 +1125,141 @@ export default function IssuesPanel({ issues: rawIssues = [], advanced = false, 
                         </div>
                       </div>
                       <div className="mt-3 flex flex-wrap items-center gap-2">
-                        <button
-                          type="button"
-                          className={tabBtnClass(explanationView === "expert")}
-                          onClick={() => {
-                            setExplainMode((prev) => ({ ...prev, [issueKey]: "expert" }));
-                            setIssueView((prev) => ({ ...prev, [issueKey]: "issue" }));
-                          }}
-                        >
-                          Expert explanation
-                        </button>
-                        <button
-                          type="button"
-                          className={tabBtnClass(explanationView === "simple")}
-                          onClick={() => {
-                            setExplainMode((prev) => ({ ...prev, [issueKey]: "simple" }));
-                            setIssueView((prev) => ({ ...prev, [issueKey]: "issue" }));
-                          }}
-                        >
-                          Beginner explanation
-                        </button>
-                        <button
-                          type="button"
-                          className={tabBtnClass(activeView === "fix", supportsAIFix(issue))}
-                          onClick={() => {
-                            setIssueView((prev) => ({ ...prev, [issueKey]: "fix" }));
-                            setActionNote((prev) => ({ ...prev, [issueKey]: "Viewing: Fix steps" }));
-                            if (
-                              supportsAIFix(issue) &&
-                              !aiFixes[issueKey] &&
-                              aiStatus[issueKey] !== "loading"
-                            ) {
-                              generateFix(issue, issueKey);
-                            }
-                          }}
-                        >
-                          {supportsAIFix(issue)
-                            ? (aiStatus[issueKey] === "loading" ? "Generative AI fix (working...)" : "Generative AI fix")
-                            : "Show simple fix"}
-                        </button>
-                        <button
-                          type="button"
-                          className={tabBtnClass(false)}
-                          onClick={async () => {
-                            const text = `${simple.intro}\n- ${simple.steps.join("\n- ")}`;
-                            const ok = await copyTextSafe(text);
-                            setToast(ok ? "Simple steps copied." : "Copy blocked. Please allow clipboard access.");
-                            setActionNote((prev) => ({ ...prev, [issueKey]: ok ? "Simple steps copied." : "Clipboard blocked. Copy manually from the fix box." }));
-                            setTimeout(() => setToast(""), 1800);
-                            setTimeout(() => setActionNote((prev) => ({ ...prev, [issueKey]: "" })), 2400);
-                          }}
-                        >
-                          Copy simple steps
-                        </button>
-                        <button
-                          type="button"
-                          className={tabBtnClass(!!whyOpen[issueKey])}
-                          onClick={() => {
-                            setIssueView((prev) => ({ ...prev, [issueKey]: "issue" }));
-                            setWhyOpen((prev) => ({ ...prev, [issueKey]: !prev[issueKey] }));
-                          }}
-                        >
-                          Why this happens
-                        </button>
-                        {simple.snippet ? (
-                          <button
-                            type="button"
-                            className={tabBtnClass(false)}
-                            onClick={async () => {
-                              const ok = await copyTextSafe(simple.snippet);
-                              setToast(ok ? "Code snippet copied." : "Copy blocked. Please allow clipboard access.");
-                              setActionNote((prev) => ({ ...prev, [issueKey]: ok ? "Code copied." : "Clipboard blocked. Copy manually from Ready-to-paste fix." }));
-                              setTimeout(() => setToast(""), 1800);
-                              setTimeout(() => setActionNote((prev) => ({ ...prev, [issueKey]: "" })), 2400);
-                            }}
-                          >
-                            Copy paste-ready code
-                          </button>
-                        ) : null}
+                        {simplified ? (
+                          <>
+                            <button
+                              type="button"
+                              className={tabBtnClass(activeView === "fix", true)}
+                              onClick={() => {
+                                setIssueView((prev) => ({ ...prev, [issueKey]: "fix" }));
+                                setActionNote((prev) => ({ ...prev, [issueKey]: "Viewing: Fix steps" }));
+                                if (
+                                  supportsAIFix(issue) &&
+                                  !aiFixes[issueKey] &&
+                                  aiStatus[issueKey] !== "loading"
+                                ) {
+                                  generateFix(issue, issueKey);
+                                }
+                              }}
+                            >
+                              Get my solution
+                            </button>
+                            {activeView === "fix" ? (
+                              <>
+                                <button
+                                  type="button"
+                                  className={tabBtnClass(false)}
+                                  onClick={async () => {
+                                    const text = `${simple.intro}\n- ${simple.steps.join("\n- ")}`;
+                                    const ok = await copyTextSafe(text);
+                                    setToast(ok ? "Simple steps copied." : "Copy blocked. Please allow clipboard access.");
+                                    setActionNote((prev) => ({ ...prev, [issueKey]: ok ? "Simple steps copied." : "Clipboard blocked. Copy manually from the fix box." }));
+                                    setTimeout(() => setToast(""), 1800);
+                                    setTimeout(() => setActionNote((prev) => ({ ...prev, [issueKey]: "" })), 2400);
+                                  }}
+                                >
+                                  Copy simple steps
+                                </button>
+                                {simple.snippet ? (
+                                  <button
+                                    type="button"
+                                    className={tabBtnClass(false)}
+                                    onClick={async () => {
+                                      const ok = await copyTextSafe(simple.snippet);
+                                      setToast(ok ? "Code snippet copied." : "Copy blocked. Please allow clipboard access.");
+                                      setActionNote((prev) => ({ ...prev, [issueKey]: ok ? "Code copied." : "Clipboard blocked. Copy manually from Ready-to-paste fix." }));
+                                      setTimeout(() => setToast(""), 1800);
+                                      setTimeout(() => setActionNote((prev) => ({ ...prev, [issueKey]: "" })), 2400);
+                                    }}
+                                  >
+                                    Copy paste-ready code
+                                  </button>
+                                ) : null}
+                              </>
+                            ) : null}
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              className={tabBtnClass(explanationView === "expert")}
+                              onClick={() => {
+                                setExplainMode((prev) => ({ ...prev, [issueKey]: "expert" }));
+                                setIssueView((prev) => ({ ...prev, [issueKey]: "issue" }));
+                              }}
+                            >
+                              Expert explanation
+                            </button>
+                            <button
+                              type="button"
+                              className={tabBtnClass(explanationView === "simple")}
+                              onClick={() => {
+                                setExplainMode((prev) => ({ ...prev, [issueKey]: "simple" }));
+                                setIssueView((prev) => ({ ...prev, [issueKey]: "issue" }));
+                              }}
+                            >
+                              Beginner explanation
+                            </button>
+                            <button
+                              type="button"
+                              className={tabBtnClass(activeView === "fix", supportsAIFix(issue))}
+                              onClick={() => {
+                                setIssueView((prev) => ({ ...prev, [issueKey]: "fix" }));
+                                setActionNote((prev) => ({ ...prev, [issueKey]: "Viewing: Fix steps" }));
+                                if (
+                                  supportsAIFix(issue) &&
+                                  !aiFixes[issueKey] &&
+                                  aiStatus[issueKey] !== "loading"
+                                ) {
+                                  generateFix(issue, issueKey);
+                                }
+                              }}
+                            >
+                              {supportsAIFix(issue)
+                                ? (aiStatus[issueKey] === "loading" ? "Generative AI fix (working...)" : "Generative AI fix")
+                                : "Show simple fix"}
+                            </button>
+                            <button
+                              type="button"
+                              className={tabBtnClass(false)}
+                              onClick={async () => {
+                                const text = `${simple.intro}\n- ${simple.steps.join("\n- ")}`;
+                                const ok = await copyTextSafe(text);
+                                setToast(ok ? "Simple steps copied." : "Copy blocked. Please allow clipboard access.");
+                                setActionNote((prev) => ({ ...prev, [issueKey]: ok ? "Simple steps copied." : "Clipboard blocked. Copy manually from the fix box." }));
+                                setTimeout(() => setToast(""), 1800);
+                                setTimeout(() => setActionNote((prev) => ({ ...prev, [issueKey]: "" })), 2400);
+                              }}
+                            >
+                              Copy simple steps
+                            </button>
+                            <button
+                              type="button"
+                              className={tabBtnClass(!!whyOpen[issueKey])}
+                              onClick={() => {
+                                setIssueView((prev) => ({ ...prev, [issueKey]: "issue" }));
+                                setWhyOpen((prev) => ({ ...prev, [issueKey]: !prev[issueKey] }));
+                              }}
+                            >
+                              Why this happens
+                            </button>
+                            {simple.snippet ? (
+                              <button
+                                type="button"
+                                className={tabBtnClass(false)}
+                                onClick={async () => {
+                                  const ok = await copyTextSafe(simple.snippet);
+                                  setToast(ok ? "Code snippet copied." : "Copy blocked. Please allow clipboard access.");
+                                  setActionNote((prev) => ({ ...prev, [issueKey]: ok ? "Code copied." : "Clipboard blocked. Copy manually from Ready-to-paste fix." }));
+                                  setTimeout(() => setToast(""), 1800);
+                                  setTimeout(() => setActionNote((prev) => ({ ...prev, [issueKey]: "" })), 2400);
+                                }}
+                              >
+                                Copy paste-ready code
+                              </button>
+                            ) : null}
+                          </>
+                        )}
                       </div>
                       {actionNote[issueKey] ? (
                         <div className="mt-2 text-xs text-[var(--rp-text-600)]">{actionNote[issueKey]}</div>

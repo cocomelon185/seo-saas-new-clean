@@ -1,8 +1,8 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, Link } from "react-router-dom";
 import ShareAuditButton from "../components/ShareAuditButton.jsx";
-import LeadCapturePanel from "../components/LeadCapturePanel.jsx";
 import AppShell from "../components/AppShell.jsx";
+import PrimaryActionRail from "../components/PrimaryActionRail.jsx";
 import { isMonitored, listMonitors, removeMonitor, updateMonitorFromAudit, upsertMonitor } from "../utils/monitoring.js";
 import { getAnonId } from "../utils/anonId.js";
 import { pushAuditHistory } from "../lib/auditHistory.js";
@@ -158,6 +158,21 @@ function AuditPageInner() {
   const [allowAudit, setAllowAudit] = useState(true);
   const [requestStatus, setRequestStatus] = useState("");
   const autoFocusIssueRef = useRef("");
+  const [showSimplifiedMore, setShowSimplifiedMore] = useState(false);
+  const [showSoftUpsell, setShowSoftUpsell] = useState(false);
+  const [issueIntent, setIssueIntent] = useState({ type: "", issueId: "", autoCopy: false, nonce: 0 });
+  const simplifiedFlowEnabled = useMemo(() => {
+    try {
+      const params = new URLSearchParams(location.search || "");
+      const fromQuery = params.get("audit_simplified_flow_v1");
+      if (fromQuery === "0") return false;
+      if (fromQuery === "1") return true;
+      const fromStorage = localStorage.getItem("audit_simplified_flow_v1");
+      if (fromStorage === "0") return false;
+      if (fromStorage === "1") return true;
+    } catch {}
+    return true;
+  }, [location.search]);
   const auditDisabledReason =
     !allowAudit
       ? "Audit tool is disabled by your admin."
@@ -440,6 +455,64 @@ function AuditPageInner() {
       window.history.replaceState(null, "", nextUrl);
     } catch {}
     jumpToSection("[data-testid='key-issues']");
+  }
+
+  function triggerIssueIntent(type, autoCopy = false) {
+    const issueId = String(topPriorityIssue?.issue_id || "");
+    setIssueIntent({
+      type,
+      issueId,
+      autoCopy,
+      nonce: Date.now()
+    });
+  }
+
+  function handleFindProblem() {
+    triggerIssueIntent("focus_top_issue", false);
+    jumpToSection("[data-testid='key-issues']");
+  }
+
+  function handleGetSolution() {
+    triggerIssueIntent("open_solution_mode", true);
+    jumpToSection("[data-testid='key-issues']");
+    setShowSoftUpsell(true);
+  }
+
+  async function handleExportSummary() {
+    if (!result) return;
+    const mod = await import("../utils/exportAuditSummary.js");
+    mod.exportAuditSummary(result);
+  }
+
+  async function handleExportPdf() {
+    if (!result) return;
+    const mod = await import("../utils/exportAuditPdf.js");
+    mod.exportAuditPdf({
+      ...result,
+      score: typeof scoreValue === "number" ? scoreValue : result.score,
+      branding: {
+        name: reportBrandName,
+        color: reportBrandColor,
+        logo: reportBrandLogo
+      }
+    });
+  }
+
+  function handleToggleMonitor() {
+    const u = result?.url;
+    if (!u) return;
+    if (isMonitored(u)) {
+      removeMonitor(u);
+    } else {
+      upsertMonitor({ url: u });
+    }
+    refreshMonitors();
+  }
+
+  function handleSimplifiedRerun() {
+    __rp_markSkipAutoRun();
+    setShowSoftUpsell(true);
+    run();
   }
 
   const quickWinSimulator = useMemo(() => {
@@ -1354,7 +1427,7 @@ function AuditPageInner() {
             </div>
           </div>
         ) : null}
-        {authUser?.role === "member" && (
+        {authUser?.role === "member" && (!simplifiedFlowEnabled || showSoftUpsell) && (
           <div className="rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-4 text-sm text-[var(--rp-text-600)]">
             You’re in a member role. Ask your admin to unlock full fixes, briefs, and exports.
             <div className="mt-3 flex gap-2">
@@ -1488,7 +1561,7 @@ function AuditPageInner() {
                   <IconPlay size={16} />
                   {status === "loading" ? "Running..." : "Run SEO Audit"}
                 </button>
-                {status === "success" && topPriorityIssue ? (
+                {!simplifiedFlowEnabled && status === "success" && topPriorityIssue ? (
                   <button
                     type="button"
                     className="rp-btn-secondary rp-btn-sm h-8 px-3 text-xs"
@@ -1542,109 +1615,37 @@ function AuditPageInner() {
         </div>
 
         {(result?.url || (status !== "loading" && hasResumeSnapshot) || status === "success") && (
-          
-
-        
-        <div className="rp-share-fab fixed bottom-4 right-4 z-[9999] flex items-center gap-2 rounded-xl border border-black/10 bg-white/95 px-3 py-2 shadow-lg">
-          <div className="text-xs font-semibold text-[var(--rp-text-800)]">Share</div>
-          {result?.url ? (
-            <ShareAuditButton result={result} />
+          simplifiedFlowEnabled ? (
+            <PrimaryActionRail
+              problemTitle={topPriorityIssue ? String(topPriorityIssue?.title || topPriorityIssue?.issue_id || "Top issue") : "No critical issues found"}
+              timeLabel={topPriorityIssue ? topFixUX(topPriorityIssue, String(result?.debug?.final_url || result?.final_url || url || "")).time : "5-10 min"}
+              liftLabel={`+${Math.max(0, Math.round(estimateScoreLiftFromIssues(topPriorityIssue ? [topPriorityIssue] : [])))}`}
+              onFindProblem={handleFindProblem}
+              onGetSolution={handleGetSolution}
+              onRerun={handleSimplifiedRerun}
+              onToggleMore={() => setShowSimplifiedMore((prev) => !prev)}
+              showMore={showSimplifiedMore}
+              onExportPdf={handleExportPdf}
+              onExportSummary={handleExportSummary}
+              onToggleMonitor={handleToggleMonitor}
+              monitorLabel={result?.url ? (isMonitored(result.url) ? "Stop monitoring" : "Monitor this page") : "Monitor this page"}
+              shareNode={result?.url ? <ShareAuditButton result={result} /> : null}
+              showSoftUpsell={showSoftUpsell}
+              onUpgrade={() => setPricingOpen(true)}
+              onContinueFree={() => setShowSoftUpsell(false)}
+            />
           ) : (
-            <div className="text-xs text-[var(--rp-text-500)]">waiting…</div>
-          )}
-        </div>
-
-
-
-<details className="rp-card p-4">
-            <summary className="cursor-pointer list-none select-none">
-              <span className="rp-btn-secondary rp-btn-sm h-8 px-3 text-xs inline-flex items-center">
-                More actions
-              </span>
-            </summary>
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              {result?.url ? (<><ShareAuditButton result={result} /><LeadCapturePanel reportUrl={result.url} /></>) : null}
-              {result?.url ? (
-                <button
-                  onClick={async () => {
-                    if (!result) return;
-                    const mod = await import("../utils/exportAuditSummary.js");
-                    mod.exportAuditSummary(result);
-                  }}
-                  className="rp-btn-secondary rp-btn-sm h-9 px-3 text-xs"
-                >
-                  Export summary
-                </button>
-              ) : null}
-              {result?.url ? (
-                <button
-                  onClick={async () => {
-                    if (!result) return;
-                    const mod = await import("../utils/exportAuditPdf.js");
-                    mod.exportAuditPdf({
-                      ...result,
-                      score: typeof scoreValue === "number" ? scoreValue : result.score,
-                      branding: {
-                        name: reportBrandName,
-                        color: reportBrandColor,
-                        logo: reportBrandLogo
-                      }
-                    });
-                  }}
-                  className="rp-btn-secondary rp-btn-sm h-9 px-3 text-xs"
-                >
-                  Export PDF
-                </button>
-              ) : null}
-              {result?.url ? (
-                <button
-                  onClick={() => {
-                    const u = result?.url;
-                    if (!u) return;
-                    if (isMonitored(u)) {
-                      removeMonitor(u);
-                    } else {
-                      upsertMonitor({ url: u });
-                    }
-                    refreshMonitors();
-                  }}
-                  className="rp-btn-secondary rp-btn-sm h-9 px-3 text-xs"
-                >
-                  {isMonitored(result.url) ? "Stop monitoring" : "Monitor this page"}
-                </button>
-              ) : null}
-              {status !== "loading" && hasResumeSnapshot ? (
-                <button
-                  onClick={() => {
-                    try {
-                      const raw = localStorage.getItem("rp_audit_snapshot::" + (url || "").trim());
-                      if (!raw) return;
-                      const snap = JSON.parse(raw);
-                      setError("");
-                      setResult(snap);
-                      setStatus("success");
-                    } catch {}
-                  }}
-                  className="rp-btn-secondary rp-btn-sm h-9 px-3 text-xs"
-                >
-                  <IconClock size={14} />
-                  Resume audit
-                </button>
-              ) : null}
-              {status === "success" ? (
-                <button
-                  onClick={() => {
-                    __rp_markSkipAutoRun();
-                    run();
-                  }}
-                  className="rp-btn-secondary rp-btn-sm h-9 px-3 text-xs"
-                >
-                  <IconRefresh size={14} />
-                  Re-run audit
-                </button>
-              ) : null}
-            </div>
-          </details>
+            <>
+              <div className="rp-share-fab fixed bottom-4 right-4 z-[9999] flex items-center gap-2 rounded-xl border border-black/10 bg-white/95 px-3 py-2 shadow-lg">
+                <div className="text-xs font-semibold text-[var(--rp-text-800)]">Share</div>
+                {result?.url ? (
+                  <ShareAuditButton result={result} />
+                ) : (
+                  <div className="text-xs text-[var(--rp-text-500)]">waiting…</div>
+                )}
+              </div>
+            </>
+          )
         )}
 
         {status === "idle" && (
@@ -1673,6 +1674,7 @@ function AuditPageInner() {
 
         {status === "success" && result && (
           <div className="grid gap-5">
+            {!simplifiedFlowEnabled && (
             <div className="flex flex-wrap items-center gap-2">
               {[
                 { href: "#quick-wins", label: "Quick Wins" },
@@ -1694,12 +1696,16 @@ function AuditPageInner() {
                 {showDeepSections ? "Hide detailed analysis" : "Show detailed analysis"}
               </button>
             </div>
+            )}
+            {!simplifiedFlowEnabled && (
             <Suspense fallback={null}>
               <AuditImpactBanner
                 score={typeof scoreValue === "number" ? scoreValue : result?.score}
                 issues={issues}
               />
             </Suspense>
+            )}
+            {!simplifiedFlowEnabled && (
             <div id="top-fixes" className="rp-card p-5">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
@@ -1875,6 +1881,8 @@ function AuditPageInner() {
                 })()}
               </div>
             </div>
+            )}
+            {!simplifiedFlowEnabled && (
             <div className="grid gap-5 md:grid-cols-12">
               <div className="hidden">
                 <div className="flex items-center gap-2 rp-section-title">
@@ -2267,19 +2275,22 @@ function AuditPageInner() {
                 ) : null}
               </div>
             </div>
+            )}
             <div data-testid="key-issues">
               <Suspense fallback={null}>
                 <IssuesPanel
                   issues={strictPrioritizeIssues(issues)}
                   advanced={advancedView}
                   finalUrl={String(result?.debug?.final_url || result?.final_url || "")}
-                  fixWebhookUrl={fixWebhookUrl}
-                  wpWebhookUrl={wpSiteUrl}
-                  shopifyWebhookUrl={shopifyShop}
-                  ownerId={anonId}
+                  simplified={simplifiedFlowEnabled}
+                  intent={issueIntent.type}
+                  intentIssueId={issueIntent.issueId}
+                  autoCopy={issueIntent.autoCopy}
+                  intentNonce={issueIntent.nonce}
                 />
               </Suspense>
             </div>
+            {!simplifiedFlowEnabled && (
             <details id="score-insights" className="rp-card p-5">
               <summary className="cursor-pointer list-none select-none">
                 <div className="flex flex-wrap items-center justify-between gap-3">
@@ -2368,6 +2379,7 @@ function AuditPageInner() {
                 Unlock Full Fix Plan
               </button>
             </details>
+            )}
           </div>
         )}
 
@@ -2670,7 +2682,7 @@ function AuditPageInner() {
           </div>
         )}
 
-        {status === "success" && !showDeepSections && (
+        {status === "success" && !simplifiedFlowEnabled && !showDeepSections && (
           <div className="rp-card p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="text-sm text-[var(--rp-text-600)]">
@@ -2687,7 +2699,7 @@ function AuditPageInner() {
           </div>
         )}
 
-        {status === "success" && result && showDeepSections && (
+        {status === "success" && result && !simplifiedFlowEnabled && showDeepSections && (
           <div className="rp-card p-5 rp-fade-in" data-testid="observed-data">
             <div className="flex items-center gap-2 mb-1">
               <span className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-[rgba(66,25,131,0.08)] text-[var(--rp-indigo-700)]">
@@ -2776,7 +2788,7 @@ function AuditPageInner() {
           </div>
         )}
 
-        {status === "success" && showDeepSections && (
+        {status === "success" && !simplifiedFlowEnabled && showDeepSections && (
           <div className="grid gap-5 md:grid-cols-3">
             <div id="content-brief" className="md:col-span-3 rp-card p-5 rp-fade-in">
               <div className="rp-section-title">Content Brief</div>
@@ -2834,7 +2846,7 @@ function AuditPageInner() {
           </div>
         )}
 
-        {status === "success" && showDeepSections && (
+        {status === "success" && !simplifiedFlowEnabled && showDeepSections && (
           <div className="rp-card p-5 rp-fade-in">
             <div className="rp-section-title">Signals & performance</div>
             <div className="mt-4">
@@ -3073,7 +3085,7 @@ function AuditPageInner() {
           </div>
         )}
 
-        {status === "success" && showDeepSections && (
+        {status === "success" && !simplifiedFlowEnabled && showDeepSections && (
           <div className="grid gap-5 md:grid-cols-12">
             <div className="md:col-span-12 rp-card px-4 py-4">
               <div className="flex flex-wrap items-start justify-between gap-4">
