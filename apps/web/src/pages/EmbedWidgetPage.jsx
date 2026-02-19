@@ -59,6 +59,16 @@ export default function EmbedWidgetPage() {
     };
   }, [anonId]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (window.location.hash !== "#setup") return;
+    const el = document.getElementById("setup");
+    if (!el) return;
+    requestAnimationFrame(() => {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }, []);
+
   return (
     <AppShell
       title="Embeddable Audit Widget"
@@ -82,7 +92,7 @@ export default function EmbedWidgetPage() {
         ))}
       </div>
       <div className="grid gap-6 md:grid-cols-[1.2fr_0.8fr]">
-        <div className="rp-card p-6">
+        <div id="setup" className="rp-card p-6">
           <div className="rp-section-title">Widget settings</div>
           <div className="mt-4 grid gap-4">
             <label className="block text-sm text-[var(--rp-text-600)]">

@@ -15,6 +15,7 @@ export default function LeadsPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [actionToast, setActionToast] = useState("");
   const [savingLeadId, setSavingLeadId] = useState(null);
+  const [sendingTestLead, setSendingTestLead] = useState(false);
 
   const newCount = useMemo(() => leads.filter((l) => (l.status || "new") === "new").length, [leads]);
   const contactedCount = useMemo(() => leads.filter((l) => l.status === "contacted").length, [leads]);
@@ -25,6 +26,38 @@ export default function LeadsPage() {
     () => leads.filter((lead) => statusFilter === "all" || (lead.status || "new") === statusFilter),
     [leads, statusFilter]
   );
+
+  async function sendTestLead() {
+    if (!anonId) {
+      setActionToast("Could not create a test lead. Reload and try again.");
+      setTimeout(() => setActionToast(""), 2200);
+      return;
+    }
+    setSendingTestLead(true);
+    try {
+      const stamp = Date.now();
+      const res = await fetch(apiUrl("/api/embed/lead"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          owner_id: anonId,
+          url: "https://example.com/pricing",
+          email: `test+${stamp}@example.com`,
+          name: "Test Lead"
+        })
+      });
+      const data = await safeJson(res);
+      if (!res.ok || !data?.ok) throw new Error(data?.error || "Could not create a test lead.");
+      await loadLeads();
+      setActionToast("Test lead created.");
+      setTimeout(() => setActionToast(""), 1800);
+    } catch (e) {
+      setActionToast(String(e?.message || "Could not create a test lead."));
+      setTimeout(() => setActionToast(""), 2200);
+    } finally {
+      setSendingTestLead(false);
+    }
+  }
 
   async function loadLeads() {
     setStatus("loading");
@@ -133,12 +166,14 @@ export default function LeadsPage() {
           {actionToast}
         </div>
       ) : null}
-      <div className="mb-4 grid gap-4 md:grid-cols-4">
+      <div className="mb-4 grid gap-4 md:grid-cols-3 xl:grid-cols-6">
         {[
+          { label: "Total", value: leads.length, tone: "text-[var(--rp-text-900)]" },
           { label: "New", value: newCount, tone: "text-[var(--rp-indigo-700)]" },
           { label: "Contacted", value: contactedCount, tone: "text-amber-600" },
           { label: "Won", value: wonCount, tone: "text-emerald-600" },
-          { label: "Contact rate", value: `${contactRate}%`, tone: "text-[var(--rp-text-900)]" }
+          { label: "Contact rate", value: `${contactRate}%`, tone: "text-[var(--rp-text-900)]" },
+          { label: "Win rate", value: `${winRate}%`, tone: "text-[var(--rp-text-900)]" }
         ].map((item) => (
           <div key={item.label} className="rp-kpi-card rounded-2xl border border-[var(--rp-border)] bg-white p-4 shadow-sm">
             <div className="text-xs text-[var(--rp-text-500)]">{item.label}</div>
@@ -148,7 +183,7 @@ export default function LeadsPage() {
       </div>
       <div className="rp-card p-5">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <div className="text-sm text-[var(--rp-text-500)]">Total leads: {leads.length} · Win rate: {winRate}%</div>
+          <div className="text-sm text-[var(--rp-text-500)]">Filter and move leads across your pipeline.</div>
           <div className="flex flex-wrap items-center gap-2">
             {[
               { key: "all", label: "All" },
@@ -201,7 +236,18 @@ export default function LeadsPage() {
             </div>
             <div className="mt-3 flex flex-wrap gap-2">
               <Link to="/embed" className="rp-btn-primary rp-btn-sm h-9 px-3 text-xs">Open Embed Widget</Link>
-              <Link to="/embed" className="rp-btn-secondary rp-btn-sm h-9 px-3 text-xs">View setup guide</Link>
+              <Link to="/embed#setup" className="rp-btn-secondary rp-btn-sm h-9 px-3 text-xs">View setup guide</Link>
+              <button
+                type="button"
+                className="rp-btn-secondary rp-btn-sm h-9 px-3 text-xs"
+                onClick={sendTestLead}
+                disabled={sendingTestLead}
+              >
+                {sendingTestLead ? "Sending..." : "Send test lead"}
+              </button>
+            </div>
+            <div className="mt-2 text-xs text-[var(--rp-text-500)]">
+              Leads appear in real time after widget submissions.
             </div>
           </div>
         )}
