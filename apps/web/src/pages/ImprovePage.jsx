@@ -52,7 +52,7 @@ function toTopFixes({ issues, quickWins }) {
 }
 
 function normalizeBrandCopy(value) {
-  return String(value || "").replace(/\brankypulse\b/gi, "RankyPulse");
+  return String(value || "").replace(/rankypulse/gi, "RankyPulse");
 }
 
 export default function ImprovePage() {
@@ -301,7 +301,7 @@ export default function ImprovePage() {
       ) : null}
 
       {status === "success" ? (
-        <div className="mt-4 grid gap-4 pb-0">
+        <div className="mt-4 grid gap-4 pb-0 -mb-3">
           <section className="rp-card p-5">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
@@ -423,10 +423,7 @@ export default function ImprovePage() {
               ) : (
                 <div className="mt-3 rounded-xl border border-dashed border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-3 text-sm text-[var(--rp-text-500)]">
                   No keyword ideas were generated for this URL.
-                  <ul className="mt-2 space-y-1 text-xs text-[var(--rp-text-600)]">
-                    <li>Try SEO Audit to discover missing topical terms.</li>
-                    <li>Use the competitor gap suggestions to seed content updates.</li>
-                  </ul>
+                  <div className="mt-1 text-xs text-[var(--rp-text-600)]">Tip: run full audit to discover semantic terms.</div>
                   <div className="mt-2">
                     <button
                       type="button"
