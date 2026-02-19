@@ -1,5 +1,11 @@
 import express from "express";
 import pageReport from "../../api/page-report.js";
+import { consumeFreeScanCreditForRequest } from "./lib/freeUsageStore.js";
+import embedLead, {
+  listEmbedLeads,
+  getEmbedLead,
+  updateEmbedLead
+} from "./api/embed-lead.js";
 
 const app = express();
 app.use(express.json());
@@ -213,6 +219,10 @@ function scoreFromIssues(issues) {
 }
 
 app.post("/api/page-report", pageReport);
+app.post("/api/embed/lead", embedLead);
+app.get("/api/embed/leads", listEmbedLeads);
+app.get("/api/embed/leads/:id", getEmbedLead);
+app.post("/api/embed/leads/:id", updateEmbedLead);
 
 const RANK_WINDOW_MS = 24 * 60 * 60 * 1000;
 const RANK_MAX_CHECKS_PER_SCOPE = 30;
@@ -330,6 +340,23 @@ app.post("/api/rank-check", (req, res) => {
 
   if (!keyword || !domain) {
     return res.status(400).json({ error: "Missing keyword or domain" });
+  }
+
+  const creditGate = consumeFreeScanCreditForRequest(req, "rank");
+  if (!creditGate.allowed) {
+    return res.status(creditGate.status || 402).json({
+      ok: false,
+      error: {
+        code: creditGate.code || "FREE_CREDIT_EXHAUSTED",
+        message: creditGate.message || "Your free credit is used. Upgrade to continue."
+      },
+      upgrade_required: true,
+      pricing_url: "/pricing",
+      redirect_to: "/pricing",
+      free_checks_limit: creditGate.limit ?? 1,
+      free_checks_used: creditGate.used ?? 1,
+      free_checks_remaining: creditGate.remaining ?? 0
+    });
   }
 
   const cleanKeyword = String(keyword || "").trim();
