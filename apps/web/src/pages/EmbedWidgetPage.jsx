@@ -43,6 +43,7 @@ export default function EmbedWidgetPage() {
   const [recentLeads, setRecentLeads] = useState([]);
   const [leadsStatus, setLeadsStatus] = useState("idle");
   const [metrics, setMetrics] = useState({ sent: 0, failed: 0, total: 0, successRate: 0 });
+  const [snippetInstalled, setSnippetInstalled] = useState(false);
 
   const sent = Number(metrics.sent || 0);
   const failed = Number(metrics.failed || 0);
@@ -80,6 +81,12 @@ export default function EmbedWidgetPage() {
       el.scrollIntoView({ behavior: "smooth", block: "start" });
     });
   }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const key = `rp_embed_snippet_installed_${anonId}`;
+    setSnippetInstalled(localStorage.getItem(key) === "1");
+  }, [anonId]);
 
   useEffect(() => {
     let active = true;
@@ -134,6 +141,18 @@ export default function EmbedWidgetPage() {
     }
   }
 
+  const testLeadReceived = recentLeads.some((lead) => {
+    const email = String(lead?.email || "").toLowerCase();
+    const name = String(lead?.name || "").toLowerCase();
+    return email.includes("widget-test+") || name.includes("widget test lead");
+  });
+  const leadsInboxConnected = leadsStatus === "success";
+  const verificationChecks = [
+    { key: "snippet", label: "Snippet installed", ok: snippetInstalled },
+    { key: "test", label: "Test lead received", ok: testLeadReceived },
+    { key: "inbox", label: "Leads inbox connected", ok: leadsInboxConnected }
+  ];
+
   return (
     <AppShell
       title="Embeddable Audit Widget"
@@ -162,6 +181,23 @@ export default function EmbedWidgetPage() {
           <div className="rounded-xl border border-[var(--rp-border)] bg-white p-3">1. Set your brand + theme + destination webhook.</div>
           <div className="rounded-xl border border-[var(--rp-border)] bg-white p-3">2. Copy snippet and place it on your pricing or contact page.</div>
           <div className="rounded-xl border border-[var(--rp-border)] bg-white p-3">3. Send a test lead and confirm capture in Leads Inbox.</div>
+        </div>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          {verificationChecks.map((item) => (
+            <span
+              key={item.key}
+              className={[
+                "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold",
+                item.ok
+                  ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                  : "border-[var(--rp-border)] bg-white text-[var(--rp-text-500)]"
+              ].join(" ")}
+              title={item.ok ? "Verified" : "Pending"}
+            >
+              <span className={["h-1.5 w-1.5 rounded-full", item.ok ? "bg-emerald-500" : "bg-[var(--rp-text-400)]"].join(" ")} />
+              {item.label}
+            </span>
+          ))}
         </div>
       </div>
       <div className="grid gap-6 md:grid-cols-[1.2fr_0.8fr]">
@@ -381,6 +417,10 @@ export default function EmbedWidgetPage() {
             onClick={async () => {
               try {
                 await navigator.clipboard.writeText(iframeSnippet);
+                if (typeof window !== "undefined") {
+                  localStorage.setItem(`rp_embed_snippet_installed_${anonId}`, "1");
+                }
+                setSnippetInstalled(true);
                 setCopied(true);
                 setTimeout(() => setCopied(false), 2000);
               } catch {}
