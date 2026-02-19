@@ -173,10 +173,17 @@ export default function LeadsPage() {
           { label: "Contacted", value: contactedCount, tone: "text-amber-600" },
           { label: "Won", value: wonCount, tone: "text-emerald-600" },
           { label: "Contact rate", value: `${contactRate}%`, tone: "text-[var(--rp-text-900)]" },
-          { label: "Win rate", value: `${winRate}%`, tone: "text-[var(--rp-text-900)]" }
+          { label: "Win rate", value: `${winRate}%`, tone: "text-[var(--rp-text-900)]", help: "Won / Total leads" }
         ].map((item) => (
           <div key={item.label} className="rp-kpi-card rounded-2xl border border-[var(--rp-border)] bg-white p-4 shadow-sm">
-            <div className="text-xs text-[var(--rp-text-500)]">{item.label}</div>
+            <div className="text-xs text-[var(--rp-text-500)]">
+              {item.label}
+              {item.help ? (
+                <span className="ml-1 inline-flex cursor-help items-center rounded-full border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-1.5 py-0 text-[10px] text-[var(--rp-text-500)]" title={item.help} aria-label={item.help}>
+                  i
+                </span>
+              ) : null}
+            </div>
             <div className={`mt-2 text-2xl font-semibold ${item.tone}`}>{item.value}</div>
           </div>
         ))}
@@ -229,7 +236,7 @@ export default function LeadsPage() {
           </div>
         )}
         {status === "success" && leads.length === 0 && (
-          <div className="rounded-xl border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-5">
+          <div className="rounded-xl border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-5 py-3">
             <div className="text-base font-semibold text-[var(--rp-text-900)]">No leads yet</div>
             <div className="mt-1 text-sm text-[var(--rp-text-600)]">
               Install and share your embeddable audit form. New submissions will appear here automatically.
@@ -239,7 +246,7 @@ export default function LeadsPage() {
               <Link to="/embed#setup" className="rp-btn-secondary rp-btn-sm h-9 px-3 text-xs">View setup guide</Link>
               <button
                 type="button"
-                className="rp-btn-secondary rp-btn-sm h-9 px-3 text-xs"
+                className="rp-btn-secondary rp-btn-sm h-9 border-[rgba(124,58,237,0.14)] bg-[rgba(124,58,237,0.03)] px-3 text-xs text-[var(--rp-text-500)] hover:border-[rgba(124,58,237,0.22)] hover:bg-[rgba(124,58,237,0.06)]"
                 onClick={sendTestLead}
                 disabled={sendingTestLead}
               >
