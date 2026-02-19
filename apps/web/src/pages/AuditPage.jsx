@@ -11,6 +11,7 @@ import { track } from "../lib/eventsClient.js";
 import { getAuthToken, getAuthUser } from "../lib/authClient.js";
 import { safeJson } from "../lib/safeJson.js";
 import { apiUrl } from "../lib/api.js";
+import { extractApiErrorMessage, isFreeCreditExhaustedResponse, pricingRedirectPath } from "../lib/upgradeGate.js";
 import ApexMetricBars from "../components/charts/ApexMetricBars.jsx";
 import ApexDonutScore from "../components/charts/ApexDonutScore.jsx";
 import {
@@ -26,7 +27,6 @@ import {
   IconMail,
   IconArrowRight,
   IconClock,
-  IconTrash,
   IconBolt,
   IconReport,
   IconShield,
@@ -115,7 +115,6 @@ function AuditPageInner() {
       return false;
     }
   });
-  const [showAllGuidedFixes, setShowAllGuidedFixes] = useState(false);
   const [quickWinNotice, setQuickWinNotice] = useState("");
   const [topFixNotice, setTopFixNotice] = useState("");
   const [guidedDone, setGuidedDone] = useState({});
@@ -318,11 +317,12 @@ function AuditPageInner() {
 
   const issues = Array.isArray(result?.issues) ? result.issues : [];
   const quickWins = Array.isArray(result?.quick_wins) ? result.quick_wins : [];
+  const prioritizedIssues = useMemo(() => strictPrioritizeIssues(issues), [issues]);
   const prioritizedQuickWins = useMemo(() => strictPrioritizeQuickWins(quickWins).slice(0, 10), [quickWins]);
   const topPriorityIssue = useMemo(() => {
-    const prioritized = strictPrioritizeIssues(issues);
-    return prioritized.length ? prioritized[0] : null;
-  }, [issues]);
+    return prioritizedIssues.length ? prioritizedIssues[0] : null;
+  }, [prioritizedIssues]);
+  const hasDetectedIssues = prioritizedIssues.length > 0;
   const scoreValue = useMemo(() => {
     if (typeof result?.score !== "number") return null;
     return displayScore(result.score, issues);
@@ -410,7 +410,7 @@ function AuditPageInner() {
     return [
       { label: "SEO health", value: score !== null ? String(score) : "—", tone: "text-emerald-700", anchor: "#score-insights", hint: "View score breakdown" },
       { label: "Problems to fix", value: issuesCount !== null ? String(issuesCount) : "—", tone: "text-rose-600", anchor: "[data-testid='key-issues']", hint: "Open prioritized issues" },
-      { label: "Fast fixes", value: quickWinsCount !== null ? String(quickWinsCount) : "—", tone: "text-amber-700", anchor: "#quick-wins", hint: "Jump to quick wins" },
+      { label: "Fast fixes", value: quickWinsCount !== null ? String(quickWinsCount) : "—", tone: "text-amber-700", anchor: "#quick-wins", hint: "Open quick fix solution" },
       { label: "Estimated lift", value: liftDisplay, tone: "text-[var(--rp-indigo-700)]", anchor: "#top-fixes", hint: liftPoints === null ? "Needs more fix data" : "Projected score points from top fixes" }
     ];
   }, [issues, quickWins, result?.score, scoreValue]);
@@ -435,6 +435,13 @@ function AuditPageInner() {
       const el = document.querySelector(target);
       if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
     } catch {}
+  }
+
+  function openQuickFixSolutions() {
+    triggerIssueIntent("open_solution_mode", false);
+    jumpToSection("[data-testid='key-issues']");
+    setTopFixNotice("Opened quick fix solution. Start with the first issue below.");
+    setTimeout(() => setTopFixNotice(""), 2200);
   }
 
   function focusTopIssue() {
@@ -588,7 +595,8 @@ function AuditPageInner() {
       const params = new URLSearchParams(location.search || "");
       const u = (params.get("url") || "").trim();
       if (u) {
-        setUrl(u);
+        const normalized = normalizeAuditInputUrl(u);
+        setUrl(normalized || u);
         return;
       }
     } catch {}
@@ -596,9 +604,32 @@ function AuditPageInner() {
     // If no query param, restore last audited URL (enables Resume after reload)
     try {
       const last = (localStorage.getItem("rp_last_audit_url") || "").trim();
-      if (last) setUrl(last);
+      if (last) {
+        const normalized = normalizeAuditInputUrl(last);
+        setUrl(normalized || last);
+      }
     } catch {}
   }, [location.search]);
+
+  function normalizeAuditInputUrl(rawValue) {
+    const raw = String(rawValue || "").trim();
+    if (!raw) return "";
+
+    let candidate = raw.replace(/\s+/g, "");
+    if (candidate.startsWith("//")) candidate = `https:${candidate}`;
+    if (!/^[a-zA-Z][a-zA-Z\d+\-.]*:\/\//.test(candidate)) {
+      candidate = `https://${candidate}`;
+    }
+
+    try {
+      const parsed = new URL(candidate);
+      if (!(parsed.protocol === "http:" || parsed.protocol === "https:")) return "";
+      if (!parsed.hostname) return "";
+      return parsed.toString();
+    } catch {
+      return "";
+    }
+  }
 
   useEffect(() => {
     if (__rpSkipAutoRunRef.current) { __rpSkipAutoRunRef.current = false; return; }
@@ -606,20 +637,17 @@ function AuditPageInner() {
     if (hasResumeSnapshot) return;
     if (autoRunRef.current) return;
     if (status !== "idle") return;
-    try {
-      const u = new URL(url.trim());
-      if (!(u.protocol === "http:" || u.protocol === "https:")) return;
-    } catch {
-      return;
-    }
-    if (!url.trim()) return;
+    const normalized = normalizeAuditInputUrl(url);
+    if (!normalized) return;
 
-    const snapshot = __rp_loadSnapshotForUrl(url);
+    const snapshot = __rp_loadSnapshotForUrl(normalized);
     if (snapshot) {
       autoRunRef.current = true;
       setResult(snapshot);
       setStatus("success");
       setHasResumeSnapshot(true);
+      // Snapshot provides instant UI, but always refresh from network to avoid stale findings.
+      run();
       return;
     }
 
@@ -643,14 +671,8 @@ function AuditPageInner() {
       // Panel will be shown via conditional rendering
     }
   }, [status, result, conversionDismissed, conversionSubmitted]);
-  const canRun = useMemo(() => {
-    try {
-      const u = new URL(url.trim());
-      return u.protocol === "http:" || u.protocol === "https:";
-    } catch {
-      return false;
-    }
-  }, [url]);
+  const normalizedAuditUrl = useMemo(() => normalizeAuditInputUrl(url), [url]);
+  const canRun = Boolean(normalizedAuditUrl);
 
   useEffect(() => {
     if (!url.trim()) return;
@@ -661,8 +683,17 @@ function AuditPageInner() {
   function __rp_loadSnapshotForUrl(snapshotUrl) {
     if (!snapshotUrl) return null;
     try {
-      const key = "rp_audit_snapshot::" + snapshotUrl.trim();
-      const raw = localStorage.getItem(key);
+      const rawInput = String(snapshotUrl || "").trim();
+      const normalizedInput = normalizeAuditInputUrl(rawInput);
+      const keys = [
+        "rp_audit_snapshot::" + rawInput,
+        normalizedInput ? "rp_audit_snapshot::" + normalizedInput : ""
+      ].filter(Boolean);
+      let raw = "";
+      for (const key of keys) {
+        raw = localStorage.getItem(key) || "";
+        if (raw) break;
+      }
       if (!raw) return null;
       const data = JSON.parse(raw);
       return data && typeof data === "object" ? data : null;
@@ -674,7 +705,7 @@ function AuditPageInner() {
   function __rp_resumeWithoutNetwork() {
     try { __rpSkipAutoRunRef.current = true; } catch {}
 
-    const snap = __rp_loadSnapshotForUrl(url);
+    const snap = __rp_loadSnapshotForUrl(normalizedAuditUrl || url);
     if (!snap) return false;
     try {
       setResult(snap);
@@ -701,10 +732,14 @@ function AuditPageInner() {
       return;
     }
 
-    if (!canRun) {
+    if (!normalizedAuditUrl) {
       setStatus("error");
-      setError("Enter a valid URL (include https://).");
+      setError("Enter a valid URL (for example: example.com, www.example.com, or https://example.com).");
       return;
+    }
+
+    if (normalizedAuditUrl !== url) {
+      setUrl(normalizedAuditUrl);
     }
 
     setStatus("loading");
@@ -713,23 +748,30 @@ function AuditPageInner() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          ...(anonId ? { "x-rp-anon-id": anonId } : {}),
           ...(authToken ? { Authorization: `Bearer ${authToken}` } : {})
         },
-        body: JSON.stringify({ url: url.trim() })
+        body: JSON.stringify({ url: normalizedAuditUrl })
       });
 
       if (!res.ok) {
-        const text = await res.text().catch(() => "");
-        throw new Error(text || `HTTP ${res.status}`);
+        const payload = await safeJson(res);
+        if (isFreeCreditExhaustedResponse(res.status, payload)) {
+          setStatus("error");
+          setError("You have used your one free credit. Upgrade to keep running audits.");
+          navigate(pricingRedirectPath("audit"), { replace: true });
+          return;
+        }
+        throw new Error(extractApiErrorMessage(payload, `HTTP ${res.status}`));
       }
 
       const data = await safeJson(res);
       try { setDebug(JSON.stringify(data, null, 2)); } catch {}
       setResult(data);
       try {
-        const key = "rp_audit_snapshot::" + (url || "").trim();
+        const key = "rp_audit_snapshot::" + normalizedAuditUrl;
         localStorage.setItem(key, JSON.stringify(data));
-        try { localStorage.setItem("rp_last_audit_url", (url || "").trim()); } catch {}
+        try { localStorage.setItem("rp_last_audit_url", normalizedAuditUrl); } catch {}
       } catch {}
       if (data?.warning) {
         setStatus("error");
@@ -738,7 +780,7 @@ function AuditPageInner() {
       }
       try {
         pushAuditHistory({
-          url: data?.url || url,
+          url: data?.url || normalizedAuditUrl,
           score: data?.score,
           issuesCount: Array.isArray(data?.issues) ? data.issues.length : (data?.issues_found ?? data?.issuesFound ?? 0),
           ranAt: Date.now()
@@ -750,7 +792,7 @@ function AuditPageInner() {
       setLastAuditAt(Date.now());
       try {
         track("audit_run", {
-          url: data?.url || url,
+          url: data?.url || normalizedAuditUrl,
           score: data?.score ?? null,
           issues: Array.isArray(data?.issues) ? data.issues.length : null
         });
@@ -985,6 +1027,13 @@ function AuditPageInner() {
       };
     }
     return base;
+  }
+
+  function topFixOwner(issue) {
+    const id = String(issue?.issue_id || "").toLowerCase();
+    if (id.includes("canonical") || id.includes("status") || id.includes("redirect") || id.includes("link")) return "Developer";
+    if (id.includes("title") || id.includes("meta") || id.includes("h1")) return "SEO / Content";
+    return "SEO";
   }
 
   async function copyQuickWinPlan(info, pageUrl = "") {
@@ -1342,11 +1391,28 @@ function AuditPageInner() {
       const why = String(it?.why || "").trim();
       const fix = String(it?.example_fix || "").trim();
       const id = String(it?.issue_id || title).trim();
+      const priority = String(it?.priority || "fix_next");
+      let where = "Update this page in your CMS or template, then re-run the audit.";
+      const idLc = String(it?.issue_id || "").toLowerCase();
+      const titleLc = String(rawTitle || "").toLowerCase();
+      if (idLc.includes("title") || titleLc.includes("title")) {
+        where = "Page SEO title field or template <title> tag.";
+      } else if (idLc.includes("meta") || titleLc.includes("meta")) {
+        where = "Page meta description field or template <meta name=\"description\"> tag.";
+      } else if (idLc.includes("h1") || titleLc.includes("h1")) {
+        where = "Main page heading in your page editor/template.";
+      } else if (idLc.includes("canonical") || titleLc.includes("canonical")) {
+        where = "Template head section or SEO plugin canonical setting.";
+      } else if (idLc.includes("link") || titleLc.includes("link")) {
+        where = "Page content links and navigation menu links.";
+      }
       return {
         id,
         title,
         why,
-        fix
+        fix,
+        priority,
+        where
       };
     });
   }
@@ -1356,7 +1422,7 @@ function AuditPageInner() {
       <AppShell
         data-testid="audit-page"
         title="SEO Page Audit"
-        subtitle="SEO tools that feel instant. Paste a URL and get a score, quick wins, and a prioritized list of issues."
+        subtitle="Free SEO audit tool for on-page and technical checks. Enter a URL to get an SEO score, prioritized issues, and ready-to-ship fixes."
         seoTitle="SEO Audit | RankyPulse"
         seoDescription="Run a full-site SEO audit, get prioritized fixes, and export a client-ready report in minutes."
         seoCanonical={`${base}/audit`}
@@ -1381,7 +1447,7 @@ function AuditPageInner() {
     <AppShell
       data-testid="audit-page"
       title="SEO Page Audit"
-      subtitle="SEO tools that feel instant. Paste a URL and get a score, quick wins, and a prioritized list of issues."
+      subtitle="Free SEO audit tool for on-page and technical checks. Enter a URL to get an SEO score, prioritized issues, and ready-to-ship fixes."
       seoTitle="SEO Audit | RankyPulse"
       seoDescription="Run a full-site SEO audit, get prioritized fixes, and export a client-ready report in minutes."
       seoCanonical={`${base}/audit`}
@@ -1389,23 +1455,31 @@ function AuditPageInner() {
       seoJsonLd={structuredData}
     >
 
-      <div className="flex flex-col gap-5">
-        <div className="grid gap-4 md:grid-cols-4">
+      <div className="rp-audit-experience flex flex-col gap-4">
+        <div className="rp-audit-kpi-list rp-reveal grid gap-3">
           {heroKpis.map((item) => (
             <button
               key={item.label}
               type="button"
-              onClick={() => jumpToSection(item.anchor)}
-              className="rp-kpi-card rounded-2xl border border-[var(--rp-border)] bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+              onClick={() => {
+                if (item.label === "Fast fixes") {
+                  openQuickFixSolutions();
+                  return;
+                }
+                jumpToSection(item.anchor);
+              }}
+              className="rp-audit-kpi-row rp-reveal group flex items-center justify-between gap-4 rounded-xl border border-[var(--rp-border)] bg-white px-4 py-3 text-left transition"
             >
-              <div className="text-xs text-[var(--rp-text-500)]">{item.label}</div>
-              <div className={`mt-2 text-2xl font-semibold ${item.tone}`}>{item.value}</div>
-              <div className="mt-2 text-[11px] text-[var(--rp-text-500)]">{item.hint}</div>
+              <div className="min-w-0">
+                <div className="text-xs font-semibold tracking-wide text-[var(--rp-text-500)]">{item.label}</div>
+                <div className="mt-1 text-[11px] text-[var(--rp-text-500)]">{item.hint}</div>
+              </div>
+              <div className={`shrink-0 text-2xl font-semibold ${item.tone}`}>{item.value}</div>
             </button>
           ))}
         </div>
         {kpiFixProgress ? (
-          <div className="rounded-xl border border-[var(--rp-border)] bg-white px-3 py-2">
+          <div className="rp-reveal rounded-xl border border-[var(--rp-border)] bg-white px-4 py-3">
             <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
               <span className="font-semibold text-[var(--rp-text-700)]">Fix progress preview</span>
               <span className="text-[var(--rp-text-500)]">
@@ -1484,53 +1558,64 @@ function AuditPageInner() {
             </div>
           </div>
         )}
-        <div className="rp-hero relative overflow-hidden rounded-2xl border border-[var(--rp-border)] bg-gradient-to-br from-[rgba(124,58,237,0.10)] via-white to-[rgba(99,102,241,0.10)] p-6 text-[var(--rp-text-900)] shadow-[0_18px_45px_rgba(66,25,131,0.12)] md:p-8">
-          <div className="pointer-events-none absolute -left-16 top-0 h-40 w-40 rounded-full bg-[rgba(124,58,237,0.10)] blur-2xl" />
-          <div className="pointer-events-none absolute -right-20 bottom-0 h-48 w-48 rounded-full bg-[rgba(45,212,191,0.10)] blur-2xl" />
+        <div className="rp-audit-hero rp-reveal rounded-2xl border border-[var(--rp-border)] p-6 text-[var(--rp-text-900)] md:p-7">
           <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-            <div className="flex min-h-[320px] flex-col justify-between gap-4">
+            <div className="flex flex-col justify-between gap-4">
               <div className="inline-flex w-fit items-center gap-2 rounded-full border border-[rgba(124,58,237,0.25)] bg-[rgba(124,58,237,0.10)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--rp-indigo-800)]">
-                RankyPulse Audit
+                Free SEO Audit Tool
               </div>
               <h2 className="text-3xl font-semibold leading-tight text-[var(--rp-text-900)] md:text-4xl">
-                SEO clarity in one scan.
+                Find ranking blockers and fix them fast.
               </h2>
               <p className="text-sm text-[var(--rp-text-700)] md:text-base">
-                Paste a URL to generate a score, quick wins, and a prioritized fix plan in seconds.
+                {simplifiedFlowEnabled
+                  ? "Enter a URL, identify the top SEO issue, copy the fix, and re-check."
+                  : "Audit any URL for title/meta gaps, heading issues, link signals, and technical blockers in one report."}
               </p>
-              <div className="flex flex-wrap items-center gap-3 text-xs text-[var(--rp-text-700)]">
-                <span className="rounded-full border border-[var(--rp-border)] bg-white px-3 py-1">SEO basics + content depth</span>
-                <span className="rounded-full border border-[var(--rp-border)] bg-white px-3 py-1">Core Web Vitals when available</span>
-                <span className="rounded-full border border-[var(--rp-border)] bg-white px-3 py-1">Client-ready report</span>
+              <div className="rp-audit-proof-row flex flex-wrap items-center gap-2 text-[11px] text-[var(--rp-text-600)]">
+                <span className="rp-audit-proof-pill">Trusted by teams</span>
+                <span className="rp-audit-proof-pill">Scans complete in ~20s</span>
+                <span className="rp-audit-proof-pill">Actionable fix plan</span>
               </div>
-              <div className="mt-1 grid gap-2 sm:grid-cols-3">
-                <div className="rounded-xl border border-[var(--rp-border)] bg-white/85 p-3 shadow-sm">
-                  <div className="text-[10px] uppercase tracking-[0.08em] text-[var(--rp-text-500)]">Problems found</div>
-                  <div className="mt-1 text-lg font-semibold text-rose-700">{heroVisualStats.issueCount || "-"}</div>
-                  <div className="text-[11px] text-[var(--rp-text-500)]">Prioritized instantly</div>
-                </div>
-                <div className="rounded-xl border border-[var(--rp-border)] bg-white/85 p-3 shadow-sm">
-                  <div className="text-[10px] uppercase tracking-[0.08em] text-[var(--rp-text-500)]">Fast fixes</div>
-                  <div className="mt-1 text-lg font-semibold text-amber-700">{heroVisualStats.quickCount || "-"}</div>
-                  <div className="text-[11px] text-[var(--rp-text-500)]">Ready in minutes</div>
-                </div>
-                <div className="rounded-xl border border-[var(--rp-border)] bg-white/85 p-3 shadow-sm">
-                  <div className="text-[10px] uppercase tracking-[0.08em] text-[var(--rp-text-500)]">First-fix lift</div>
-                  <div className="mt-1 text-lg font-semibold text-emerald-700">+{heroVisualStats.firstFixLift}</div>
-                  <div className="text-[11px] text-[var(--rp-text-500)]">Score points estimate</div>
-                </div>
-              </div>
+              {!simplifiedFlowEnabled ? (
+                <>
+                  <div className="flex flex-wrap items-center gap-3 text-xs text-[var(--rp-text-700)]">
+                    <span className="rounded-full border border-[var(--rp-border)] bg-white px-3 py-1">On-page SEO checks</span>
+                    <span className="rounded-full border border-[var(--rp-border)] bg-white px-3 py-1">Technical SEO signals</span>
+                    <span className="rounded-full border border-[var(--rp-border)] bg-white px-3 py-1">Prioritized action plan</span>
+                  </div>
+                  <div className="mt-1 grid gap-2 sm:grid-cols-3">
+                    <div className="rounded-xl border border-[var(--rp-border)] bg-white/85 p-3 shadow-sm">
+                      <div className="text-[10px] uppercase tracking-[0.08em] text-[var(--rp-text-500)]">Problems found</div>
+                      <div className="mt-1 text-lg font-semibold text-rose-700">{heroVisualStats.issueCount || "-"}</div>
+                      <div className="text-[11px] text-[var(--rp-text-500)]">Prioritized instantly</div>
+                    </div>
+                    <div className="rounded-xl border border-[var(--rp-border)] bg-white/85 p-3 shadow-sm">
+                      <div className="text-[10px] uppercase tracking-[0.08em] text-[var(--rp-text-500)]">Fast fixes</div>
+                      <div className="mt-1 text-lg font-semibold text-amber-700">{heroVisualStats.quickCount || "-"}</div>
+                      <div className="text-[11px] text-[var(--rp-text-500)]">Ready in minutes</div>
+                    </div>
+                    <div className="rounded-xl border border-[var(--rp-border)] bg-white/85 p-3 shadow-sm">
+                      <div className="text-[10px] uppercase tracking-[0.08em] text-[var(--rp-text-500)]">First-fix lift</div>
+                      <div className="mt-1 text-lg font-semibold text-emerald-700">+{heroVisualStats.firstFixLift}</div>
+                      <div className="text-[11px] text-[var(--rp-text-500)]">Score points estimate</div>
+                    </div>
+                  </div>
+                </>
+              ) : null}
             </div>
-            <div className="rounded-2xl border border-[rgba(124,58,237,0.18)] bg-white/95 p-5 text-[var(--rp-text-900)] shadow-[0_12px_30px_rgba(66,25,131,0.14)] backdrop-blur-[2px]">
+            <div className="rp-audit-control-card rp-reveal rounded-2xl border border-[rgba(124,58,237,0.18)] bg-white p-5 text-[var(--rp-text-900)] shadow-sm">
               <div className="flex items-center justify-between text-xs font-semibold text-[var(--rp-text-500)]">
-                <span>Audit setup</span>
+                <span>Start your audit</span>
                 <span className="rounded-full bg-[var(--rp-gray-100)] px-2 py-1 rp-body-xsmall">~20s</span>
               </div>
-              <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-[var(--rp-text-600)]">
-                <span className="rounded-full border border-[var(--rp-border)] bg-[rgba(124,58,237,0.08)] px-2 py-1 font-semibold text-[var(--rp-indigo-700)]">1. Enter URL</span>
-                <span className="rounded-full border border-[var(--rp-border)] bg-[rgba(56,189,248,0.08)] px-2 py-1 font-semibold text-sky-700">2. Run audit</span>
-                <span className="rounded-full border border-[var(--rp-border)] bg-[rgba(16,185,129,0.10)] px-2 py-1 font-semibold text-emerald-700">3. Fix first issue</span>
-              </div>
+              {!simplifiedFlowEnabled ? (
+                <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-[var(--rp-text-600)]">
+                  <span className="rounded-full border border-[var(--rp-border)] bg-[rgba(124,58,237,0.08)] px-2 py-1 font-semibold text-[var(--rp-indigo-700)]">1. Enter page URL</span>
+                  <span className="rounded-full border border-[var(--rp-border)] bg-[rgba(56,189,248,0.08)] px-2 py-1 font-semibold text-sky-700">2. Generate report</span>
+                  <span className="rounded-full border border-[var(--rp-border)] bg-[rgba(16,185,129,0.10)] px-2 py-1 font-semibold text-emerald-700">3. Ship top fix</span>
+                </div>
+              ) : null}
               <div className="mt-3 grid gap-4">
                 <label className="block text-xs font-semibold text-[var(--rp-text-500)]" htmlFor="audit-page-url">
                   Page URL
@@ -1542,31 +1627,26 @@ function AuditPageInner() {
                   placeholder="https://example.com/pricing"
                   className="rp-input"
                 />
-                <div className="grid gap-4 md:grid-cols-[1fr_150px]">
-                  <div className="rp-body-xsmall">Tip: test with https://example.com</div>
-                  <label className="sr-only" htmlFor="audit-region">Audit region</label>
-                  <select id="audit-region" className="rp-input text-sm" aria-label="Audit region">
-                    <option>US</option>
-                    <option>UK</option>
-                    <option>EU</option>
-                  </select>
-                </div>
+                <div className="rp-body-xsmall">Tip: start with any public page URL (homepage, service page, or blog post).</div>
                 <button
                   onClick={run}
                   disabled={!hasUrl || status === "loading" || !allowAudit}
                   title={auditDisabledReason}
                   className={[
-                    "rp-btn-primary w-full",
+                    "rp-btn-primary rp-cta-dominant w-full",
                     !hasUrl || status === "loading" || !allowAudit ? "opacity-50 cursor-not-allowed" : ""
                   ].join(" ")}
                 >
                   <IconPlay size={16} />
-                  {status === "loading" ? "Running..." : "Run SEO Audit"}
+                  {status === "loading" ? "Running audit..." : "Run Free SEO Audit"}
                 </button>
+                <div className="text-center text-[11px] text-[var(--rp-text-500)]">
+                  No credit card required • Full report with prioritized fixes
+                </div>
                 {!simplifiedFlowEnabled && status === "success" && topPriorityIssue ? (
                   <button
                     type="button"
-                    className="rp-btn-secondary rp-btn-sm h-8 px-3 text-xs"
+                    className="text-xs font-semibold text-[var(--rp-indigo-700)] hover:text-[var(--rp-indigo-900)]"
                     onClick={async () => {
                       const pageUrl = String(result?.debug?.final_url || result?.final_url || url || "");
                       const ux = topFixUX(topPriorityIssue, pageUrl);
@@ -1576,14 +1656,14 @@ function AuditPageInner() {
                       setTimeout(() => setTopFixNotice(""), 2200);
                     }}
                   >
-                    Copy first fix
+                    Copy first fix (optional)
                   </button>
                 ) : null}
                 {auditDisabledReason && (!hasUrl || status === "loading" || !allowAudit || (requireVerified && authUser && authUser.verified === false)) && (
                   <div className="text-xs text-[var(--rp-text-500)]">{auditDisabledReason}</div>
                 )}
               </div>
-              <div className="mt-4 grid grid-cols-3 gap-4 text-xs text-[var(--rp-text-500)]">
+              <div className={`mt-4 grid grid-cols-3 gap-4 text-xs text-[var(--rp-text-500)] ${simplifiedFlowEnabled ? "hidden" : ""}`}>
                 {(() => {
                   const previewScore = typeof scoreValue === "number" ? scoreValue : 0;
                   const totalIssues = issues.length;
@@ -1642,6 +1722,59 @@ function AuditPageInner() {
           )
         )}
 
+        {simplifiedFlowEnabled && status === "success" && result && topPriorityIssue ? (
+          <div className="rp-card p-5">
+            {(() => {
+              const pageUrl = String(result?.debug?.final_url || result?.final_url || url || "");
+              const ux = topFixUX(topPriorityIssue, pageUrl);
+              const priority = String(topPriorityIssue?.priority || "fix_now");
+              const priorityClass = priority === "fix_now" ? "rp-chip rp-chip-warning" : "rp-chip rp-chip-info";
+              const copyText = ux.snippet || String(topPriorityIssue?.example_fix || topPriorityIssue?.fix || ux.detail);
+              return (
+                <>
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <div className="rp-section-title">Start here: top blocker</div>
+                      <div className="mt-1 text-xs text-[var(--rp-text-500)]">Fix this first, then re-audit to validate improvement.</div>
+                    </div>
+                    <span className={priorityClass}>{priority.replace("_", " ")}</span>
+                  </div>
+                  <div className="mt-3 grid gap-3 md:grid-cols-3">
+                    <div className="rounded-xl border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-3">
+                      <div className="text-[10px] uppercase tracking-wide text-[var(--rp-text-500)]">Problem</div>
+                      <div className="mt-1 text-sm font-semibold text-[var(--rp-text-900)]">{ux.heading}</div>
+                    </div>
+                    <div className="rounded-xl border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-3">
+                      <div className="text-[10px] uppercase tracking-wide text-[var(--rp-text-500)]">Impact</div>
+                      <div className="mt-1 text-sm font-semibold text-[var(--rp-text-900)]">{ux.businessImpact}</div>
+                      <div className="mt-1 text-xs text-[var(--rp-text-600)]">Expected lift: +{Math.max(1, Math.round(estimateScoreLiftFromIssues([topPriorityIssue])))} score points</div>
+                    </div>
+                    <div className="rounded-xl border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-3">
+                      <div className="text-[10px] uppercase tracking-wide text-[var(--rp-text-500)]">Fix</div>
+                      <div className="mt-1 text-sm font-semibold text-[var(--rp-text-900)]">{ux.detail}</div>
+                      <div className="mt-1 text-xs text-[var(--rp-text-600)]">Owner: {topFixOwner(topPriorityIssue)} • Time: {ux.time}</div>
+                    </div>
+                  </div>
+                  {copyText ? (
+                    <pre className="mt-3 overflow-auto rounded-xl border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-3 text-xs text-[var(--rp-text-700)] whitespace-pre-wrap">{copyText}</pre>
+                  ) : null}
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button type="button" className="rp-btn-primary rp-btn-sm h-9 px-3 text-xs" onClick={handleGetSolution}>
+                      Copy top fix
+                    </button>
+                    <button type="button" className="rp-btn-secondary rp-btn-sm h-9 px-3 text-xs" onClick={handleSimplifiedRerun}>
+                      Re-audit now
+                    </button>
+                    <button type="button" className="rp-btn-secondary rp-btn-sm h-9 px-3 text-xs" onClick={handleFindProblem}>
+                      Go to issue
+                    </button>
+                  </div>
+                </>
+              );
+            })()}
+          </div>
+        ) : null}
+
         {status === "idle" && (
           <div className="rp-card p-5 text-sm text-[var(--rp-text-500)]">
             Enter a URL above to run an audit.
@@ -1668,6 +1801,36 @@ function AuditPageInner() {
 
         {status === "success" && result && (
           <div className="grid gap-5">
+            <div className="rp-audit-execbar rounded-2xl border border-[var(--rp-border)] bg-white p-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--rp-text-500)]">Audit outcome</div>
+                  <div className="mt-1 text-lg font-semibold text-[var(--rp-text-900)]">
+                    {hasDetectedIssues ? "Priority fixes detected" : "No critical blockers detected"}
+                  </div>
+                  <div className="mt-1 text-sm text-[var(--rp-text-600)]">
+                    {hasDetectedIssues
+                      ? `${prioritizedIssues.length} issue${prioritizedIssues.length === 1 ? "" : "s"} found. Start with the first fix to unlock score lift quickly.`
+                      : "This URL is currently healthy. Keep monitoring and rerun after content or template changes."}
+                  </div>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className={`rp-chip ${hasDetectedIssues ? "rp-chip-warning" : "rp-chip-success"}`}>
+                    {hasDetectedIssues ? "Action required" : "Healthy snapshot"}
+                  </span>
+                  <button
+                    type="button"
+                    className="rp-btn-secondary rp-btn-sm h-9 px-3 text-xs"
+                    onClick={() => {
+                      const el = document.querySelector("[data-testid='key-issues']");
+                      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+                    }}
+                  >
+                    {hasDetectedIssues ? "Open priority fixes" : "View issue log"}
+                  </button>
+                </div>
+              </div>
+            </div>
             {!simplifiedFlowEnabled && (
             <div className="flex flex-wrap items-center gap-2">
               {[
@@ -2047,7 +2210,7 @@ function AuditPageInner() {
               <div id="quick-wins" className="rp-card p-5 md:col-span-12 rp-fade-in bg-gradient-to-br from-white via-white to-[rgba(124,58,237,0.04)]">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    <div className="rp-section-title">Quick Wins</div>
+                    <div className="rp-section-title">Quick Fix Solutions</div>
                     <div className="mt-1 text-xs text-[var(--rp-text-500)]">
                       Fast fixes your team can ship in minutes for immediate SEO lift.
                     </div>
@@ -2228,7 +2391,7 @@ function AuditPageInner() {
             <div data-testid="key-issues">
               <Suspense fallback={null}>
                 <IssuesPanel
-                  issues={strictPrioritizeIssues(issues)}
+                  issues={prioritizedIssues}
                   advanced={advancedView}
                   finalUrl={String(result?.debug?.final_url || result?.final_url || "")}
                   simplified={simplifiedFlowEnabled}
@@ -2396,240 +2559,98 @@ function AuditPageInner() {
           </div>
         )}
 
-        {status === "success" && (
-          <div className="rp-card p-5 rp-fade-in">
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="rp-section-title">Guided Fix Mode</div>
-              <span className="rp-section-subtitle">Step-by-step for non-technical teams</span>
-            </div>
-            <p className="mt-2 rp-body-small">
-              Start with the top 3 fixes. Each step is written in plain language so anyone can act on it.
-            </p>
-            <div className="mt-3 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-4 text-xs text-[var(--rp-text-600)]">
-              <div className="font-semibold text-[var(--rp-text-700)]">Progress across audits</div>
-              <div className="mt-3 grid gap-4 md:grid-cols-2">
-                {(() => {
-                  const keys = Object.keys(localStorage || {}).filter((k) => k.startsWith("rp_guided_done::"));
-                  if (!keys.length) {
-                    return <span>No saved progress yet.</span>;
-                  }
-                  return keys.slice(0, 4).map((key) => {
-                    const urlKey = key.replace("rp_guided_done::", "");
-                    let doneCount = 0;
-                    let totalCount = 0;
-                    let lastRun = "";
-                    try {
-                      const raw = localStorage.getItem(key);
-                      const obj = raw ? JSON.parse(raw) : {};
-                      doneCount = Object.values(obj).filter(Boolean).length;
-                      totalCount = Object.keys(obj).length;
-                    } catch {}
-                    try {
-                      const snapKey = `rp_audit_snapshot::${urlKey}`;
-                      const snapRaw = localStorage.getItem(snapKey);
-                      const snap = snapRaw ? JSON.parse(snapRaw) : null;
-                      const ts = snap?.ranAt || snap?.ran_at || snap?.created_at;
-                      if (ts) {
-                        const date = new Date(ts);
-                        if (!Number.isNaN(date.getTime())) {
-                          lastRun = date.toLocaleString();
-                        }
-                      }
-                    } catch {}
-                    return (
-                      <div key={key} className="flex items-center justify-between gap-2 rounded-xl border border-[var(--rp-border)] bg-white px-3 py-2 shadow-sm">
-                        <div className="min-w-0">
-                          <button
-                            type="button"
-                            className="truncate text-left text-xs font-semibold text-[var(--rp-indigo-700)] hover:text-[var(--rp-indigo-900)]"
-                            onClick={() => {
-                              if (!urlKey) return;
-                              navigate(`/audit?url=${encodeURIComponent(urlKey)}`);
-                            }}
-                            title={urlKey}
-                          >
-                            {urlKey || "Audit"}
-                          </button>
-                        <div className="rp-body-xsmall">
-                          {lastRun ? `Last run: ${lastRun}` : "Last run: N/A"}
-                        </div>
-                      </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-[var(--rp-text-500)]">{doneCount}/{totalCount || 0}</span>
-                          {(() => {
-                            const pct = totalCount ? Math.round((doneCount / totalCount) * 100) : 0;
-                            const badgeClass =
-                              pct >= 80
-                                ? "bg-emerald-100 text-emerald-700 border border-emerald-200"
-                                : pct >= 50
-                                ? "bg-amber-100 text-amber-700 border border-amber-200"
-                                : "bg-rose-100 text-rose-700 border border-rose-200";
-                            return (
-                              <span
-                                className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${badgeClass}`}
-                                title="Progress thresholds: Red <50%, Amber 50-79%, Green 80%+"
-                              >
-                                {pct}%
-                              </span>
-                            );
-                          })()}
-                        </div>
-                      </div>
-                    );
-                  });
-                })()}
-              </div>
-            </div>
-            {(() => {
-              const base = scoreValue ?? 0;
-              const remainingIssues = issues.filter((it) => !guidedDone[String(it?.issue_id || it?.title || "")]);
-              const lift = estimateScoreLiftFromIssues(remainingIssues);
-              const projected = Math.min(100, base + lift);
-              const totalSteps = guidedSteps(issues, true).length;
-              const completedSteps = totalSteps
-                ? guidedSteps(issues, true).filter((step) => guidedDone[step.id]).length
-                : 0;
-              return (
-                <div className="mt-4 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-4">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <div className="text-xs text-[var(--rp-text-500)]">Before / After preview</div>
-                      <div className="mt-1 text-lg font-semibold text-[var(--rp-text-800)]">
-                        {Math.round(base)} <span className="text-[var(--rp-text-400)]">→</span> {Math.round(projected)}
-                      </div>
-                    </div>
-                    <div className="text-xs text-[var(--rp-text-500)]">
-                      Estimated lift: +{Math.round(lift)}
-                    </div>
+        {status === "success" && (() => {
+          const topFixSteps = guidedSteps(issues, false);
+          if (!topFixSteps.length) {
+            return (
+              <div className="rp-card p-5 rp-fade-in bg-gradient-to-br from-white via-white to-emerald-50/40">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <div className="rp-section-title">No Priority Fixes Found</div>
+                    <p className="mt-2 text-sm text-[var(--rp-text-600)]">
+                      This page looks clean right now. Keep monitoring and re-audit after major content or template changes.
+                    </p>
                   </div>
-                  <div className="mt-2 text-xs text-[var(--rp-text-500)]">
-                    Progress: {completedSteps}/{totalSteps || 0} fixes completed
-                  </div>
-                  <div className="mt-2 inline-flex items-center rounded-full border border-emerald-200 bg-emerald-100 px-2 py-1 text-[11px] font-semibold text-emerald-700">
-                    Next step: Tackle the highest impact fix first
-                  </div>
-                  <div className="mt-2 text-xs text-[var(--rp-text-500)]">
-                    Estimated time to complete: {Math.max(10, (totalSteps || 3) * 6)} min
-                  </div>
-                  <div className="mt-3">
-                    <div className="flex items-center justify-between text-xs text-[var(--rp-text-500)]">
-                      <span>Fix-impact meter</span>
-                      <span>{Math.round(lift)} pts</span>
-                    </div>
-                    <div className="mt-2 h-2 w-full rounded-full bg-[var(--rp-gray-100)]">
-                      <div
-                        className="rp-bar h-2 rounded-full bg-gradient-to-r from-cyan-400 to-emerald-400"
-                        style={{ width: `${Math.min(100, Math.round((lift / 30) * 100))}%` }}
-                      />
-                    </div>
-                  </div>
-                  <div className="mt-4">
-                    <div className="flex items-center justify-between text-xs text-[var(--rp-text-500)]">
-                      <span>Progress trend</span>
-                      <span>Next steps</span>
-                    </div>
-                    <svg viewBox="0 0 200 70" className="mt-2 h-16 w-full">
-                      <defs>
-                        <linearGradient id="guidedTrend" x1="0" y1="0" x2="1" y2="0">
-                          <stop offset="0%" stopColor="#22d3ee" />
-                          <stop offset="100%" stopColor="#34d399" />
-                        </linearGradient>
-                      </defs>
-                      {(() => {
-                        const linePoints = buildLiftPoints(base, lift);
-                        const areaPoints = `5,70 ${linePoints} 195,70`;
-                        return (
-                          <>
-                            <polyline
-                              fill="none"
-                              stroke="url(#guidedTrend)"
-                              strokeWidth="3"
-                              points={linePoints}
-                            />
-                            <polyline
-                              fill="url(#guidedTrend)"
-                              opacity="0.15"
-                              points={areaPoints}
-                            />
-                          </>
-                        );
-                      })()}
-                    </svg>
-                  </div>
+                  <span className="rp-chip rp-chip-success">Healthy now</span>
                 </div>
-              );
-            })()}
-            <div className="mt-3 flex flex-wrap items-center gap-4 text-xs text-[var(--rp-text-500)]">
-              <span className="whitespace-nowrap">{showAllGuidedFixes ? "Showing all fixes" : "Showing top 3 fixes"}</span>
-              <div className="flex items-center gap-2 text-[11px] text-[var(--rp-text-500)] whitespace-nowrap">
-                <span className="inline-flex items-center gap-1">
-                  <span className="inline-block h-2 w-2 rounded-full bg-rose-400"></span>
-                  <span>&lt;50%</span>
-                </span>
-                <span className="inline-flex items-center gap-1">
-                  <span className="inline-block h-2 w-2 rounded-full bg-amber-400"></span>
-                  <span>50-79%</span>
-                </span>
-                <span className="inline-flex items-center gap-1">
-                  <span className="inline-block h-2 w-2 rounded-full bg-emerald-400"></span>
-                  <span>80%+</span>
-                </span>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    className="rp-btn-secondary rp-btn-sm h-9 px-3 text-xs"
+                    onClick={() => {
+                      const u = result?.url;
+                      if (!u) return;
+                      if (isMonitored(u)) {
+                        removeMonitor(u);
+                      } else {
+                        upsertMonitor({ url: u });
+                      }
+                      refreshMonitors();
+                    }}
+                  >
+                    {result?.url && isMonitored(result.url) ? "Stop monitoring" : "Monitor this page"}
+                  </button>
+                  <button type="button" className="rp-btn-secondary rp-btn-sm h-9 px-3 text-xs" onClick={run}>
+                    Re-audit now
+                  </button>
+                </div>
               </div>
-              <div className="ml-auto flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
-                <button
-                  type="button"
-                  className="rp-btn-secondary rp-btn-sm h-8 px-3 text-xs inline-flex items-center gap-2 whitespace-nowrap"
-                  onClick={() => setShowAllGuidedFixes((prev) => !prev)}
-                >
-                  {showAllGuidedFixes ? "Show top 3" : "Show all fixes"}
-                </button>
-                <button
-                  type="button"
-                  className="rp-btn-secondary rp-btn-sm h-8 px-3 text-xs inline-flex items-center gap-2 whitespace-nowrap"
-                  onClick={() => {
-                    const key = `rp_guided_done::${(result?.url || url || "").trim()}`;
-                    if (!key.trim()) return;
-                    try { localStorage.removeItem(key); } catch {}
-                    setGuidedDone({});
-                  }}
-                >
-                  <IconTrash size={14} />
-                  Reset progress
-                </button>
+            );
+          }
+          return (
+            <div className="rp-card p-5 rp-fade-in">
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="rp-section-title">Top 3 Fix Flow</div>
+                <span className="rp-section-subtitle">Find problem, apply fix, re-check</span>
               </div>
-            </div>
-            {guidedSteps(issues, showAllGuidedFixes).length > 0 ? (
+              <p className="mt-2 rp-body-small">
+                Focus only on the highest-impact fixes first. Apply one, then re-run to confirm it is solved.
+              </p>
               <ol className="mt-4 grid gap-4 md:grid-cols-3">
-                {guidedSteps(issues, showAllGuidedFixes).map((step, idx) => (
-                  <li key={idx} className="rp-metric-tile rounded-xl border border-[var(--rp-border)] bg-white p-4 shadow-sm">
+                {topFixSteps.map((step, idx) => (
+                  <li key={step.id || idx} className="rp-metric-tile rounded-xl border border-[var(--rp-border)] bg-white p-4 shadow-sm">
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <div className="text-xs font-semibold text-[var(--rp-indigo-700)]">Step {idx + 1}</div>
-                        <div className="mt-2 text-sm font-semibold text-[var(--rp-text-800)]">{step.title}</div>
+                        <div className="mt-1 text-sm font-semibold text-[var(--rp-text-800)]">{step.title}</div>
                       </div>
+                      <span className={`rp-chip text-[11px] ${step.priority === "fix_now" ? "rp-chip-warning" : "rp-chip-info"}`}>
+                        {step.priority === "fix_now" ? "Fix now" : "Fix next"}
+                      </span>
+                    </div>
+                    <div className="mt-3 text-xs font-semibold uppercase tracking-[0.08em] text-[var(--rp-text-500)]">Impact</div>
+                    <p className="mt-1 text-sm text-[var(--rp-text-600)]">
+                      {step.why || "This issue can reduce visibility or click-through from search results."}
+                    </p>
+                    <div className="mt-3 text-xs font-semibold uppercase tracking-[0.08em] text-[var(--rp-text-500)]">Exact fix</div>
+                    <p className="mt-1 text-sm text-[var(--rp-text-700)]">
+                      {step.fix || "Apply the recommended SEO element and keep it unique for this page."}
+                    </p>
+                    <div className="mt-3 text-xs font-semibold uppercase tracking-[0.08em] text-[var(--rp-text-500)]">Where to fix</div>
+                    <p className="mt-1 text-sm text-[var(--rp-text-600)]">{step.where}</p>
+                    <div className="mt-4 flex items-center gap-2">
+                      <button
+                        type="button"
+                        className="rp-btn-secondary rp-btn-sm h-8 px-3 text-xs"
+                        onClick={run}
+                      >
+                        Re-run audit
+                      </button>
                       <label className="flex items-center gap-2 text-xs text-[var(--rp-text-500)]">
                         <input
                           type="checkbox"
                           checked={Boolean(guidedDone[step.id])}
                           onChange={() => toggleGuidedDone(step.id)}
                         />
-                        Mark as done
+                        Done
                       </label>
                     </div>
-                    <p className="mt-2 text-sm text-[var(--rp-text-600)]">
-                      {step.why || "This fix improves clarity for visitors and search engines."}
-                    </p>
-                    <p className="mt-2 text-sm text-[var(--rp-text-600)]">
-                      {step.fix || "Add the missing element and re-run the audit to confirm."}
-                    </p>
                   </li>
                 ))}
               </ol>
-            ) : (
-              <div className="mt-3 text-sm text-[var(--rp-text-500)]">Run an audit to see your guided fix steps.</div>
-            )}
-          </div>
-        )}
+            </div>
+          );
+        })()}
 
         {status === "success" && !simplifiedFlowEnabled && !showDeepSections && (
           <div className="rp-card p-4">
@@ -3475,7 +3496,7 @@ function AuditPageInner() {
               <div>
                 <div className="rp-section-title">Light monitoring</div>
                 <div className="mt-1 text-xs text-[var(--rp-text-500)]">
-                  Track your most important pages and see when it’s time to re‑audit.
+                  Track key URLs and get a signal when it is time to re-audit.
                 </div>
               </div>
               {result?.url && (
@@ -3514,16 +3535,23 @@ function AuditPageInner() {
                 ))}
               </div>
             ) : (
-              <div className="mt-4 text-sm text-[var(--rp-text-500)]">No pages monitored yet.</div>
+              <div className="mt-4 rounded-xl border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-3 text-sm text-[var(--rp-text-600)]">
+                No pages monitored yet. Add this URL to keep the health score stable over time.
+              </div>
             )}
           </div>
         )}
 
         {/* Conversion Panel - Show after audit completes, only once per session */}
         {status === "success" && result && !conversionDismissed && !conversionSubmitted && (
-          <div className="rp-card p-5 rp-fade-in">
-            <div className="rp-section-title">Save your audit & track improvements</div>
-            <div className="rp-section-subtitle mb-4">Get notified when your SEO score changes or new issues appear.</div>
+          <div className="rp-card p-5 rp-fade-in bg-gradient-to-br from-white via-white to-[rgba(124,58,237,0.03)]">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <div className="rp-section-title">Save your audit and track improvements</div>
+                <div className="rp-section-subtitle mb-0">Get notified when your SEO score changes or new issues appear.</div>
+              </div>
+              <span className="rp-chip rp-chip-info">Optional</span>
+            </div>
             <form onSubmit={handleConversionSubmit} className="flex flex-col gap-4 sm:flex-row sm:items-end">
               <div className="flex-1">
                 <input
@@ -3559,7 +3587,7 @@ function AuditPageInner() {
         {/* Success state after email submission */}
         {status === "success" && result && conversionSubmitted && (
           <div className="rp-card p-5 rp-fade-in">
-            <div className="text-sm text-[var(--rp-text-600)]">You're all set. We'll notify you when things change.</div>
+            <div className="text-sm text-[var(--rp-text-600)]">You are all set. We will notify you when score or issue status changes.</div>
           </div>
         )}
 
@@ -3567,7 +3595,7 @@ function AuditPageInner() {
           <div className="rp-card p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="text-sm text-[var(--rp-text-600)]">
-                Optional growth tools are placed at the end so your fix workflow stays focused.
+                Growth tools are optional and placed at the end so your fix workflow stays focused.
               </div>
               <button
                 type="button"
@@ -3807,5 +3835,9 @@ function AuditPageInner() {
 }
 
 export default function AuditPage() {
-  return <AuditPageInner />;
+  return (
+    <ErrorBoundary>
+      <AuditPageInner />
+    </ErrorBoundary>
+  );
 }

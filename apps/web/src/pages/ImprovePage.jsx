@@ -131,7 +131,7 @@ export default function ImprovePage() {
         if (isFreeCreditExhaustedResponse(res.status, payload)) {
           setStatus("error");
           setError("Your free credit is used. Upgrade to continue generating plans.");
-          navigate(pricingRedirectPath("improve_page"));
+          navigate(pricingRedirectPath("improve_page"), { replace: true });
           return;
         }
         throw new Error(extractApiErrorMessage(payload, `HTTP ${res.status}`));
