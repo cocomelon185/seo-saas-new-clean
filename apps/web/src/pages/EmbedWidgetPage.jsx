@@ -4,8 +4,6 @@ import { IconArrowRight, IconLink } from "../components/Icons.jsx";
 import { getAnonId } from "../utils/anonId.js";
 import { safeJson } from "../lib/safeJson.js";
 import { apiUrl } from "../lib/api.js";
-import ApexSemiDonutScore from "../components/charts/ApexSemiDonutScore.jsx";
-import ApexMetricBars from "../components/charts/ApexMetricBars.jsx";
 import { Link } from "react-router-dom";
 
 export default function EmbedWidgetPage() {
@@ -44,12 +42,13 @@ export default function EmbedWidgetPage() {
   const [leadsStatus, setLeadsStatus] = useState("idle");
   const [metrics, setMetrics] = useState({ sent: 0, failed: 0, total: 0, successRate: 0 });
   const [snippetInstalled, setSnippetInstalled] = useState(false);
+  const [previewLoaded, setPreviewLoaded] = useState(false);
+  const [previewLikelyBlocked, setPreviewLikelyBlocked] = useState(false);
 
   const sent = Number(metrics.sent || 0);
   const failed = Number(metrics.failed || 0);
   const totalDeliveries = sent + failed;
   const successRate = totalDeliveries > 0 ? Math.round((sent / totalDeliveries) * 100) : 0;
-  const failureRate = totalDeliveries > 0 ? Math.max(0, 100 - successRate) : 0;
   const leadTotal = Number(metrics.total || 0) > 0 ? Number(metrics.total || 0) : recentLeads.length;
 
   useEffect(() => {
@@ -117,6 +116,19 @@ export default function EmbedWidgetPage() {
       active = false;
     };
   }, [anonId, setupStatus]);
+
+  useEffect(() => {
+    setPreviewLoaded(false);
+    setPreviewLikelyBlocked(false);
+  }, [embedUrl]);
+
+  useEffect(() => {
+    if (previewLoaded) return;
+    const timer = setTimeout(() => {
+      setPreviewLikelyBlocked(true);
+    }, 2500);
+    return () => clearTimeout(timer);
+  }, [previewLoaded, embedUrl]);
 
   async function sendTestLead() {
     setSetupStatus("Creating test lead...");
@@ -285,6 +297,9 @@ export default function EmbedWidgetPage() {
           </div>
           <div className="mt-6 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-4">
             <div className="text-xs text-[var(--rp-text-500)]">Embed snippet</div>
+            <div className="mt-1 text-xs text-[var(--rp-text-500)]">
+              Paste this code where you want the audit form to appear on your site (for example, Pricing or Contact page).
+            </div>
             <pre className="mt-2 whitespace-pre-wrap break-all rounded-xl border border-[var(--rp-border)] bg-white p-3 text-xs text-[var(--rp-text-600)]">
 {iframeSnippet}
             </pre>
@@ -321,6 +336,9 @@ export default function EmbedWidgetPage() {
               <div className="mt-2 text-xs text-[var(--rp-text-500)]">{webhookStatus}</div>
             )}
             {setupStatus ? <div className="mt-1 text-xs text-[var(--rp-text-500)]">{setupStatus}</div> : null}
+            <div className="mt-2 text-xs text-[var(--rp-text-500)]">
+              This `iframe` code is what actually embeds your lead form on external pages.
+            </div>
           </div>
           <div className="mt-4 text-xs text-[var(--rp-text-500)]">
             The form posts to RankyPulse and forwards to your webhook if provided.
@@ -368,46 +386,65 @@ export default function EmbedWidgetPage() {
             )}
           </div>
           <div className="mt-4 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-4">
-            <div className="text-xs text-[var(--rp-text-500)]">Delivery success chart</div>
-            <div className="mt-3 flex items-center gap-4">
-              <div className="w-[120px]">
-                <ApexSemiDonutScore value={metrics.successRate || 0} height={120} color="#22c55e" />
+            <div className="text-xs text-[var(--rp-text-500)]">Delivery health</div>
+            {totalDeliveries === 0 ? (
+              <div className="mt-2 rounded-xl border border-[var(--rp-border)] bg-white p-3 text-xs text-[var(--rp-text-600)]">
+                <div className="font-semibold text-[var(--rp-text-700)]">No delivery data yet</div>
+                <div className="mt-1">Run “Test webhook” or “Send test lead” once. This section will then show useful delivery trends.</div>
               </div>
-              <div className="text-xs text-[var(--rp-text-600)] space-y-1">
-                <div>Sent: <span className="font-semibold text-[var(--rp-text-800)]">{metrics.sent}</span></div>
-                <div>Failed: <span className="font-semibold text-[var(--rp-text-800)]">{metrics.failed}</span></div>
-                <div>Total: <span className="font-semibold text-[var(--rp-text-800)]">{metrics.total}</span></div>
+            ) : (
+              <div className="mt-3 space-y-3">
+                <div className="grid gap-2 text-xs text-[var(--rp-text-600)] sm:grid-cols-3">
+                  <div className="rounded-xl border border-[var(--rp-border)] bg-white p-3">
+                    Sent: <span className="font-semibold text-[var(--rp-text-800)]">{sent}</span>
+                  </div>
+                  <div className="rounded-xl border border-[var(--rp-border)] bg-white p-3">
+                    Failed: <span className="font-semibold text-[var(--rp-text-800)]">{failed}</span>
+                  </div>
+                  <div className="rounded-xl border border-[var(--rp-border)] bg-white p-3">
+                    Success rate: <span className="font-semibold text-[var(--rp-text-800)]">{successRate}%</span>
+                  </div>
+                </div>
+                <div className="rounded-xl border border-[var(--rp-border)] bg-white p-3 text-xs text-[var(--rp-text-600)]">
+                  <div className="mb-2 flex items-center justify-between">
+                    <span>Success</span>
+                    <span className="font-semibold text-[var(--rp-text-700)]">{successRate}%</span>
+                  </div>
+                  <div className="h-2 rounded-full bg-[var(--rp-border)]">
+                    <div
+                      className="h-2 rounded-full bg-emerald-500 transition-all"
+                      style={{ width: `${successRate}%` }}
+                    />
+                  </div>
+                </div>
               </div>
-            </div>
-            <div className="mt-3">
-              <ApexMetricBars
-                height={165}
-                metrics={[
-                  { label: "Success rate", value: successRate },
-                  {
-                    label: "Failure rate",
-                    value: failureRate
-                  },
-                  {
-                    label: "Delivery volume",
-                    value: Math.min(100, Math.round((leadTotal / Math.max(1, leadTotal + 10)) * 100))
-                  }
-                ]}
-              />
-            </div>
+            )}
           </div>
         </div>
 
         <div className="rp-card p-6">
           <div className="rp-section-title">Live preview</div>
           <div className="mt-4 overflow-hidden rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-3">
-            <iframe
-              title="Embed preview"
-              src={embedUrl}
-              style={{ width: "100%", height: 520, border: "0", borderRadius: "14px" }}
-            />
+            {!previewLoaded && previewLikelyBlocked ? (
+              <div className="flex h-[520px] flex-col items-center justify-center rounded-[14px] border border-dashed border-[var(--rp-border)] bg-white p-4 text-center text-xs text-[var(--rp-text-500)]">
+                <div className="text-sm font-semibold text-[var(--rp-text-700)]">Preview unavailable in this browser</div>
+                <div className="mt-1">Use “Open form” to verify the exact embed experience.</div>
+                <a className="rp-btn-secondary mt-3 text-xs" href={embedUrl} target="_blank" rel="noreferrer">
+                  Open form
+                </a>
+              </div>
+            ) : (
+              <iframe
+                title="Embed preview"
+                src={embedUrl}
+                onLoad={() => setPreviewLoaded(true)}
+                style={{ width: "100%", height: 520, border: "0", borderRadius: "14px" }}
+              />
+            )}
           </div>
-          <div className="mt-2 text-xs text-[var(--rp-text-500)]">If preview is blocked by browser policy, use “Open form” from setup actions.</div>
+          <div className="mt-2 text-xs text-[var(--rp-text-500)]">
+            This panel should show the same form your visitors will see when embedded on your site.
+          </div>
           <div className="mt-4 flex items-center gap-2 text-xs text-[var(--rp-text-500)]">
             <IconLink size={12} />
             Leads go to your webhook + RankyPulse monitoring.
