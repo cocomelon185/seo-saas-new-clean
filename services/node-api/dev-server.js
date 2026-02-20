@@ -1,6 +1,19 @@
 import express from "express";
 import pageReport from "../../api/page-report.js";
-import { consumeFreeScanCreditForRequest } from "./lib/freeUsageStore.js";
+let consumeFreeScanCreditForRequest = () => ({
+  allowed: true,
+  limit: 1,
+  used: 0,
+  remaining: 1
+});
+try {
+  const freeUsageStoreModule = await import("./lib/freeUsageStore.js");
+  if (typeof freeUsageStoreModule?.consumeFreeScanCreditForRequest === "function") {
+    consumeFreeScanCreditForRequest = freeUsageStoreModule.consumeFreeScanCreditForRequest;
+  }
+} catch (error) {
+  console.warn("freeUsageStore unavailable, allowing request:", String(error?.message || error));
+}
 import embedLead, {
   listEmbedLeads,
   getEmbedLead,
