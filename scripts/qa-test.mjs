@@ -14,39 +14,29 @@ function ensureArtifactsDirs() {
   fs.mkdirSync(junitDir, { recursive: true });
 }
 
-async function runPlaywright() {
+async function run(command, args, timeoutMs = null) {
   return new Promise((resolve) => {
-    const child = spawn(
-      "npx",
-      [
-        "playwright",
-        "test",
-        "--config",
-        "playwright.config.js",
-        "--project=chromium",
-        "--reporter=line",
-        "--workers",
-        workers
-      ],
-      {
-        cwd: webDir,
-        env: process.env,
-        stdio: "inherit",
-        shell: process.platform === "win32"
-      }
-    );
+    const child = spawn(command, args, {
+      cwd: webDir,
+      env: process.env,
+      stdio: "inherit",
+      shell: process.platform === "win32"
+    });
 
-    const timeout = setTimeout(() => {
-      console.error(`qa:test timed out after ${testTimeoutMs}ms`);
-      try {
-        child.kill("SIGTERM");
-      } catch {
-        // Ignore cleanup errors.
-      }
-    }, testTimeoutMs);
+    let timeout = null;
+    if (timeoutMs) {
+      timeout = setTimeout(() => {
+        console.error(`qa:test timed out after ${timeoutMs}ms`);
+        try {
+          child.kill("SIGTERM");
+        } catch {
+          // Ignore cleanup errors.
+        }
+      }, timeoutMs);
+    }
 
     child.on("close", (code) => {
-      clearTimeout(timeout);
+      if (timeout) clearTimeout(timeout);
       resolve(code ?? 1);
     });
   });
@@ -54,8 +44,27 @@ async function runPlaywright() {
 
 async function main() {
   ensureArtifactsDirs();
-  const exitCode = await runPlaywright();
-  process.exit(exitCode);
+
+  const installCode = await run("npx", ["playwright", "install", "chromium"]);
+  if (installCode !== 0) {
+    process.exit(installCode);
+  }
+
+  const testCode = await run(
+    "npx",
+    [
+      "playwright",
+      "test",
+      "--config",
+      "playwright.config.js",
+      "--project=chromium",
+      "--reporter=line",
+      "--workers",
+      workers
+    ],
+    testTimeoutMs
+  );
+  process.exit(testCode);
 }
 
 main().catch((error) => {
