@@ -777,7 +777,20 @@ function AuditPageInner() {
       }
 
       const data = await safeJson(res);
+      if (isFreeCreditExhaustedResponse(res.status, data)) {
+        try {
+          track("audit_run_blocked", {
+            reason: "FREE_CREDIT_EXHAUSTED",
+            url: normalizedAuditUrl
+          });
+        } catch {}
+        navigate(pricingRedirectPath("audit"), { replace: true });
+        return;
+      }
       try { setDebug(JSON.stringify(data, null, 2)); } catch {}
+      if (data?.ok === false) {
+        throw new Error(extractApiErrorMessage(data, "Request failed."));
+      }
       setResult(data);
       try {
         const key = "rp_audit_snapshot::" + normalizedAuditUrl;

@@ -13,5 +13,5 @@ export function extractApiErrorMessage(payload, fallback = "Request failed.") {
 }
 
 export function pricingRedirectPath(source = "audit") {
-  return `/account/pricing?reason=free_credit_exhausted&source=${encodeURIComponent(source)}`;
+  return `/pricing?reason=free_credit_exhausted&source=${encodeURIComponent(source)}`;
 }
