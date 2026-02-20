@@ -535,6 +535,17 @@ registerAnalytics(app);
 // Health
 app.get("/api/health", (req, res) => res.json({ ok: true }));
 
+// Sentry prelaunch probe endpoint. Intentionally returns 5xx for validation.
+app.get("/api/test-error", (req, res) => {
+  const probeId = `sentry_probe_${Date.now()}`;
+  console.error(`[sentry-probe] ${probeId} triggered from ${req.ip || "unknown-ip"}`);
+  res.status(503).json({
+    ok: false,
+    probeId,
+    message: "Intentional test error for Sentry prelaunch validation"
+  });
+});
+
 // Catch-all: serve SPA (but never for /api)
 app.get("*", (req, res, next) => {
   if (req.path.startsWith("/api")) return next();
