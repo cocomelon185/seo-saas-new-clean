@@ -440,6 +440,29 @@ export default function Landing() {
         </section>
 
         <section className="mt-14">
+          <p className="text-xs uppercase tracking-[0.28em] text-[#7058a8]">Use cases and comparisons</p>
+          <h2 className="mt-2 text-3xl font-semibold text-[#1f1235]">Launch-ready pages for high-intent visitors</h2>
+          <div className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {[
+              ["/use-cases/saas-landing-audit", "SaaS landing audit"],
+              ["/use-cases/agency-audit-workflow", "Agency workflow"],
+              ["/use-cases/ecommerce-seo-audit", "Ecommerce SEO audit"],
+              ["/use-cases/local-business-seo-audit", "Local business SEO audit"],
+              ["/compare/rankypulse-vs-ahrefs", "RankyPulse vs Ahrefs"],
+              ["/compare/rankypulse-vs-semrush", "RankyPulse vs Semrush"]
+            ].map(([href, label]) => (
+              <Link
+                key={href}
+                to={href}
+                className="rounded-2xl border border-[#e3d5ff] bg-white p-5 text-sm font-semibold text-[#3f286f] hover:border-[#c8b1ff]"
+              >
+                {label}
+              </Link>
+            ))}
+          </div>
+        </section>
+
+        <section className="mt-14">
           <div className="rounded-3xl border border-[#dccbff] bg-gradient-to-br from-[#ffffff] via-[#f7f1ff] to-[#efe5ff] p-8 text-center shadow-[0_20px_44px_rgba(48,19,98,0.1)]">
             <h2 className="text-3xl font-semibold text-[#1f1235]">Give your customers clarity in one scan</h2>
             <p className="mt-3 text-sm text-[#4f3c79]">Run a live audit, show top issues first, and provide simple fixes they can ship right away.</p>
@@ -475,9 +498,10 @@ export default function Landing() {
           <div className="flex flex-wrap gap-4">
             <Link to="/about" className="hover:text-[#2b174f]">About</Link>
             <Link to="/pricing" className="hover:text-[#2b174f]">Pricing</Link>
-            <Link to="/about" className="hover:text-[#2b174f]">Support</Link>
-            <Link to="/about" className="hover:text-[#2b174f]">Privacy</Link>
-            <Link to="/about" className="hover:text-[#2b174f]">Terms</Link>
+            <Link to="/faq" className="hover:text-[#2b174f]">FAQ</Link>
+            <Link to="/contact" className="hover:text-[#2b174f]">Contact</Link>
+            <Link to="/privacy" className="hover:text-[#2b174f]">Privacy</Link>
+            <Link to="/terms" className="hover:text-[#2b174f]">Terms</Link>
           </div>
         </div>
       </footer>

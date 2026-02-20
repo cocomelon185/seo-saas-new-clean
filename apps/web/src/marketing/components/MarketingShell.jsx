@@ -36,6 +36,8 @@ export default function MarketingShell({ title, subtitle, children }) {
           <nav className="hidden items-center gap-6 text-sm text-[var(--rp-text-600)] md:flex">
             <Link to="/start" className="hover:text-[var(--rp-text-900)]">Start</Link>
             <Link to="/pricing" className="hover:text-[var(--rp-text-900)]">Pricing</Link>
+            <Link to="/faq" className="hover:text-[var(--rp-text-900)]">FAQ</Link>
+            <Link to="/contact" className="hover:text-[var(--rp-text-900)]">Contact</Link>
             <Link to="/about" className="hover:text-[var(--rp-text-900)]">About</Link>
             <Link to="/changelog" className="hover:text-[var(--rp-text-900)]">Changelog</Link>
             <Link to="/shared" className="hover:text-[var(--rp-text-900)]">Sample report</Link>
@@ -97,9 +99,10 @@ export default function MarketingShell({ title, subtitle, children }) {
           <div className="flex flex-wrap gap-4">
             <Link to="/about" className="hover:text-[var(--rp-text-900)]">About</Link>
             <Link to="/pricing" className="hover:text-[var(--rp-text-900)]">Pricing</Link>
-            <Link to="/about" className="hover:text-[var(--rp-text-900)]">Support</Link>
-            <Link to="/about" className="hover:text-[var(--rp-text-900)]">Privacy</Link>
-            <Link to="/about" className="hover:text-[var(--rp-text-900)]">Terms</Link>
+            <Link to="/faq" className="hover:text-[var(--rp-text-900)]">FAQ</Link>
+            <Link to="/contact" className="hover:text-[var(--rp-text-900)]">Contact</Link>
+            <Link to="/privacy" className="hover:text-[var(--rp-text-900)]">Privacy</Link>
+            <Link to="/terms" className="hover:text-[var(--rp-text-900)]">Terms</Link>
           </div>
         </div>
       </footer>

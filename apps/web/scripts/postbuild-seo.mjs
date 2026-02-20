@@ -62,6 +62,36 @@ const publicMeta = [
     description: "Run an SEO audit for SaaS pages and fix issues that impact organic pipeline and signups."
   },
   {
+    test: (pathName) => pathName === "/faq",
+    title: "FAQ | RankyPulse",
+    description: "Frequently asked questions about RankyPulse audits, reports, pricing, and workflows."
+  },
+  {
+    test: (pathName) => pathName === "/privacy",
+    title: "Privacy Policy | RankyPulse",
+    description: "How RankyPulse collects, uses, and protects data."
+  },
+  {
+    test: (pathName) => pathName === "/terms",
+    title: "Terms of Service | RankyPulse",
+    description: "Terms and conditions for using RankyPulse."
+  },
+  {
+    test: (pathName) => pathName === "/contact",
+    title: "Contact | RankyPulse",
+    description: "Contact RankyPulse for support, onboarding, and partnership inquiries."
+  },
+  {
+    test: (pathName) => pathName === "/compare/rankypulse-vs-ahrefs",
+    title: "RankyPulse vs Ahrefs | SEO Audit Comparison",
+    description: "Compare RankyPulse and Ahrefs for audit workflows and team execution."
+  },
+  {
+    test: (pathName) => pathName === "/compare/rankypulse-vs-semrush",
+    title: "RankyPulse vs Semrush | SEO Audit Comparison",
+    description: "Compare RankyPulse and Semrush for audit speed, clarity, and execution workflow."
+  },
+  {
     test: (pathName) => pathName === "/upgrade",
     title: "Upgrade to RankyPulse Pro | RankyPulse",
     description: "Unlock automated audits, shareable reports, and premium SEO insights for every client."
@@ -85,6 +115,16 @@ const publicMeta = [
     test: (pathName) => pathName.startsWith("/use-cases/agency-audit-workflow"),
     title: "Agency SEO Audit Workflow | RankyPulse",
     description: "Standardize audits with a repeatable workflow built for agencies."
+  },
+  {
+    test: (pathName) => pathName.startsWith("/use-cases/ecommerce-seo-audit"),
+    title: "Ecommerce SEO Audit | RankyPulse",
+    description: "Audit ecommerce product and category pages for high-impact SEO fixes."
+  },
+  {
+    test: (pathName) => pathName.startsWith("/use-cases/local-business-seo-audit"),
+    title: "Local Business SEO Audit | RankyPulse",
+    description: "Improve local rankings with a targeted local business SEO audit workflow."
   }
 ];
 

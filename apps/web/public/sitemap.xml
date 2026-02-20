@@ -55,6 +55,48 @@
     </url>
 
     <url>
+        <loc>https://rankypulse.com/faq</loc>
+        <lastmod>2026-02-20</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.6</priority>
+    </url>
+
+    <url>
+        <loc>https://rankypulse.com/privacy</loc>
+        <lastmod>2026-02-20</lastmod>
+        <changefreq>yearly</changefreq>
+        <priority>0.5</priority>
+    </url>
+
+    <url>
+        <loc>https://rankypulse.com/terms</loc>
+        <lastmod>2026-02-20</lastmod>
+        <changefreq>yearly</changefreq>
+        <priority>0.5</priority>
+    </url>
+
+    <url>
+        <loc>https://rankypulse.com/contact</loc>
+        <lastmod>2026-02-20</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.6</priority>
+    </url>
+
+    <url>
+        <loc>https://rankypulse.com/compare/rankypulse-vs-ahrefs</loc>
+        <lastmod>2026-02-20</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.6</priority>
+    </url>
+
+    <url>
+        <loc>https://rankypulse.com/compare/rankypulse-vs-semrush</loc>
+        <lastmod>2026-02-20</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.6</priority>
+    </url>
+
+    <url>
         <loc>https://rankypulse.com/pricing</loc>
         <lastmod>2026-02-09</lastmod>
         <changefreq>weekly</changefreq>
@@ -100,6 +142,20 @@
     <url>
         <loc>https://rankypulse.com/use-cases/agency-audit-workflow</loc>
         <lastmod>2026-02-09</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.7</priority>
+    </url>
+
+    <url>
+        <loc>https://rankypulse.com/use-cases/ecommerce-seo-audit</loc>
+        <lastmod>2026-02-20</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.7</priority>
+    </url>
+
+    <url>
+        <loc>https://rankypulse.com/use-cases/local-business-seo-audit</loc>
+        <lastmod>2026-02-20</lastmod>
         <changefreq>monthly</changefreq>
         <priority>0.7</priority>
     </url>

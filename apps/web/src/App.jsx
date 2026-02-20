@@ -28,6 +28,14 @@ const SeoReportTemplatePage = React.lazy(() => import("./pages/SeoReportTemplate
 const SaasLandingAuditPage = React.lazy(() => import("./pages/SaasLandingAuditPage.jsx"));
 const BlogAuditChecklistPage = React.lazy(() => import("./pages/BlogAuditChecklistPage.jsx"));
 const AgencyAuditWorkflowPage = React.lazy(() => import("./pages/AgencyAuditWorkflowPage.jsx"));
+const EcommerceSeoAuditPage = React.lazy(() => import("./pages/EcommerceSeoAuditPage.jsx"));
+const LocalBusinessSeoAuditPage = React.lazy(() => import("./pages/LocalBusinessSeoAuditPage.jsx"));
+const RankyPulseVsAhrefsPage = React.lazy(() => import("./pages/RankyPulseVsAhrefsPage.jsx"));
+const RankyPulseVsSemrushPage = React.lazy(() => import("./pages/RankyPulseVsSemrushPage.jsx"));
+const FaqPage = React.lazy(() => import("./pages/FaqPage.jsx"));
+const PrivacyPage = React.lazy(() => import("./pages/PrivacyPage.jsx"));
+const TermsPage = React.lazy(() => import("./pages/TermsPage.jsx"));
+const ContactPage = React.lazy(() => import("./pages/ContactPage.jsx"));
 const EmbedWidgetPage = React.lazy(() => import("./pages/EmbedWidgetPage.jsx"));
 const EmbedFormPage = React.lazy(() => import("./pages/EmbedFormPage.jsx"));
 const LeadsPage = React.lazy(() => import("./pages/LeadsPage.jsx"));
@@ -63,6 +71,12 @@ const routes = [
   { path: "/website-seo-checker", element: suspenseWrap(<WebsiteSeoCheckerPage />) },
   { path: "/seo-audit-for-saas", element: suspenseWrap(<SeoAuditForSaasPage />) },
   { path: "/seo-report-template", element: suspenseWrap(<SeoReportTemplatePage />) },
+  { path: "/faq", element: suspenseWrap(<FaqPage />) },
+  { path: "/privacy", element: suspenseWrap(<PrivacyPage />) },
+  { path: "/terms", element: suspenseWrap(<TermsPage />) },
+  { path: "/contact", element: suspenseWrap(<ContactPage />) },
+  { path: "/compare/rankypulse-vs-ahrefs", element: suspenseWrap(<RankyPulseVsAhrefsPage />) },
+  { path: "/compare/rankypulse-vs-semrush", element: suspenseWrap(<RankyPulseVsSemrushPage />) },
   { path: "/shared", element: suspenseWrap(<SharePage />) },
   { path: "/audit", element: suspenseWrap(<AuditPage />) },
   {
@@ -84,6 +98,8 @@ const routes = [
   { path: "/use-cases/saas-landing-audit", element: suspenseWrap(<SaasLandingAuditPage />) },
   { path: "/use-cases/blog-audit-checklist", element: suspenseWrap(<BlogAuditChecklistPage />) },
   { path: "/use-cases/agency-audit-workflow", element: suspenseWrap(<AgencyAuditWorkflowPage />) },
+  { path: "/use-cases/ecommerce-seo-audit", element: suspenseWrap(<EcommerceSeoAuditPage />) },
+  { path: "/use-cases/local-business-seo-audit", element: suspenseWrap(<LocalBusinessSeoAuditPage />) },
   { path: "/embed", element: <RequireAuth role="member">{suspenseWrap(<EmbedWidgetPage />)}</RequireAuth> },
   { path: "/embed/form", element: suspenseWrap(<EmbedFormPage />) },
   { path: "/leads", element: <RequireAuth role="member">{suspenseWrap(<LeadsPage />)}</RequireAuth> },
