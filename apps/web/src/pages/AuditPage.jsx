@@ -744,6 +744,11 @@ function AuditPageInner() {
 
     setStatus("loading");
     try {
+      track("audit_run_attempt", {
+        url: normalizedAuditUrl
+      });
+    } catch {}
+    try {
       const res = await fetch(apiUrl("/api/page-report"), {
         method: "POST",
         headers: {
@@ -757,6 +762,12 @@ function AuditPageInner() {
       if (!res.ok) {
         const payload = await safeJson(res);
         if (isFreeCreditExhaustedResponse(res.status, payload)) {
+          try {
+            track("audit_run_blocked", {
+              reason: "FREE_CREDIT_EXHAUSTED",
+              url: normalizedAuditUrl
+            });
+          } catch {}
           setStatus("error");
           setError("You have used your one free credit. Upgrade to keep running audits.");
           navigate(pricingRedirectPath("audit"), { replace: true });
@@ -807,6 +818,12 @@ function AuditPageInner() {
         }
       } catch {}
     } catch (e) {
+      try {
+        track("audit_run_error", {
+          url: normalizedAuditUrl,
+          message: String(e?.message || "Request failed.")
+        });
+      } catch {}
       setStatus("error");
       setError(String(e?.message || "Request failed."));
     }
