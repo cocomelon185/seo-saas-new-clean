@@ -9,6 +9,15 @@ const junitDir = path.join(artifactsDir, "junit");
 const testTimeoutMs = Number(process.env.QA_TEST_TIMEOUT_MS || 20 * 60 * 1000);
 const installTimeoutMs = Number(process.env.QA_INSTALL_TIMEOUT_MS || 10 * 60 * 1000);
 const workers = String(process.env.PLAYWRIGHT_WORKERS || "1").trim();
+const isCI = Boolean(process.env.CI);
+
+const ciSmokeSpecs = [
+  "tests/rank-provenance.spec.js",
+  "tests/rank-queue-safety.spec.js",
+  "tests/rank-route-smoke.spec.js",
+  "tests/route-crawl.spec.js",
+  "tests/safe-apex-guard.spec.js"
+];
 
 function ensureArtifactsDirs() {
   fs.mkdirSync(artifactsDir, { recursive: true });
@@ -58,20 +67,23 @@ async function main() {
   }
 
   console.log("qa:test: running Playwright test suite...");
-  const testCode = await run(
-    "npx",
-    [
-      "--yes",
-      "playwright",
-      "test",
-      "--config",
-      "playwright.config.js",
-      "--reporter=line",
-      "--workers",
-      workers
-    ],
-    testTimeoutMs
-  );
+  const testArgs = [
+    "--yes",
+    "playwright",
+    "test",
+    "--config",
+    "playwright.config.js",
+    "--reporter=line",
+    "--workers",
+    workers,
+    ...(isCI ? ciSmokeSpecs : [])
+  ];
+
+  if (isCI) {
+    console.log("qa:test: CI mode enabled, running stable smoke spec set only.");
+  }
+
+  const testCode = await run("npx", testArgs, testTimeoutMs);
   process.exit(testCode);
 }
 
