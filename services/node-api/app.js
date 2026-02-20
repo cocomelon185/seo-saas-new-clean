@@ -523,6 +523,7 @@ setInterval(() => {
 const demo = __mockAudit(__DEMO_AUDIT_URL);
 
 // ===== API =====
+app.get("/", (req, res) => res.status(200).send("ok"));
 app.get("/api/health", (req, res) => res.json({ ok: true }));
 app.get("/api/test-error", (req, res) => {
   const probeId = `sentry_probe_${Date.now()}`;
