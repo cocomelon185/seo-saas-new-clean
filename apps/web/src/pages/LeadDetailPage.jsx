@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import AppShell from "../components/AppShell.jsx";
+import { apiUrl } from "../lib/api.js";
 import { getAnonId } from "../utils/anonId.js";
 import { safeJson } from "../lib/safeJson.js";
 
@@ -18,7 +19,6 @@ export default function LeadDetailPage() {
 
   useEffect(() => {
     let cancelled = false;
-    setStatus("loading");
     fetch(apiUrl(`/api/embed/leads/${id}`), {
       headers: anonId ? { "x-rp-anon-id": anonId } : {}
     })

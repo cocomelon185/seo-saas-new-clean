@@ -1,14 +1,13 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import AppShell from "../components/AppShell.jsx";
+import { apiUrl } from "../lib/api.js";
 import { safeJson } from "../lib/safeJson.js";
 
 export default function InviteAcceptPage() {
   const base = typeof window !== "undefined" ? window.location.origin : "https://rankypulse.com";
   const [invite, setInvite] = useState(null);
   const [status, setStatus] = useState("loading");
-  const navigate = useNavigate();
-
   useEffect(() => {
     try {
       const params = new URLSearchParams(window.location.search || "");

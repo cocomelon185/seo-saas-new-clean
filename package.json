@@ -7,9 +7,15 @@
     "start": "node server.js",
     "postbuild": "node postbuild-seo.mjs",
     "qa:build": "npm --prefix apps/web run build",
-    "qa:test": "npm --prefix apps/web run guard:jsx"
+    "qa:serve": "node server.js",
+    "qa:test": "node scripts/qa-test.mjs",
+    "qa:summary": "node scripts/qa-summary.mjs",
+    "qa:sentry": "node scripts/qa-sentry-check.mjs",
+    "qa:prelaunch": "node scripts/qa-prelaunch.mjs",
+    "qa:report": "npx --prefix apps/web playwright show-report artifacts/playwright-report"
   },
   "dependencies": {
+    "@sentry/node": "^10.11.0",
     "@supabase/supabase-js": "^2.39.0",
     "bcryptjs": "^3.0.3",
     "better-sqlite3": "^12.6.0",

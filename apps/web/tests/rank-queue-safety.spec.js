@@ -7,7 +7,7 @@ test("queue action keeps success context and logs diagnostics", async () => {
     "utf8"
   );
 
-  const fnMatch = source.match(/function queueKeywordFromActionPlan\(nextKeyword, actionLabel = "action_plan"\) \{[\s\S]*?\n  \}/);
+  const fnMatch = source.match(/function queueKeywordFromActionPlan\(nextKeyword, actionLabel = "action_plan"\) \{[\s\S]*?\n {2}\}/);
   expect(fnMatch).toBeTruthy();
   const fnBody = fnMatch?.[0] || "";
 
