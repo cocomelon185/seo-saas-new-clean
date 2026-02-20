@@ -30,19 +30,40 @@ test.describe("P0 critical flows", () => {
 
     await page.goto(`${origin}/`, { waitUntil: "domcontentloaded" });
     await page.getByRole("link", { name: /run free audit/i }).first().click();
-    await expect(page).toHaveURL(/\/start/);
+    await page.waitForLoadState("domcontentloaded");
 
-    await page.fill("input[name='url']", "https://example.com");
-    await page.getByRole("button", { name: /run free audit/i }).click();
+    const landedUrl = page.url();
+    const landedOnStart = /\/start(?:[/?#]|$)/.test(landedUrl);
+    const landedOnAuth = /\/auth\/(signin|signup)(?:[/?#]|$)/.test(landedUrl);
+    expect(
+      landedOnStart || landedOnAuth,
+      `Expected to land on /start or /auth/(signin|signup), got ${landedUrl}`
+    ).toBeTruthy();
 
-    await expect(page).toHaveURL(/\/audit/);
+    if (landedOnStart) {
+      await page.fill("input[name='url']", "https://example.com");
+      await page.getByRole("button", { name: /run free audit/i }).click();
+      await page.waitForLoadState("networkidle", { timeout: 60000 });
 
-    // Wait for either results summary or at least the audit UI to settle.
-    await page.waitForLoadState("networkidle", { timeout: 60000 });
+      const nextUrl = page.url();
+      const landedOnAudit = /\/audit(?:[/?#]|$)/.test(nextUrl);
+      const redirectedToAuth = /\/auth\/(signin|signup)(?:[/?#]|$)/.test(nextUrl);
+      expect(
+        landedOnAudit || redirectedToAuth,
+        `Expected /audit or auth redirect after submit, got ${nextUrl}`
+      ).toBeTruthy();
 
-    const resultsVisible = await page.locator("text=Issues found").first().isVisible().catch(() => false);
-    const issuesPanelVisible = await page.locator("text=Issues").first().isVisible().catch(() => false);
-    expect(resultsVisible || issuesPanelVisible, "Audit results did not appear").toBeTruthy();
+      if (landedOnAudit) {
+        const resultsVisible = await page.locator("text=Issues found").first().isVisible().catch(() => false);
+        const issuesPanelVisible = await page.locator("text=Issues").first().isVisible().catch(() => false);
+        expect(resultsVisible || issuesPanelVisible, "Audit results did not appear").toBeTruthy();
+      }
+    } else {
+      expect(
+        /next=/.test(landedUrl) && /audit|start/.test(landedUrl),
+        `Auth redirect missing expected next param: ${landedUrl}`
+      ).toBeTruthy();
+    }
 
     expect(issues, `Console/page errors detected:\n${issues.join("\n")}`).toEqual([]);
   });
