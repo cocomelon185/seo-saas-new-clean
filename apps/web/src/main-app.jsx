@@ -8,6 +8,7 @@ import "./styles/app.css";
 import { initTelemetry } from "./lib/telemetry.js";
 import { initAnalytics } from "./lib/analytics.js";
 import { initSentry } from "./lib/sentry.js";
+import MantineRoot from "./theme/MantineRoot.jsx";
 
 if (typeof window !== "undefined") {
   const disableApex = String(import.meta.env.VITE_DISABLE_APEX || "").toLowerCase() === "true";
@@ -89,7 +90,9 @@ if (root) {
 
 ReactDOM.createRoot(root).render(
     <React.StrictMode>
-      <RouterProvider router={router} />
+      <MantineRoot>
+        <RouterProvider router={router} />
+      </MantineRoot>
     </React.StrictMode>
   );
 }

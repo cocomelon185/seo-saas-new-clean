@@ -1,153 +1,90 @@
-import React, { useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
-import logo from "../assets/rankypulse-logo.svg";
-import landingScreenshot from "../assets/img/landing.jpg";
-import profilePhoto from "../assets/img/profile.jpg";
-import CookieConsent from "../components/CookieConsent.jsx";
+import { useMemo, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import {
+  Badge,
+  Button,
+  Card,
+  Center,
+  Container,
+  Grid,
+  Group,
+  List,
+  Paper,
+  RingProgress,
+  SimpleGrid,
+  Stack,
+  Text,
+  TextInput,
+  ThemeIcon,
+  Title
+} from "@mantine/core";
+import { LineChart } from "@mantine/charts";
+import {
+  IconArrowRight,
+  IconBolt,
+  IconChecklist,
+  IconCircleCheckFilled,
+  IconLockCheck,
+  IconSparkles
+} from "@tabler/icons-react";
 import Seo from "../components/Seo.jsx";
-import { clearAuthSession, getAuthDisplayName, getAuthToken, getAuthUser } from "../lib/authClient.js";
+import MarketingShell from "../marketing/components/MarketingShell.jsx";
 import { getSignupAuditHref } from "../lib/auditGate.js";
 import { track } from "../lib/eventsClient.js";
 
-const HERO_POINTS = [
-  "Prioritized fixes, not a wall of errors",
-  "Simple explanations anyone can follow",
-  "Client-ready reports in one click"
+const kpiCards = [
+  { label: "Active projects", value: "12,600+" },
+  { label: "Avg. audit run time", value: "43s" },
+  { label: "Fixes shipped monthly", value: "141k+" },
+  { label: "Median score lift", value: "+27%" }
 ];
 
-const KPIS = [
-  { label: "Avg. SEO health", value: "84", note: "Across active projects" },
-  { label: "Issues prioritized", value: "142k", note: "Ranked by impact" },
-  { label: "Quick wins found", value: "16", note: "Per audit avg." },
-  { label: "Estimated lift", value: "+27%", note: "Top-fix potential" }
+const chartData = [
+  { week: "W1", score: 62, issues: 38 },
+  { week: "W2", score: 68, issues: 30 },
+  { week: "W3", score: 73, issues: 24 },
+  { week: "W4", score: 78, issues: 18 },
+  { week: "W5", score: 84, issues: 12 }
 ];
 
-const STEP_CARDS = [
+const featureCards = [
   {
-    title: "1. Run audit",
-    desc: "Paste any URL and start a full SEO scan in under a minute.",
-    stat: "~30s setup"
+    title: "Issue triage board",
+    text: "Focus teams on impact-first fixes, not a noisy list.",
+    icon: IconChecklist
   },
   {
-    title: "2. See top fixes",
-    desc: "Get a clean, ranked fix list with business impact and urgency.",
-    stat: "Top 3 first"
+    title: "AI fix guidance",
+    text: "Beginner and expert tracks with copy-ready instructions.",
+    icon: IconSparkles
   },
   {
-    title: "3. Ship improvements",
-    desc: "Copy simple steps or code and push updates into your workflow.",
-    stat: "1-click copy"
+    title: "Conversion-safe rollout",
+    text: "Guardrails keep SEO improvements aligned with signup goals.",
+    icon: IconLockCheck
   }
 ];
 
-const FEATURE_ROWS = [
-  {
-    title: "Fix-first dashboard",
-    desc: "Surface the highest-impact issues first so teams stop guessing.",
-    badge: "Most used"
-  },
-  {
-    title: "Plain-English guidance",
-    desc: "Beginner + expert explanations for every issue.",
-    badge: "Clear guidance"
-  },
-  {
-    title: "Visual issue proof",
-    desc: "Show what was detected on-page so users trust every recommendation.",
-    badge: "Trust builder"
-  },
-  {
-    title: "Copy-ready fixes",
-    desc: "Get exact fix steps and optional code snippets when needed.",
-    badge: "Actionable"
-  },
-  {
-    title: "Shareable reports",
-    desc: "Export and send reports stakeholders can understand quickly.",
-    badge: "Client-ready"
-  },
-  {
-    title: "Ongoing monitoring",
-    desc: "Track score changes and new issues over time.",
-    badge: "Retention"
-  }
+const comparisonRows = [
+  ["Audit-to-action workflow", "Purpose-built", "Broad toolkit", "Broad toolkit"],
+  ["Fix explanation quality", "Beginner + expert", "Technical-heavy", "Technical-heavy"],
+  ["Launch readiness dashboard", "Included", "Partial", "Partial"]
 ];
 
 export default function Landing() {
+  const navigate = useNavigate();
+  const [auditUrl, setAuditUrl] = useState("https://www.example.com");
   const base = typeof window !== "undefined" ? window.location.origin : "https://rankypulse.com";
-  const [authUser, setAuthUser] = useState(null);
-  const [authed, setAuthed] = useState(false);
-  const [auditUrl, setAuditUrl] = useState("https://www.example.com/");
-  const [showStickyCta, setShowStickyCta] = useState(false);
-  const [footerVisible, setFooterVisible] = useState(false);
-  const [isHeroInputActive, setIsHeroInputActive] = useState(false);
-  const footerRef = useRef(null);
 
-  useEffect(() => {
-    const sync = () => {
-      setAuthUser(getAuthUser());
-      setAuthed(Boolean(getAuthToken()));
-    };
-    sync();
-    window.addEventListener("storage", sync);
-    window.addEventListener("focus", sync);
-    return () => {
-      window.removeEventListener("storage", sync);
-      window.removeEventListener("focus", sync);
-    };
-  }, []);
+  const signupAuditHref = useMemo(() => getSignupAuditHref(auditUrl), [auditUrl]);
 
-  const goTo = (path) => {
-    if (typeof window !== "undefined") {
-      window.location.assign(path);
-    }
-  };
-
-  const handleAuditSubmit = (e) => {
+  const submitRunAudit = (e) => {
     e.preventDefault();
-    const fd = new FormData(e.currentTarget);
-    const url = String(fd.get("url") || auditUrl || "").trim();
-    if (!url) return;
-    track("run_audit_click", { source: "landing_form", has_url: true });
-    goTo(getSignupAuditHref(url));
+    const candidate = String(auditUrl || "").trim();
+    if (!candidate) return;
+    track("run_audit_click", { source: "landing_hero", has_url: true });
+    navigate(getSignupAuditHref(candidate));
   };
-
-  const handlePreviewRun = () => {
-    const url = String(auditUrl || "").trim();
-    if (!url) return;
-    track("run_audit_click", { source: "landing_preview", has_url: true });
-    goTo(getSignupAuditHref(url));
-  };
-  const signupAuditHref = getSignupAuditHref(auditUrl);
-
-  useEffect(() => {
-    const onScroll = () => {
-      if (typeof window === "undefined") return;
-      const desktop = window.innerWidth >= 768;
-      const passedThreshold = window.scrollY > window.innerHeight * 0.35;
-      setShowStickyCta(desktop && passedThreshold);
-    };
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onScroll);
-    return () => {
-      window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onScroll);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!footerRef.current || typeof window === "undefined") return undefined;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const isVisible = entries.some((entry) => entry.isIntersecting);
-        setFooterVisible(isVisible);
-      },
-      { threshold: 0.05 }
-    );
-    observer.observe(footerRef.current);
-    return () => observer.disconnect();
-  }, []);
 
   const structuredData = [
     {
@@ -157,356 +94,221 @@ export default function Landing() {
       applicationCategory: "BusinessApplication",
       operatingSystem: "Web",
       url: `${base}/`,
-      description: "RankyPulse helps you make clear SEO decisions with fast audits, page reports, and actionable recommendations.",
-      brand: {
-        "@type": "Brand",
-        name: "RankyPulse"
-      }
+      description:
+        "RankyPulse helps you make clear SEO decisions with fast audits, page reports, and actionable recommendations.",
+      brand: { "@type": "Brand", name: "RankyPulse" }
     }
   ];
 
   return (
-    <main className="min-h-screen bg-[#f7f3ff] text-[#20123a] [background-image:radial-gradient(circle_at_top,rgba(109,40,217,0.14),transparent_44%)]">
+    <MarketingShell>
       <Seo
-        title="RankyPulse — Clear SEO decisions"
-        description="RankyPulse helps you make clear SEO decisions with fast audits, page reports, and actionable recommendations."
+        title="RankyPulse - Clear SEO decisions"
+        description="Turn SEO issues into shipped fixes with fast audits, clear priorities, and team-ready execution."
         canonical={`${base}/`}
         jsonLd={structuredData}
       />
-      <a href="#main" className="sr-only focus:not-sr-only">Skip to content</a>
 
-      <header className="sticky top-0 z-50 border-b border-[#e6dbfb] bg-white/95 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-[1360px] items-center justify-between px-4 py-4 md:px-6 xl:px-8">
-          <Link to="/" className="flex items-center gap-3 text-base font-semibold tracking-tight text-[#24133f]">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#f1e8ff]">
-              <img src={logo} alt="" aria-hidden="true" className="h-6 w-6" width="24" height="24" />
-            </span>
-            RankyPulse
-          </Link>
-          <nav className="hidden items-center gap-6 text-sm text-[#4d3b74] md:flex">
-            <a href="#how-it-works" className="hover:text-[#2b174f]">How it works</a>
-            <a href="#features" className="hover:text-[#2b174f]">Features</a>
-            <Link to="/pricing" className="hover:text-[#2b174f]">Pricing</Link>
-            <Link to="/about" className="hover:text-[#2b174f]">Resources</Link>
-          </nav>
-          <div className="relative z-[70] flex items-center gap-2 pointer-events-auto">
-            {authed ? (
-              <>
-                <button
-                  type="button"
-                  onClick={() => goTo("/audit")}
-                  className="rounded-xl border border-[#dac8ff] bg-white px-4 py-2 text-xs font-semibold text-[#3d2b62] hover:border-[#bfa0ff]"
-                >
-                  {getAuthDisplayName(authUser) || "My account"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    clearAuthSession();
-                    setAuthed(false);
-                    goTo("/");
-                  }}
-                  className="rounded-xl border border-[#dac8ff] bg-white px-4 py-2 text-xs font-semibold text-[#3d2b62] hover:border-[#bfa0ff]"
-                >
-                  Sign out
-                </button>
-              </>
-            ) : (
-              <>
-                <Link
-                  to="/auth/signin"
-                  className="rounded-xl border border-[#dac8ff] bg-white px-4 py-2 text-xs font-semibold text-[#3d2b62] hover:border-[#bfa0ff]"
-                >
-                  Sign in
-                </Link>
-                <Link
-                  to="/auth/signup"
-                  className="rounded-xl bg-[#6d28d9] px-4 py-2 text-xs font-semibold text-white shadow-[0_14px_26px_rgba(109,40,217,0.3)] hover:bg-[#5b21b6]"
-                >
-                  Create account
-                </Link>
-              </>
-            )}
-          </div>
-        </div>
-      </header>
-
-      <div id="main" className="mx-auto w-full max-w-[1360px] px-4 pb-20 pt-12 md:px-6 xl:px-8">
-        <section className="grid gap-8 lg:grid-cols-[1.05fr_0.95fr]">
-          <div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-[#decfff] bg-white px-3 py-1 text-xs font-semibold text-[#5e3e9f]">
-              <span className="h-1.5 w-1.5 rounded-full bg-[#7c3aed]" />
-              Premium SEO audit workspace
-            </div>
-            <h1 className="mt-5 text-4xl font-semibold leading-tight text-[#1f1235] md:text-5xl">
-              The cleanest way to turn SEO issues into shipped fixes.
-            </h1>
-            <p className="mt-4 max-w-xl text-base leading-7 text-[#4f3c79]">
-              Run one audit, see top priorities, and ship fixes fast with plain-English guidance.
-            </p>
-
-            <form onSubmit={handleAuditSubmit} className="mt-6 rounded-2xl border border-[#e3d5ff] bg-white p-3 shadow-[0_14px_34px_rgba(44,20,89,0.08)]">
-              <label className="sr-only" htmlFor="home-audit-url">Website URL</label>
-              <div className="flex flex-wrap items-center gap-3">
-                <input
-                  id="home-audit-url"
-                  type="text"
-                  name="url"
-                  placeholder="https://example.com"
-                  value={auditUrl}
-                  onFocus={() => setIsHeroInputActive(true)}
-                  onBlur={() => setIsHeroInputActive(false)}
-                  onChange={(e) => {
-                    setIsHeroInputActive(true);
-                    setAuditUrl(e.target.value);
-                  }}
-                  className="min-w-[220px] flex-1 rounded-xl border border-[#e5dcfb] bg-[#fdfcff] px-3 py-3 text-sm text-[#28184b] placeholder-[#8874b5] focus:border-[#b794ff] focus:outline-none"
-                  required
+      <Container size="xl" px={0}>
+        <Grid gutter="xl" align="stretch">
+          <Grid.Col span={{ base: 12, lg: 7 }}>
+            <Stack gap="lg">
+              <Badge variant="light" color="violet" size="lg" radius="xl" w="fit-content">
+                Built for modern SEO teams
+              </Badge>
+              <Title order={1} fz={{ base: 36, md: 52 }} style={{ lineHeight: 1.08, letterSpacing: "-0.03em" }}>
+                Premium SEO clarity, from first audit to shipped fix.
+              </Title>
+              <Text c="dimmed" fz={{ base: "md", md: "lg" }} maw={680}>
+                Inspired by the best SaaS experiences: fast entry, clean analytics surfaces, and action-first workflows.
+                Run one audit and know exactly what to fix next.
+              </Text>
+              <Paper withBorder radius="xl" p="md" shadow="sm">
+                <form onSubmit={submitRunAudit}>
+                  <Group align="end" gap="sm" wrap="wrap">
+                    <TextInput
+                      label="Website URL"
+                      value={auditUrl}
+                      onChange={(event) => setAuditUrl(event.currentTarget.value)}
+                      placeholder="https://example.com"
+                      size="md"
+                      radius="md"
+                      style={{ flex: 1, minWidth: 240 }}
+                    />
+                    <Button type="submit" size="md" radius="md" rightSection={<IconArrowRight size={16} />}>
+                      Run Free Audit
+                    </Button>
+                  </Group>
+                </form>
+                <Group mt="sm" gap="xs">
+                  <Button component={Link} to="/sample-report" variant="subtle" size="compact-sm" radius="md">
+                    View sample report
+                  </Button>
+                  <Text size="xs" c="dimmed">
+                    Free account required
+                  </Text>
+                </Group>
+              </Paper>
+              <List
+                spacing="xs"
+                center
+                icon={
+                  <ThemeIcon color="violet" variant="light" size={20} radius="xl">
+                    <IconCircleCheckFilled size={14} />
+                  </ThemeIcon>
+                }
+              >
+                <List.Item>Prioritized fixes, not a wall of errors</List.Item>
+                <List.Item>Charts and trendlines your team can trust</List.Item>
+                <List.Item>Share-ready reports with strong visual hierarchy</List.Item>
+              </List>
+            </Stack>
+          </Grid.Col>
+          <Grid.Col span={{ base: 12, lg: 5 }}>
+            <Card withBorder radius="xl" shadow="md" p="lg" h="100%">
+              <Group justify="space-between" mb="md">
+                <Text fw={700}>SEO Health Overview</Text>
+                <Badge color="teal" variant="light">
+                  Live
+                </Badge>
+              </Group>
+              <Center mb="md">
+                <RingProgress
+                  size={170}
+                  thickness={18}
+                  roundCaps
+                  sections={[
+                    { value: 84, color: "violet.7" },
+                    { value: 10, color: "teal.5" }
+                  ]}
+                  label={
+                    <Stack gap={0} align="center">
+                      <Text fw={800} fz={28}>
+                        84
+                      </Text>
+                      <Text size="xs" c="dimmed">
+                        SEO score
+                      </Text>
+                    </Stack>
+                  }
                 />
-                <button
-                  type="submit"
-                  title="Run a free audit"
-                  className="rounded-xl bg-[#6d28d9] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#5b21b6]"
-                >
-                  Run Free Audit
-                </button>
-              </div>
-            </form>
-
-            <div className="mt-4 flex flex-wrap items-center gap-3 text-sm">
-              <Link to="/sample-report" className="rounded-xl border border-[#dac8ff] bg-white px-4 py-2 font-semibold text-[#4b2f83] hover:border-[#bfa0ff]">
-                See sample report
-              </Link>
-              <span className="text-[#7a66a7]">Free account required</span>
-              <span className="text-[#7a66a7]">No credit card required</span>
-              <span className="text-[#7a66a7]">•</span>
-              <span className="text-[#7a66a7]">Results in under 60 seconds</span>
-            </div>
-
-            <div className="mt-4 rounded-2xl border border-[#dfd2ff] bg-white p-4 shadow-[0_10px_24px_rgba(44,20,89,0.06)]">
-              <div className="text-xs font-semibold uppercase tracking-[0.2em] text-[#7357b3]">How this helps your business</div>
-              <div className="mt-3 grid gap-2 sm:grid-cols-3">
-                <div className="rounded-lg bg-[#f7f1ff] px-3 py-2 text-xs font-semibold text-[#4b2f83]">Faster issue resolution</div>
-                <div className="rounded-lg bg-[#f7f1ff] px-3 py-2 text-xs font-semibold text-[#4b2f83]">Stronger SEO visibility</div>
-                <div className="rounded-lg bg-[#f7f1ff] px-3 py-2 text-xs font-semibold text-[#4b2f83]">Clear client reporting</div>
-              </div>
-            </div>
-
-            <div className="mt-5 grid gap-3 md:grid-cols-[1.2fr_0.8fr]">
-              <div className="overflow-hidden rounded-2xl border border-[#e3d5ff] bg-white">
-                <img
-                  src={landingScreenshot}
-                  alt="RankyPulse audit dashboard preview"
-                  className="h-40 w-full object-cover md:h-48"
-                  loading="lazy"
-                />
-                <div className="border-t border-[#eee4ff] bg-[#fcf9ff] px-3 py-2 text-xs text-[#5a448c]">
-                  Live audit dashboard preview
-                </div>
-              </div>
-              <div className="rounded-2xl border border-[#e3d5ff] bg-white p-4">
-                <div className="flex items-center gap-3">
-                  <img src={profilePhoto} alt="" className="h-10 w-10 rounded-full object-cover" loading="lazy" />
-                  <div>
-                    <div className="text-sm font-semibold text-[#261445]">Sarah M., Growth Lead</div>
-                    <div className="text-xs text-[#735ea5]">SaaS marketing team</div>
-                  </div>
-                </div>
-                <p className="mt-3 text-sm text-[#4f3c79]">
-                  “RankyPulse helped us prioritize the right fixes and improve visibility within one sprint.”
-                </p>
-              </div>
-            </div>
-
-            <ul className="mt-6 space-y-2 text-sm text-[#4f3c79]">
-              {HERO_POINTS.map((point) => (
-                <li key={point} className="flex items-start gap-2">
-                  <span className="mt-1 h-2 w-2 rounded-full bg-[#7c3aed]" />
-                  <span>{point}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <div className="rounded-3xl border border-[#e3d5ff] bg-white p-6 shadow-[0_22px_42px_rgba(45,18,91,0.12)]">
-            <div className="flex items-center justify-between text-sm text-[#6a55a0]">
-              <span>Live preview</span>
-              <span className="rounded-full border border-[#e2d3ff] bg-[#f8f3ff] px-2 py-1 text-xs font-semibold">~20s</span>
-            </div>
-
-            <div className="mt-4 rounded-2xl border border-[#ede3ff] bg-[#faf7ff] p-4">
-              <div className="text-xs font-semibold uppercase tracking-[0.24em] text-[#7357b3]">Audit setup</div>
-              <div className="mt-3 text-sm text-[#4f3c79]">1. Enter URL&nbsp;&nbsp;2. Run audit&nbsp;&nbsp;3. Fix first issue</div>
-              <label className="sr-only" htmlFor="live-preview-url">Live preview URL</label>
-              <input
-                id="live-preview-url"
-                type="text"
-                value={auditUrl}
-                onChange={(e) => setAuditUrl(e.target.value)}
-                placeholder="https://www.example.com/"
-                className="mt-3 w-full rounded-xl border border-[#e6dbfb] bg-white px-3 py-3 text-[#1f1235] focus:border-[#b794ff] focus:outline-none"
+              </Center>
+              <LineChart
+                h={180}
+                data={chartData}
+                dataKey="week"
+                series={[
+                  { name: "score", color: "violet.7" },
+                  { name: "issues", color: "teal.6" }
+                ]}
+                curveType="monotone"
+                withLegend
+                withTooltip
               />
-              <button
-                type="button"
-                onClick={handlePreviewRun}
-                className="mt-3 w-full rounded-xl bg-[#6d28d9] px-4 py-3 text-sm font-semibold text-white hover:bg-[#5b21b6]"
-              >
-                Run SEO Audit
-              </button>
-            </div>
+              <Group justify="space-between" mt="md">
+                <Button component={Link} to={signupAuditHref} variant="light" color="violet" radius="md">
+                  Open audit flow
+                </Button>
+                <Text size="xs" c="dimmed">
+                  Preview modeled after top SEO SaaS UX
+                </Text>
+              </Group>
+            </Card>
+          </Grid.Col>
+        </Grid>
 
-            <div className="mt-4 grid grid-cols-3 gap-3">
-              {[
-                { label: "Score", value: "49" },
-                { label: "Issues", value: "2" },
-                { label: "Fix now", value: "1" }
-              ].map((stat) => (
-                <div key={stat.label} className="rounded-xl border border-[#e8ddff] bg-[#fcf9ff] p-3">
-                  <div className="text-[11px] uppercase tracking-[0.2em] text-[#7f68af]">{stat.label}</div>
-                  <div className="mt-2 text-xl font-semibold text-[#2a1648]">{stat.value}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {KPIS.map((item) => (
-            <div key={item.label} className="rounded-2xl border border-[#e4d7fe] bg-white p-4 shadow-[0_8px_20px_rgba(45,18,91,0.06)]">
-              <div className="text-xs uppercase tracking-[0.18em] text-[#7863aa]">{item.label}</div>
-              <div className="mt-2 text-3xl font-semibold text-[#24123f]">{item.value}</div>
-              <div className="mt-1 text-xs text-[#7c68a8]">{item.note}</div>
-            </div>
+        <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} mt="xl" spacing="md">
+          {kpiCards.map((item) => (
+            <Card key={item.label} withBorder radius="lg" p="lg">
+              <Text size="xs" tt="uppercase" c="dimmed" fw={700}>
+                {item.label}
+              </Text>
+              <Text fz={30} fw={800} mt={6}>
+                {item.value}
+              </Text>
+            </Card>
           ))}
-        </section>
-        <section className="mt-4 grid gap-4 md:grid-cols-[1.2fr_0.8fr]">
-          <div className="rounded-2xl border border-[#e4d7fe] bg-white p-4 shadow-[0_8px_20px_rgba(45,18,91,0.06)]">
-            <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[#7863aa]">7-audit trend preview</div>
-            <div className="mt-2 h-20 rounded-xl bg-[linear-gradient(180deg,#ecfeff_0%,#ffffff_100%)] p-3">
-              <svg viewBox="0 0 220 64" className="h-full w-full" aria-hidden="true">
-                <path d="M8 50 L36 44 L64 46 L92 34 L120 28 L148 22 L176 16 L208 12" fill="none" stroke="#22d3ee" strokeWidth="4" strokeLinecap="round" />
-              </svg>
-            </div>
-          </div>
-          <div className="rounded-2xl border border-[#e4d7fe] bg-white p-4 shadow-[0_8px_20px_rgba(45,18,91,0.06)]">
-            <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[#7863aa]">First-fix confidence</div>
-            <div className="mt-2 flex h-[125px] items-center justify-center rounded-xl bg-[linear-gradient(180deg,#f5efff_0%,#ffffff_100%)]">
-              <div className="text-center">
-                <div className="text-3xl font-semibold text-[#2a1648]">78%</div>
-                <div className="text-xs font-semibold uppercase tracking-[0.12em] text-[#7f68af]">Confidence</div>
-              </div>
-            </div>
-          </div>
-        </section>
+        </SimpleGrid>
 
-        <section id="how-it-works" className="mt-14">
-          <div className="flex items-end justify-between gap-4">
-            <div>
-              <p className="text-xs uppercase tracking-[0.28em] text-[#7058a8]">How it works</p>
-              <h2 className="mt-2 text-3xl font-semibold text-[#1f1235]">From URL to action in three steps</h2>
-            </div>
-            <Link to="/start" className="rounded-xl border border-[#dac8ff] bg-white px-4 py-2 text-sm font-semibold text-[#4b2f83] hover:border-[#bfa0ff]">
-              Open guided flow
-            </Link>
-          </div>
-          <div className="mt-6 grid gap-4 md:grid-cols-3">
-            {STEP_CARDS.map((step) => (
-              <div key={step.title} className="rounded-2xl border border-[#e3d5ff] bg-white p-5">
-                <div className="text-lg font-semibold text-[#24123f]">{step.title}</div>
-                <p className="mt-2 text-sm leading-6 text-[#52407d]">{step.desc}</p>
-                <div className="mt-4 inline-flex rounded-full border border-[#d9c7ff] bg-[#f5efff] px-3 py-1 text-xs font-semibold text-[#643fb0]">
-                  {step.stat}
-                </div>
-              </div>
+        <SimpleGrid cols={{ base: 1, md: 3 }} mt="xl" spacing="md">
+          {featureCards.map((item) => (
+            <Card key={item.title} withBorder radius="lg" p="lg">
+              <ThemeIcon size={42} radius="md" variant="light" color="violet">
+                <item.icon size={22} />
+              </ThemeIcon>
+              <Text mt="md" fw={700} fz="lg">
+                {item.title}
+              </Text>
+              <Text mt="xs" c="dimmed" size="sm">
+                {item.text}
+              </Text>
+            </Card>
+          ))}
+        </SimpleGrid>
+
+        <Paper withBorder radius="xl" p="xl" mt="xl">
+          <Group justify="space-between" align="end" mb="md">
+            <Stack gap={4}>
+              <Badge variant="light" color="violet" w="fit-content">
+                Positioning
+              </Badge>
+              <Title order={2}>Built to feel as premium as Ahrefs and Semrush</Title>
+            </Stack>
+            <Button component={Link} to="/compare/rankypulse-vs-ahrefs" variant="light" color="violet">
+              Open comparisons
+            </Button>
+          </Group>
+          <Stack gap="xs">
+            <Group fw={700} c="dimmed">
+              <Text style={{ flex: 1 }}>Category</Text>
+              <Text style={{ flex: 1 }}>RankyPulse</Text>
+              <Text style={{ flex: 1 }}>Ahrefs</Text>
+              <Text style={{ flex: 1 }}>Semrush</Text>
+            </Group>
+            {comparisonRows.map((row) => (
+              <Group key={row[0]} align="start">
+                {row.map((cell, idx) => (
+                  <Text key={`${row[0]}-${idx}`} style={{ flex: 1 }} size="sm" c={idx === 1 ? "dark" : "dimmed"}>
+                    {cell}
+                  </Text>
+                ))}
+              </Group>
             ))}
-          </div>
-        </section>
+          </Stack>
+        </Paper>
 
-        <section id="features" className="mt-14">
-          <p className="text-xs uppercase tracking-[0.28em] text-[#7058a8]">Core features</p>
-          <h2 className="mt-2 text-3xl font-semibold text-[#1f1235]">Simple UI. Serious SEO outcomes.</h2>
-          <p className="mt-2 text-sm text-[#52407d]">Everything below is designed to help users understand the problem and fix it fast.</p>
-          <div className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {FEATURE_ROWS.map((item) => (
-              <div key={item.title} className="rounded-2xl border border-[#e3d5ff] bg-white p-5">
-                <div className="inline-flex rounded-full border border-[#d9c7ff] bg-[#f5efff] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#663fb1]">
-                  {item.badge}
-                </div>
-                <h3 className="mt-3 text-lg font-semibold text-[#24123f]">{item.title}</h3>
-                <p className="mt-2 text-sm leading-6 text-[#52407d]">{item.desc}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section className="mt-14">
-          <p className="text-xs uppercase tracking-[0.28em] text-[#7058a8]">Use cases and comparisons</p>
-          <h2 className="mt-2 text-3xl font-semibold text-[#1f1235]">Launch-ready pages for high-intent visitors</h2>
-          <div className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {[
-              ["/use-cases/saas-landing-audit", "SaaS landing audit"],
-              ["/use-cases/agency-audit-workflow", "Agency workflow"],
-              ["/use-cases/ecommerce-seo-audit", "Ecommerce SEO audit"],
-              ["/use-cases/local-business-seo-audit", "Local business SEO audit"],
-              ["/compare/rankypulse-vs-ahrefs", "RankyPulse vs Ahrefs"],
-              ["/compare/rankypulse-vs-semrush", "RankyPulse vs Semrush"]
-            ].map(([href, label]) => (
-              <Link
-                key={href}
-                to={href}
-                className="rounded-2xl border border-[#e3d5ff] bg-white p-5 text-sm font-semibold text-[#3f286f] hover:border-[#c8b1ff]"
-              >
-                {label}
-              </Link>
-            ))}
-          </div>
-        </section>
-
-        <section className="mt-14">
-          <div className="rounded-3xl border border-[#dccbff] bg-gradient-to-br from-[#ffffff] via-[#f7f1ff] to-[#efe5ff] p-8 text-center shadow-[0_20px_44px_rgba(48,19,98,0.1)]">
-            <h2 className="text-3xl font-semibold text-[#1f1235]">Give your customers clarity in one scan</h2>
-            <p className="mt-3 text-sm text-[#4f3c79]">Run a live audit, show top issues first, and provide simple fixes they can ship right away.</p>
-            <div className="mt-6 flex flex-wrap justify-center gap-3">
-              <Link to={signupAuditHref} className="rounded-xl bg-[#6d28d9] px-5 py-3 text-sm font-semibold text-white hover:bg-[#5b21b6]">
-                Run Free Audit
-              </Link>
-              <Link to="/pricing" className="rounded-xl border border-[#d8c5ff] bg-white px-5 py-3 text-sm font-semibold text-[#4b2f83] hover:border-[#bfa0ff]">
-                See pricing
-              </Link>
-            </div>
-          </div>
-        </section>
-      </div>
-
-      <div className={`fixed bottom-6 right-6 z-40 hidden md:flex transition-all duration-200 ${
-        showStickyCta && !footerVisible && !isHeroInputActive
-          ? "translate-y-0 opacity-100 pointer-events-auto"
-          : "translate-y-3 opacity-0 pointer-events-none"
-      }`}>
-        <button
-          type="button"
-          onClick={() => goTo(signupAuditHref)}
-          className="rounded-full border border-[#5b21b6] bg-[#6d28d9] px-4 py-2 text-xs font-semibold text-white shadow-[0_16px_32px_rgba(109,40,217,0.35)] hover:bg-[#5b21b6]"
+        <Paper
+          mt="xl"
+          radius="xl"
+          p="xl"
+          style={{
+            background: "linear-gradient(130deg, #6d28d9 0%, #4f1d97 55%, #1c2f5f 100%)",
+            color: "white"
+          }}
         >
-          Run Free Audit
-        </button>
-      </div>
-
-      <footer ref={footerRef} className="border-t border-[#e6dbfb] py-10">
-        <div className="mx-auto flex w-full max-w-[1360px] flex-col gap-4 px-4 text-sm text-[#6d5a99] md:flex-row md:items-center md:justify-between md:px-6 xl:px-8">
-          <span>© {new Date().getFullYear()} RankyPulse</span>
-          <div className="flex flex-wrap gap-4">
-            <Link to="/about" className="hover:text-[#2b174f]">About</Link>
-            <Link to="/pricing" className="hover:text-[#2b174f]">Pricing</Link>
-            <Link to="/faq" className="hover:text-[#2b174f]">FAQ</Link>
-            <Link to="/contact" className="hover:text-[#2b174f]">Contact</Link>
-            <Link to="/privacy" className="hover:text-[#2b174f]">Privacy</Link>
-            <Link to="/terms" className="hover:text-[#2b174f]">Terms</Link>
-          </div>
-        </div>
-      </footer>
-
-      <CookieConsent />
-    </main>
+          <Group justify="space-between" align="center" gap="lg">
+            <Stack gap={4}>
+              <Badge color="white" c="violet.9" variant="filled" w="fit-content">
+                Launch Mode
+              </Badge>
+              <Title order={3} c="white">
+                Ready to ship your first high-impact SEO sprint?
+              </Title>
+              <Text c="violet.0">
+                Start with one URL, get a clear action queue, and move to execution without dashboard friction.
+              </Text>
+            </Stack>
+            <Group>
+              <Button component={Link} to={signupAuditHref} color="white" c="violet.9" radius="md" leftSection={<IconBolt size={16} />}>
+                Run audit now
+              </Button>
+              <Button component={Link} to="/pricing" variant="outline" color="white" radius="md">
+                View pricing
+              </Button>
+            </Group>
+          </Group>
+        </Paper>
+      </Container>
+    </MarketingShell>
   );
 }
