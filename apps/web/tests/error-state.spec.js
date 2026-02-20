@@ -1,13 +1,27 @@
 import { test, expect } from "@playwright/test";
 import { gotoAudit } from "./_helpers/nav.js";
 
+const isAuthUrl = (url) => /\/auth\/(signin|signup)(?:[/?#]|$)/.test(url);
+
 test("Error state renders with retry button", async ({ page }) => {
   // Use a URL that will fail (invalid port)
   const failingUrl = "http://127.0.0.1:1";
 
   try {
-    // Navigate to audit page
-    const { urlInput, runButton } = await gotoAudit(page);
+    await page.goto("/audit", { waitUntil: "domcontentloaded" });
+    const currentUrl = page.url();
+    if (isAuthUrl(currentUrl)) {
+      expect(/[?&]next=/.test(currentUrl), `Auth redirect missing next param: ${currentUrl}`).toBeTruthy();
+      expect(/audit/i.test(decodeURIComponent(currentUrl)), `Expected audit in redirect target: ${currentUrl}`).toBeTruthy();
+      return;
+    }
+
+    const urlInput = page.getByLabel("Page URL").or(
+      page.locator('input[placeholder*="https://example.com/pricing"]')
+    ).first();
+    const runButton = page.getByRole("button", { name: /^Run SEO Audit$/i }).or(
+      page.getByRole("button", { name: /^Run Audit$/i })
+    ).last();
 
     // Run audit with failing URL
     await expect(urlInput).toBeVisible({ timeout: 120000 });

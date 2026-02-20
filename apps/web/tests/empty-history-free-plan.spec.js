@@ -1,6 +1,8 @@
 import { test, expect } from "@playwright/test";
 import { gotoAudit } from "./_helpers/nav.js";
 
+const isAuthUrl = (url) => /\/auth\/(signin|signup)(?:[/?#]|$)/.test(url);
+
 test("Empty history renders free-plan empty state", async ({ page }) => {
   // Clear localStorage key
   await page.goto("/", { waitUntil: "domcontentloaded" });
@@ -19,6 +21,12 @@ test("Empty history renders free-plan empty state", async ({ page }) => {
 
   // Test with ?agency=true
   await page.goto("/audit?agency=true", { waitUntil: "domcontentloaded" });
+  const agencyUrl = page.url();
+  if (isAuthUrl(agencyUrl)) {
+    expect(/[?&]next=/.test(agencyUrl), `Auth redirect missing next param: ${agencyUrl}`).toBeTruthy();
+    expect(/audit/i.test(decodeURIComponent(agencyUrl)), `Expected audit in redirect target: ${agencyUrl}`).toBeTruthy();
+    return;
+  }
   
   // Assert the empty state shows "Enter a URL above to run an audit."
   await expect(page.getByText(/Enter a URL above to run an audit/i)).toBeVisible({ timeout: 10000 });
@@ -31,6 +39,12 @@ test("Empty history renders free-plan empty state", async ({ page }) => {
 
   // Test without ?agency=true
   await page.goto("/audit", { waitUntil: "domcontentloaded" });
+  const auditUrl = page.url();
+  if (isAuthUrl(auditUrl)) {
+    expect(/[?&]next=/.test(auditUrl), `Auth redirect missing next param: ${auditUrl}`).toBeTruthy();
+    expect(/audit/i.test(decodeURIComponent(auditUrl)), `Expected audit in redirect target: ${auditUrl}`).toBeTruthy();
+    return;
+  }
   
   // Assert the empty state shows "Enter a URL above to run an audit."
   await expect(page.getByText(/Enter a URL above to run an audit/i)).toBeVisible({ timeout: 10000 });

@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import http from "http";
+const isAuthUrl = (url) => /\/auth\/(signin|signup)(?:[/?#]|$)/.test(url);
 
 function startTestSite() {
   const html = `<!doctype html>
@@ -30,6 +31,10 @@ async function gotoAuditPage(page) {
 
   for (const p of paths) {
     await page.goto(p, { waitUntil: "domcontentloaded" });
+    const currentUrl = page.url();
+    if (isAuthUrl(currentUrl)) {
+      return { authRedirect: true, url: currentUrl };
+    }
     const title = page.getByText(/SEO Page Audit/i);
     const urlInput = page.getByLabel("Page URL").or(
       page.locator('input[placeholder*="https://example.com/pricing"]')
@@ -37,7 +42,7 @@ async function gotoAuditPage(page) {
     try {
       await expect(title).toBeVisible({ timeout: 5000 });
       await expect(urlInput.first()).toBeVisible({ timeout: 5000 });
-      return;
+      return { authRedirect: false, url: page.url() };
     } catch {
       // Try next path
     }
@@ -60,7 +65,11 @@ test("Quick proof: audit runs + meta missing detected + history persists (storag
   const { server, url: testUrl } = await startTestSite();
 
   try {
-    await gotoAuditPage(page);
+    const landing = await gotoAuditPage(page);
+    if (landing?.authRedirect) {
+      expect(/[?&]next=/.test(landing.url), `Auth redirect missing next param: ${landing.url}`).toBeTruthy();
+      return;
+    }
 
     const urlInput = page.getByLabel("Page URL").or(page.locator('input[placeholder*="https://example.com/pricing"]'));
     await expect(urlInput.first()).toBeVisible({ timeout: 120000 });

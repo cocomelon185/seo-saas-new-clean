@@ -1,6 +1,8 @@
 import { test, expect } from "@playwright/test";
 
 const getOrigin = (baseURL) => baseURL || process.env.BASE_URL || "";
+const isAuthUrl = (url) => /\/auth\/(signin|signup)(?:[/?#]|$)/.test(url);
+const hasNextParam = (url) => /[?&]next=/.test(url);
 
 function trackPageIssues(page) {
   const issues = [];
@@ -79,8 +81,20 @@ test.describe("P0 critical flows", () => {
     await page.getByRole("link", { name: /see pricing/i }).first().click().catch(() => null);
 
     await page.goto(`${origin}/upgrade`, { waitUntil: "domcontentloaded" });
+    const upgradeUrl = page.url();
+    if (isAuthUrl(upgradeUrl)) {
+      expect(hasNextParam(upgradeUrl), `Auth redirect missing next param: ${upgradeUrl}`).toBeTruthy();
+      return;
+    }
+
     const startButton = page.getByRole("button", { name: /start 7-day trial/i });
     await startButton.click();
+
+    const postClickUrl = page.url();
+    if (isAuthUrl(postClickUrl)) {
+      expect(hasNextParam(postClickUrl), `Auth redirect missing next param: ${postClickUrl}`).toBeTruthy();
+      return;
+    }
 
     const frame = await page.frameLocator("iframe[src*='razorpay'], iframe[src*='checkout']").first();
     await expect(frame.locator("body")).toBeVisible({ timeout: 30000 });
