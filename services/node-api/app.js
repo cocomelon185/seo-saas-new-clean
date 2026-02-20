@@ -524,6 +524,15 @@ const demo = __mockAudit(__DEMO_AUDIT_URL);
 
 // ===== API =====
 app.get("/api/health", (req, res) => res.json({ ok: true }));
+app.get("/api/test-error", (req, res) => {
+  const probeId = `sentry_probe_${Date.now()}`;
+  console.error(`[sentry-probe] ${probeId} triggered from ${req.ip || "unknown-ip"}`);
+  res.status(503).json({
+    ok: false,
+    probeId,
+    message: "Intentional test error for Sentry prelaunch validation"
+  });
+});
 
 app.post("/api/audit/run", (req, res) => {
   const urlRaw = req.body?.url;
