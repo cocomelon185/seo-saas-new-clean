@@ -5,7 +5,9 @@
   "scripts": {
     "dev": "node server.js",
     "start": "node server.js",
-    "postbuild": "node postbuild-seo.mjs"
+    "postbuild": "node postbuild-seo.mjs",
+    "qa:build": "npm --prefix apps/web run build",
+    "qa:test": "npm --prefix apps/web run guard:jsx"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",
