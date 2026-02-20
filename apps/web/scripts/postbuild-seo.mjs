@@ -42,6 +42,26 @@ const publicMeta = [
     description: "Run a full-site SEO audit, get prioritized fixes, and export a client-ready report in minutes."
   },
   {
+    test: (pathName) => pathName === "/seo-tool-audit",
+    title: "Free SEO Audit Tool | RankyPulse",
+    description: "Run a free SEO audit tool to get a score, prioritized issues, and clear next steps."
+  },
+  {
+    test: (pathName) => pathName === "/website-seo-checker",
+    title: "Website SEO Checker | RankyPulse",
+    description: "Use a website SEO checker to find technical and on-page issues fast and prioritize fixes."
+  },
+  {
+    test: (pathName) => pathName === "/technical-seo-audit",
+    title: "Technical SEO Audit | RankyPulse",
+    description: "Audit crawlability, indexability, and Core Web Vitals with this technical SEO audit guide."
+  },
+  {
+    test: (pathName) => pathName === "/seo-audit-for-saas",
+    title: "SEO Audit for SaaS | RankyPulse",
+    description: "Run an SEO audit for SaaS pages and fix issues that impact organic pipeline and signups."
+  },
+  {
     test: (pathName) => pathName === "/upgrade",
     title: "Upgrade to RankyPulse Pro | RankyPulse",
     description: "Unlock automated audits, shareable reports, and premium SEO insights for every client."

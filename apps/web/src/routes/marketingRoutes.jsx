@@ -7,6 +7,7 @@ const SeoToolAuditPage = React.lazy(() => import("../pages/SeoToolAuditPage.jsx"
 const SeoAuditChecklistPage = React.lazy(() => import("../pages/SeoAuditChecklistPage.jsx"));
 const TechnicalSeoAuditPage = React.lazy(() => import("../pages/TechnicalSeoAuditPage.jsx"));
 const WebsiteSeoCheckerPage = React.lazy(() => import("../pages/WebsiteSeoCheckerPage.jsx"));
+const SeoAuditForSaasPage = React.lazy(() => import("../pages/SeoAuditForSaasPage.jsx"));
 const SeoReportTemplatePage = React.lazy(() => import("../pages/SeoReportTemplatePage.jsx"));
 const PricingPage = React.lazy(() => import("../pages/PricingPage.jsx"));
 const AboutPage = React.lazy(() => import("../pages/AboutPage.jsx"));
@@ -39,6 +40,7 @@ const routes = [
   { path: "/seo-audit-checklist", element: suspenseWrap(<SeoAuditChecklistPage />) },
   { path: "/technical-seo-audit", element: suspenseWrap(<TechnicalSeoAuditPage />) },
   { path: "/website-seo-checker", element: suspenseWrap(<WebsiteSeoCheckerPage />) },
+  { path: "/seo-audit-for-saas", element: suspenseWrap(<SeoAuditForSaasPage />) },
   { path: "/seo-report-template", element: suspenseWrap(<SeoReportTemplatePage />) },
   { path: "/pricing", element: suspenseWrap(<PricingPage />) },
   { path: "/about", element: suspenseWrap(<AboutPage />) },

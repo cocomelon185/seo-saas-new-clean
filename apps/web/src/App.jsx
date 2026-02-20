@@ -23,6 +23,7 @@ const SeoToolAuditPage = React.lazy(() => import("./pages/SeoToolAuditPage.jsx")
 const SeoAuditChecklistPage = React.lazy(() => import("./pages/SeoAuditChecklistPage.jsx"));
 const TechnicalSeoAuditPage = React.lazy(() => import("./pages/TechnicalSeoAuditPage.jsx"));
 const WebsiteSeoCheckerPage = React.lazy(() => import("./pages/WebsiteSeoCheckerPage.jsx"));
+const SeoAuditForSaasPage = React.lazy(() => import("./pages/SeoAuditForSaasPage.jsx"));
 const SeoReportTemplatePage = React.lazy(() => import("./pages/SeoReportTemplatePage.jsx"));
 const SaasLandingAuditPage = React.lazy(() => import("./pages/SaasLandingAuditPage.jsx"));
 const BlogAuditChecklistPage = React.lazy(() => import("./pages/BlogAuditChecklistPage.jsx"));
@@ -60,6 +61,7 @@ const routes = [
   { path: "/seo-audit-checklist", element: suspenseWrap(<SeoAuditChecklistPage />) },
   { path: "/technical-seo-audit", element: suspenseWrap(<TechnicalSeoAuditPage />) },
   { path: "/website-seo-checker", element: suspenseWrap(<WebsiteSeoCheckerPage />) },
+  { path: "/seo-audit-for-saas", element: suspenseWrap(<SeoAuditForSaasPage />) },
   { path: "/seo-report-template", element: suspenseWrap(<SeoReportTemplatePage />) },
   { path: "/shared", element: suspenseWrap(<SharePage />) },
   { path: "/audit", element: suspenseWrap(<AuditPage />) },

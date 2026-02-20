@@ -8,12 +8,12 @@ export default function TechnicalSeoAuditPage() {
   return (
     <>
       <Seo
-        title="Technical SEO Audit Guide | RankyPulse"
-        description="Learn how to audit crawlability, indexing, Core Web Vitals, structured data, and internal linking. Troubleshoot technical SEO issues systematically."
+        title="Technical SEO Audit | RankyPulse"
+        description="Run a technical SEO audit to improve crawlability, indexing, Core Web Vitals, and internal architecture."
         canonical={`${base}/technical-seo-audit`}
       />
       <MarketingShell
-        title="Technical SEO Audit Guide"
+        title="Technical SEO Audit"
         subtitle="A technical deep-dive into crawlability, indexing, performance, structured data, and internal architecture."
       >
         <div className="space-y-8 text-[var(--rp-text-600)]">
