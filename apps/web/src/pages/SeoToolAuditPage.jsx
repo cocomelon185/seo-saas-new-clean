@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { IconPlay, IconDoc, IconBolt, IconSearch, IconReport, IconArrowRight, IconCheck } from "../components/Icons.jsx";
 import Seo from "../components/Seo.jsx";
 import { getSignupAuditHref } from "../lib/auditGate.js";
+import { track } from "../lib/eventsClient.js";
 
 const FAQ_ITEMS = [
   {
@@ -43,6 +44,7 @@ export default function SeoToolAuditPage() {
     const fd = new FormData(form);
     const url = String(fd.get("url") || "").trim();
     if (!url) return;
+    track("run_audit_click", { source: "seo_tool_audit_page", has_url: true });
     navigate(getSignupAuditHref(url));
   };
 

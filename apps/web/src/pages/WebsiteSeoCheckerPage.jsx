@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { IconSearch, IconArrowRight, IconPlay } from "../components/Icons.jsx";
 import Seo from "../components/Seo.jsx";
 import { getSignupAuditHref } from "../lib/auditGate.js";
+import { track } from "../lib/eventsClient.js";
 
 export default function WebsiteSeoCheckerPage() {
   const navigate = useNavigate();
@@ -15,6 +16,7 @@ export default function WebsiteSeoCheckerPage() {
     const fd = new FormData(form);
     const url = String(fd.get("url") || "").trim();
     if (!url) return;
+    track("run_audit_click", { source: "website_seo_checker_page", has_url: true });
     navigate(getSignupAuditHref(url));
   };
 

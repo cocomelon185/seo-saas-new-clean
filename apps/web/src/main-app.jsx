@@ -6,6 +6,8 @@ import routes from "./routes/appRoutes.jsx";
 import "./index.css";
 import "./styles/app.css";
 import { initTelemetry } from "./lib/telemetry.js";
+import { initAnalytics } from "./lib/analytics.js";
+import { initSentry } from "./lib/sentry.js";
 
 if (typeof window !== "undefined") {
   const disableApex = String(import.meta.env.VITE_DISABLE_APEX || "").toLowerCase() === "true";
@@ -81,6 +83,8 @@ function CanonicalManager() {
 const root = document.getElementById("root");
 
 if (root) {
+  initSentry();
+  initAnalytics();
   initTelemetry({ sampleRate: 1.0, consoleErrorForwarding: true });
 
 ReactDOM.createRoot(root).render(

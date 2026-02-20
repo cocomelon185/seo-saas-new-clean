@@ -12,7 +12,8 @@
     "qa:summary": "node scripts/qa-summary.mjs",
     "qa:sentry": "node scripts/qa-sentry-check.mjs",
     "qa:prelaunch": "node scripts/qa-prelaunch.mjs",
-    "qa:report": "npx --prefix apps/web playwright show-report artifacts/playwright-report"
+    "qa:report": "npx --prefix apps/web playwright show-report artifacts/playwright-report",
+    "launch:utm": "node scripts/generate-launch-utms.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",

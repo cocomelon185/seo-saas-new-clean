@@ -3,8 +3,13 @@ import { ViteReactSSG } from "vite-react-ssg";
 import routes from "./routes/appRoutes.jsx";
 import "./index.css";
 import "./styles/app.css";
+import { initAnalytics } from "./lib/analytics.js";
+import { initSentry } from "./lib/sentry.js";
 
 if (typeof window !== "undefined") {
+  initSentry();
+  initAnalytics();
+
   const disableApex = String(import.meta.env.VITE_DISABLE_APEX || "").toLowerCase() === "true";
   if (disableApex) {
     window.__DISABLE_APEX__ = true;

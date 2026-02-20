@@ -18,6 +18,8 @@ export default function CookieConsent() {
       window.localStorage.setItem(KEY, value);
       if (value === "denied") {
         window.__RP_DISABLE_TRACKING__ = true;
+      } else {
+        window.__RP_DISABLE_TRACKING__ = false;
       }
     } catch {}
     setVisible(false);

@@ -20,6 +20,7 @@
   "dependencies": {
     "@fortawesome/fontawesome-free": "^7.1.0",
     "@popperjs/core": "^2.11.8",
+    "@sentry/react": "^10.39.0",
     "apexcharts": "^5.3.6",
     "beasties": "^0.1.0",
     "chart.js": "^4.5.1",

@@ -7,6 +7,7 @@ import CookieConsent from "../components/CookieConsent.jsx";
 import Seo from "../components/Seo.jsx";
 import { clearAuthSession, getAuthDisplayName, getAuthToken, getAuthUser } from "../lib/authClient.js";
 import { getSignupAuditHref } from "../lib/auditGate.js";
+import { track } from "../lib/eventsClient.js";
 
 const HERO_POINTS = [
   "Prioritized fixes, not a wall of errors",
@@ -107,12 +108,14 @@ export default function Landing() {
     const fd = new FormData(e.currentTarget);
     const url = String(fd.get("url") || auditUrl || "").trim();
     if (!url) return;
+    track("run_audit_click", { source: "landing_form", has_url: true });
     goTo(getSignupAuditHref(url));
   };
 
   const handlePreviewRun = () => {
     const url = String(auditUrl || "").trim();
     if (!url) return;
+    track("run_audit_click", { source: "landing_preview", has_url: true });
     goTo(getSignupAuditHref(url));
   };
   const signupAuditHref = getSignupAuditHref(auditUrl);
