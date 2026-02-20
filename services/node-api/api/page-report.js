@@ -1,5 +1,11 @@
 import * as buildPageReportNS from "../lib/buildPageReport.js";
 import { auditErrorResponse } from "../src/lib/audit_error_response.js";
+import jwt from "jsonwebtoken";
+import path from "path";
+import { createRequire } from "module";
+
+const require = createRequire(import.meta.url);
+const Database = require("better-sqlite3");
 
 const handleWeeklyReport = async () => {};
 
@@ -9,6 +15,87 @@ const buildPageReport =
   buildPageReportNS;
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key-12345";
+const FREE_AUDIT_LIMIT = Math.max(1, Number(process.env.FREE_AUDIT_LIMIT || 1));
+
+let usageDb;
+function getUsageDb() {
+  if (!usageDb) {
+    usageDb = new Database(path.join(process.cwd(), "database.db"));
+    usageDb.pragma("journal_mode = WAL");
+    usageDb.exec(`
+      CREATE TABLE IF NOT EXISTS free_audit_usage (
+        principal TEXT PRIMARY KEY,
+        used_count INTEGER NOT NULL DEFAULT 0,
+        updated_at TEXT NOT NULL
+      );
+    `);
+  }
+  return usageDb;
+}
+
+function decodeAuthUser(req) {
+  const header = String(req.headers?.authorization || "");
+  const match = header.match(/^Bearer\s+(.+)$/i);
+  if (!match) return null;
+  try {
+    return jwt.verify(match[1], JWT_SECRET);
+  } catch {
+    return null;
+  }
+}
+
+function getClientIp(req) {
+  const xf = req.headers?.["x-forwarded-for"];
+  if (typeof xf === "string" && xf.trim()) return xf.split(",")[0].trim();
+  return req.socket?.remoteAddress || "unknown";
+}
+
+function getUsagePrincipal(req, authUser) {
+  if (String(authUser?.role || "").toLowerCase() === "admin") {
+    return { isAdmin: true, key: "admin" };
+  }
+  const email = String(authUser?.email || "").trim().toLowerCase();
+  if (email) return { isAdmin: false, key: `user:${email}` };
+  const anonId = String(req.headers?.["x-rp-anon-id"] || "").trim();
+  if (anonId) return { isAdmin: false, key: `anon:${anonId}` };
+  return { isAdmin: false, key: `ip:${getClientIp(req)}` };
+}
+
+function getUsedCount(key) {
+  const row = getUsageDb()
+    .prepare("SELECT used_count FROM free_audit_usage WHERE principal = ? LIMIT 1")
+    .get(key);
+  return Number(row?.used_count || 0);
+}
+
+function incrementUsedCount(key) {
+  getUsageDb()
+    .prepare(
+      `INSERT INTO free_audit_usage (principal, used_count, updated_at)
+       VALUES (?, 1, ?)
+       ON CONFLICT(principal) DO UPDATE
+       SET used_count = free_audit_usage.used_count + 1, updated_at = excluded.updated_at`
+    )
+    .run(key, new Date().toISOString());
+}
+
+function exhaustedResponse(used) {
+  const remaining = Math.max(0, FREE_AUDIT_LIMIT - used);
+  return {
+    ok: false,
+    error: {
+      code: "FREE_CREDIT_EXHAUSTED",
+      message: "Your free credit is used. Upgrade to continue."
+    },
+    upgrade_required: true,
+    pricing_url: "/pricing",
+    redirect_to: "/pricing",
+    free_checks_limit: FREE_AUDIT_LIMIT,
+    free_checks_used: used,
+    free_checks_remaining: remaining
+  };
+}
 
 function mockReport(url) {
   return {
@@ -77,6 +164,14 @@ function isRetryableText(s) {
 
 export default async function pageReport(req, res) {
   const url = (req.body && req.body.url) ? String(req.body.url) : "";
+  const authUser = decodeAuthUser(req);
+  const usagePrincipal = getUsagePrincipal(req, authUser);
+  if (!usagePrincipal.isAdmin) {
+    const used = getUsedCount(usagePrincipal.key);
+    if (used >= FREE_AUDIT_LIMIT) {
+      return res.status(200).json(exhaustedResponse(used));
+    }
+  }
   const isDev = process.env.NODE_ENV !== "production";
   const isExample = /example\.com/i.test(url);
   let isLocal = false;
@@ -153,6 +248,9 @@ export default async function pageReport(req, res) {
       try {
         await handleWeeklyReport(report, req);
       } catch {}
+      if (report.ok !== false && !usagePrincipal.isAdmin) {
+        incrementUsedCount(usagePrincipal.key);
+      }
       return res.json(report);
     } catch (e) {
       debug.fetch_error = String(e && (e.stack || e.message || e));
