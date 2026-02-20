@@ -7,6 +7,7 @@ const webDir = path.join(rootDir, "apps", "web");
 const artifactsDir = path.join(rootDir, "artifacts");
 const junitDir = path.join(artifactsDir, "junit");
 const testTimeoutMs = Number(process.env.QA_TEST_TIMEOUT_MS || 20 * 60 * 1000);
+const installTimeoutMs = Number(process.env.QA_INSTALL_TIMEOUT_MS || 10 * 60 * 1000);
 const workers = String(process.env.PLAYWRIGHT_WORKERS || "1").trim();
 
 function ensureArtifactsDirs() {
@@ -47,17 +48,20 @@ async function main() {
 
   const isLinux = process.platform === "linux";
   const installArgs = isLinux
-    ? ["playwright", "install", "--with-deps", "chromium"]
-    : ["playwright", "install", "chromium"];
+    ? ["--yes", "playwright", "install", "--with-deps", "chromium"]
+    : ["--yes", "playwright", "install", "chromium"];
 
-  const installCode = await run("npx", installArgs);
+  console.log("qa:test: installing Playwright Chromium...");
+  const installCode = await run("npx", installArgs, installTimeoutMs);
   if (installCode !== 0) {
     process.exit(installCode);
   }
 
+  console.log("qa:test: running Playwright test suite...");
   const testCode = await run(
     "npx",
     [
+      "--yes",
       "playwright",
       "test",
       "--config",
