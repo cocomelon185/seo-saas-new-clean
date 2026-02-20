@@ -45,7 +45,12 @@ async function run(command, args, timeoutMs = null) {
 async function main() {
   ensureArtifactsDirs();
 
-  const installCode = await run("npx", ["playwright", "install", "chromium"]);
+  const isLinux = process.platform === "linux";
+  const installArgs = isLinux
+    ? ["playwright", "install", "--with-deps", "chromium"]
+    : ["playwright", "install", "chromium"];
+
+  const installCode = await run("npx", installArgs);
   if (installCode !== 0) {
     process.exit(installCode);
   }
