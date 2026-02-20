@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import AppShell from "../components/AppShell.jsx";
 import { getAnonId } from "../utils/anonId.js";
 import { Link } from "react-router-dom";
@@ -13,6 +13,85 @@ export default function LeadsPage() {
   const [error, setError] = useState("");
   const [csvToast, setCsvToast] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [actionToast, setActionToast] = useState("");
+  const [savingLeadId, setSavingLeadId] = useState(null);
+  const [sendingTestLead, setSendingTestLead] = useState(false);
+
+  const newCount = useMemo(() => leads.filter((l) => (l.status || "new") === "new").length, [leads]);
+  const contactedCount = useMemo(() => leads.filter((l) => l.status === "contacted").length, [leads]);
+  const wonCount = useMemo(() => leads.filter((l) => l.status === "won").length, [leads]);
+  const contactRate = leads.length ? Math.round((contactedCount / leads.length) * 100) : 0;
+  const winRate = leads.length ? Math.round((wonCount / leads.length) * 100) : 0;
+  const filteredLeads = useMemo(
+    () => leads.filter((lead) => statusFilter === "all" || (lead.status || "new") === statusFilter),
+    [leads, statusFilter]
+  );
+
+  async function sendTestLead() {
+    if (!anonId) {
+      setActionToast("Could not create a test lead. Reload and try again.");
+      setTimeout(() => setActionToast(""), 2200);
+      return;
+    }
+    setSendingTestLead(true);
+    try {
+      const stamp = Date.now();
+      const res = await fetch(apiUrl("/api/embed/lead"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          owner_id: anonId,
+          url: "https://example.com/pricing",
+          email: `test+${stamp}@example.com`,
+          name: "Test Lead"
+        })
+      });
+      const data = await safeJson(res);
+      if (!res.ok || !data?.ok) throw new Error(data?.error || "Could not create a test lead.");
+      await loadLeads();
+      setActionToast("Test lead created.");
+      setTimeout(() => setActionToast(""), 1800);
+    } catch (e) {
+      setActionToast(String(e?.message || "Could not create a test lead."));
+      setTimeout(() => setActionToast(""), 2200);
+    } finally {
+      setSendingTestLead(false);
+    }
+  }
+
+  async function loadLeads() {
+    setStatus("loading");
+    setError("");
+    try {
+      const res = await fetch(apiUrl("/api/embed/leads"), {
+        headers: anonId ? { "x-rp-anon-id": anonId } : {}
+      });
+      const data = await safeJson(res);
+      if (!res.ok || !data?.ok) {
+        const msg = String(data?.error || `Failed to load leads (HTTP ${res.status || "unknown"})`);
+        if (msg.toLowerCase().includes("missing owner_id")) {
+          throw new Error("Leads Inbox is ready. Connect your widget first to start capturing leads.");
+        }
+        throw new Error(msg);
+      }
+
+      const items = Array.isArray(data.leads) ? data.leads : [];
+      setLeads(items.map((l) => ({
+        ...l,
+        tags: (() => {
+          if (Array.isArray(l.tags)) return l.tags;
+          if (typeof l.tags === "string") {
+            try { return JSON.parse(l.tags); } catch { return []; }
+          }
+          return [];
+        })()
+      })));
+      setStatus("success");
+    } catch (e) {
+      setStatus("error");
+      setError(String(e?.message || "Failed to load leads"));
+    }
+  }
 
   function exportCsv() {
     if (!leads.length) return;
@@ -40,44 +119,38 @@ export default function LeadsPage() {
   }
 
   useEffect(() => {
-    let cancelled = false;
-    setStatus("loading");
-    fetch(apiUrl("/api/embed/leads"), {
-      headers: anonId ? { "x-rp-anon-id": anonId } : {}
-    })
-      .then((r) => safeJson(r))
-      .then((data) => {
-        if (cancelled) return;
-        if (data?.ok) {
-          const items = Array.isArray(data.leads) ? data.leads : [];
-          setLeads(items.map((l) => ({
-            ...l,
-            tags: (() => {
-              if (Array.isArray(l.tags)) return l.tags;
-              if (typeof l.tags === "string") {
-                try { return JSON.parse(l.tags); } catch { return []; }
-              }
-              return [];
-            })()
-          })));
-          setStatus("success");
-        } else {
-          setStatus("error");
-          setError(data?.error || "Failed to load leads");
-        }
-      })
-      .catch((e) => {
-        if (cancelled) return;
-        setStatus("error");
-        setError(String(e?.message || "Failed to load leads"));
-      });
-    return () => { cancelled = true; };
+    loadLeads();
   }, []);
+
+  async function updateLeadStatus(leadId, nextStatus) {
+    setSavingLeadId(leadId);
+    try {
+      const res = await fetch(apiUrl(`/api/embed/leads/${leadId}`), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(anonId ? { "x-rp-anon-id": anonId } : {})
+        },
+        body: JSON.stringify({ status: nextStatus })
+      });
+      const data = await safeJson(res);
+      if (!res.ok || !data?.ok) throw new Error(data?.error || "Could not update lead.");
+
+      setLeads((prev) => prev.map((lead) => (lead.id === leadId ? { ...lead, status: nextStatus } : lead)));
+      setActionToast(nextStatus === "won" ? "Lead moved to Won." : "Lead marked Contacted.");
+      setTimeout(() => setActionToast(""), 1800);
+    } catch (e) {
+      setActionToast(String(e?.message || "Could not update lead."));
+      setTimeout(() => setActionToast(""), 2200);
+    } finally {
+      setSavingLeadId(null);
+    }
+  }
 
   return (
     <AppShell
       title="Leads Inbox"
-      subtitle="Leads captured from your embeddable audit widget."
+      subtitle="This is your lead pipeline from the embeddable SEO audit widget."
       seoTitle="Leads Inbox | RankyPulse"
       seoDescription="Leads captured from your embeddable audit widget."
       seoCanonical={`${base}/leads`}
@@ -88,22 +161,36 @@ export default function LeadsPage() {
           {csvToast}
         </div>
       )}
-      <div className="mb-4 grid gap-4 md:grid-cols-4">
+      {actionToast ? (
+        <div className="fixed right-6 top-20 z-[9999] rounded-full border border-cyan-200 bg-cyan-50 px-4 py-2 text-sm font-semibold text-cyan-700 shadow-lg">
+          {actionToast}
+        </div>
+      ) : null}
+      <div className="mb-4 grid gap-4 md:grid-cols-3 xl:grid-cols-6">
         {[
-          { label: "New leads", value: leads.filter(l => (l.status || "new") === "new").length, tone: "text-[var(--rp-indigo-700)]" },
-          { label: "Contacted", value: leads.filter(l => l.status === "contacted").length, tone: "text-amber-600" },
-          { label: "Won", value: leads.filter(l => l.status === "won").length, tone: "text-emerald-600" },
-          { label: "Total", value: leads.length, tone: "text-[var(--rp-text-900)]" }
+          { label: "Total", value: leads.length, tone: "text-[var(--rp-text-900)]" },
+          { label: "New", value: newCount, tone: "text-[var(--rp-indigo-700)]" },
+          { label: "Contacted", value: contactedCount, tone: "text-amber-600" },
+          { label: "Won", value: wonCount, tone: "text-emerald-600" },
+          { label: "Contact rate", value: `${contactRate}%`, tone: "text-[var(--rp-text-900)]" },
+          { label: "Win rate", value: `${winRate}%`, tone: "text-[var(--rp-text-900)]", help: "Won / Total leads" }
         ].map((item) => (
           <div key={item.label} className="rp-kpi-card rounded-2xl border border-[var(--rp-border)] bg-white p-4 shadow-sm">
-            <div className="text-xs text-[var(--rp-text-500)]">{item.label}</div>
+            <div className="text-xs text-[var(--rp-text-500)]">
+              {item.label}
+              {item.help ? (
+                <span className="ml-1 inline-flex cursor-help items-center rounded-full border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-1.5 py-0 text-[10px] text-[var(--rp-text-500)]" title={item.help} aria-label={item.help}>
+                  i
+                </span>
+              ) : null}
+            </div>
             <div className={`mt-2 text-2xl font-semibold ${item.tone}`}>{item.value}</div>
           </div>
         ))}
       </div>
       <div className="rp-card p-5">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <div className="text-sm text-[var(--rp-text-500)]">Total leads: {leads.length}</div>
+          <div className="text-sm text-[var(--rp-text-500)]">Filter and move leads across your pipeline.</div>
           <div className="flex flex-wrap items-center gap-2">
             {[
               { key: "all", label: "All" },
@@ -136,14 +223,39 @@ export default function LeadsPage() {
           </div>
         </div>
         {status === "loading" && (
-          <div className="text-sm text-[var(--rp-text-600)]">Loading leads…</div>
+          <div className="rounded-xl border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-4 text-sm text-[var(--rp-text-600)]">Loading leads…</div>
         )}
         {status === "error" && (
-          <div className="text-sm text-rose-600">{error || "Failed to load leads."}</div>
+          <div className="rounded-xl border border-rose-200 bg-rose-50 p-4">
+            <div className="text-sm font-semibold text-rose-700">{error || "Failed to load leads."}</div>
+            <div className="mt-1 text-xs text-rose-600">Leads Inbox fills from your embed widget submissions.</div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button type="button" className="rp-btn-secondary rp-btn-sm h-8 px-3 text-xs" onClick={loadLeads}>Retry</button>
+              <Link to="/embed" className="rp-btn-secondary rp-btn-sm h-8 px-3 text-xs">Open Embed Widget</Link>
+            </div>
+          </div>
         )}
         {status === "success" && leads.length === 0 && (
-          <div className="text-sm text-[var(--rp-text-500)]">
-            No leads yet. Share your embed widget to start collecting audit leads.
+          <div className="rounded-xl border border-[var(--rp-border)] bg-[var(--rp-gray-50)] px-5 py-3">
+            <div className="text-base font-semibold text-[var(--rp-text-900)]">No leads yet</div>
+            <div className="mt-1 text-sm text-[var(--rp-text-600)]">
+              Install and share your embeddable audit form. New submissions will appear here automatically.
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Link to="/embed" className="rp-btn-primary rp-btn-sm h-9 px-3 text-xs">Open Embed Widget</Link>
+              <Link to="/embed#setup" className="rp-btn-secondary rp-btn-sm h-9 px-3 text-xs">View setup guide</Link>
+              <button
+                type="button"
+                className="rp-btn-secondary rp-btn-sm h-9 border-[rgba(124,58,237,0.14)] bg-[rgba(124,58,237,0.03)] px-3 text-xs text-[var(--rp-text-500)] hover:border-[rgba(124,58,237,0.22)] hover:bg-[rgba(124,58,237,0.06)]"
+                onClick={sendTestLead}
+                disabled={sendingTestLead}
+              >
+                {sendingTestLead ? "Sending..." : "Send test lead"}
+              </button>
+            </div>
+            <div className="mt-2 text-xs text-[var(--rp-text-500)]">
+              Leads appear in real time after widget submissions.
+            </div>
           </div>
         )}
         {status === "success" && leads.length > 0 && (
@@ -154,15 +266,15 @@ export default function LeadsPage() {
                   <th className="px-3 py-2">When</th>
                   <th className="px-3 py-2">Name</th>
                   <th className="px-3 py-2">Email</th>
-                  <th className="px-3 py-2">URL</th>
+                  <th className="px-3 py-2">Company</th>
+                  <th className="px-3 py-2">Website</th>
                   <th className="px-3 py-2">Status</th>
                   <th className="px-3 py-2">Tags</th>
+                  <th className="px-3 py-2">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {leads
-                  .filter((lead) => statusFilter === "all" || (lead.status || "new") === statusFilter)
-                  .map((lead) => (
+                {filteredLeads.map((lead) => (
                   <tr key={lead.id} className="rp-table-row border-t border-[var(--rp-border)]">
                     <td className="px-3 py-2 text-[var(--rp-text-500)]">
                       {lead.created_at ? new Date(lead.created_at).toLocaleString() : "-"}
@@ -173,6 +285,9 @@ export default function LeadsPage() {
                       </Link>
                     </td>
                     <td className="px-3 py-2 text-[var(--rp-text-700)]">{lead.email || "-"}</td>
+                    <td className="px-3 py-2 text-[var(--rp-text-700)]">
+                      {lead.email && String(lead.email).includes("@") ? String(lead.email).split("@")[1] : "—"}
+                    </td>
                     <td className="px-3 py-2 text-[var(--rp-text-700)] break-all">{lead.url || "-"}</td>
                     <td className="px-3 py-2">
                       <span className="rp-chip rp-chip-neutral capitalize">{lead.status || "new"}</span>
@@ -185,6 +300,29 @@ export default function LeadsPage() {
                             </span>
                           ))
                         : <span className="text-xs text-[var(--rp-text-400)]">—</span>}
+                    </td>
+                    <td className="px-3 py-2">
+                      <div className="flex flex-wrap gap-1.5">
+                        <button
+                          type="button"
+                          className="rp-btn-secondary rp-btn-sm h-7 px-2 text-[11px]"
+                          onClick={() => updateLeadStatus(lead.id, "contacted")}
+                          disabled={savingLeadId === lead.id || lead.status === "contacted" || lead.status === "won"}
+                        >
+                          Mark contacted
+                        </button>
+                        <button
+                          type="button"
+                          className="rp-btn-secondary rp-btn-sm h-7 px-2 text-[11px]"
+                          onClick={() => updateLeadStatus(lead.id, "won")}
+                          disabled={savingLeadId === lead.id || lead.status === "won"}
+                        >
+                          Mark won
+                        </button>
+                        <Link to={`/leads/${lead.id}`} className="rp-btn-secondary rp-btn-sm h-7 px-2 text-[11px]">
+                          Open
+                        </Link>
+                      </div>
                     </td>
                   </tr>
                 ))}

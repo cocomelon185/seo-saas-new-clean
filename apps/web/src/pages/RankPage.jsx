@@ -37,6 +37,8 @@ import {
 import { getAuthToken, getAuthUser } from "../lib/authClient.js";
 import { safeJson } from "../lib/safeJson.js";
 import { apiUrl } from "../lib/api.js";
+import { getAnonId } from "../utils/anonId.js";
+import { extractApiErrorMessage, isFreeCreditExhaustedResponse, pricingRedirectPath } from "../lib/upgradeGate.js";
 import ApexSparkline from "../components/charts/ApexSparkline.jsx";
 import SafeApexChart from "../components/charts/SafeApexChart.jsx";
 
@@ -572,6 +574,7 @@ function deriveRankingUrlForEntry({ payload, domain, keyword }) {
 export default function RankPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const anonId = getAnonId();
   const [searchParams] = useSearchParams();
   const q = (searchParams.get("q") || searchParams.get("keyword") || "").trim();
   const base = typeof window !== "undefined" ? window.location.origin : "https://rankypulse.com";
@@ -704,9 +707,14 @@ export default function RankPage() {
         language
       };
       const scopeHash = buildRankScopeKey(requestScope);
+      const authToken = getAuthToken();
       const res = await fetch(apiUrl("/api/rank-check"), {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(anonId ? { "x-rp-anon-id": anonId } : {}),
+          ...(authToken ? { Authorization: `Bearer ${authToken}` } : {})
+        },
         body: JSON.stringify({
           ...requestScope,
           force_fresh: forceFresh,
@@ -715,8 +723,14 @@ export default function RankPage() {
       });
 
       if (!res.ok) {
-        const text = await res.text().catch(() => "");
-        throw new Error(text || `HTTP ${res.status}`);
+        const payload = await safeJson(res);
+        if (isFreeCreditExhaustedResponse(res.status, payload)) {
+          setStatus("error");
+          setError("You have used your one free credit. Upgrade to keep running rank checks.");
+          navigate(pricingRedirectPath("rank_checker"), { replace: true });
+          return;
+        }
+        throw new Error(extractApiErrorMessage(payload, `HTTP ${res.status}`));
       }
 
       const data = await safeJson(res);

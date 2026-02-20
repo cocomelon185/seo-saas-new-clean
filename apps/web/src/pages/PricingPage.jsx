@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import PricingModal from "../components/PricingModal.jsx";
 import MarketingShell from "../marketing/components/MarketingShell.jsx";
 import { IconArrowRight } from "../components/Icons.jsx";
@@ -60,7 +60,10 @@ export default function PricingPage() {
   const [checkoutError, setCheckoutError] = useState("");
   const [activePlan, setActivePlan] = useState("");
   const navigate = useNavigate();
+  const location = useLocation();
   const authUser = getAuthUser();
+  const searchParams = useMemo(() => new URLSearchParams(location.search || ""), [location.search]);
+  const isCreditExhaustedContext = searchParams.get("reason") === "free_credit_exhausted";
   const formatInr = (value) =>
     new Intl.NumberFormat("en-IN", {
       style: "currency",
@@ -163,6 +166,16 @@ export default function PricingPage() {
       >
         <div className="mt-2">
         <div className="mb-5">
+          {isCreditExhaustedContext ? (
+            <div className="mb-4 rounded-xl border border-[var(--rp-border)] bg-white px-4 py-3 text-sm text-[var(--rp-text-700)]">
+              <div className="font-semibold text-[var(--rp-text-900)]">Free credit used</div>
+              <div className="mt-1">You can return to home anytime, or upgrade to keep running checks.</div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Link to="/" className="rp-btn-secondary text-xs">Go Home</Link>
+                <Link to="/start" className="rp-btn-secondary text-xs">Start page</Link>
+              </div>
+            </div>
+          ) : null}
           <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[var(--rp-text-500)]">Premium pricing</p>
           <h2 className="mt-2 text-3xl font-semibold text-[var(--rp-text-900)]">
             Pick the plan that matches your growth stage.

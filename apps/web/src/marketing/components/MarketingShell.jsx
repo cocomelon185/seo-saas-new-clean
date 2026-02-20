@@ -44,7 +44,7 @@ export default function MarketingShell({ title, subtitle, children }) {
             {authed ? (
               <>
                 <Link
-                  to="/audit"
+                  to="/account/settings"
                   className="rounded-xl border border-[var(--rp-border)] px-4 py-2 text-xs font-semibold text-[var(--rp-text-600)] hover:border-[var(--rp-text-400)]"
                 >
                   {getAuthDisplayName(authUser) || "My account"}
@@ -70,10 +70,10 @@ export default function MarketingShell({ title, subtitle, children }) {
                   Sign in
                 </Link>
                 <Link
-                  to="/auth/signup"
+                  to="/start"
                   className="rounded-xl bg-[var(--rp-indigo-700)] px-4 py-2 text-xs font-semibold text-white shadow-[0_14px_30px_rgba(109,40,217,0.25)] hover:bg-[var(--rp-indigo-800)]"
                 >
-                  Create account
+                  Run Free SEO Audit
                 </Link>
               </>
             )}

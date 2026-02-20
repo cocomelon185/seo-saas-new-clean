@@ -4,8 +4,7 @@ import { IconArrowRight, IconLink } from "../components/Icons.jsx";
 import { getAnonId } from "../utils/anonId.js";
 import { safeJson } from "../lib/safeJson.js";
 import { apiUrl } from "../lib/api.js";
-import ApexSemiDonutScore from "../components/charts/ApexSemiDonutScore.jsx";
-import ApexMetricBars from "../components/charts/ApexMetricBars.jsx";
+import { Link } from "react-router-dom";
 
 export default function EmbedWidgetPage() {
   const base = typeof window !== "undefined" ? window.location.origin : "https://rankypulse.com";
@@ -38,18 +37,31 @@ export default function EmbedWidgetPage() {
     : "";
   const [copied, setCopied] = useState(false);
   const [webhookStatus, setWebhookStatus] = useState("");
-  const [history, setHistory] = useState([]);
-  const [historyStatus, setHistoryStatus] = useState("idle");
+  const [setupStatus, setSetupStatus] = useState("");
+  const [recentLeads, setRecentLeads] = useState([]);
+  const [leadsStatus, setLeadsStatus] = useState("idle");
   const [metrics, setMetrics] = useState({ sent: 0, failed: 0, total: 0, successRate: 0 });
+  const [snippetInstalled, setSnippetInstalled] = useState(false);
+  const [previewLoaded, setPreviewLoaded] = useState(false);
+  const [previewLikelyBlocked, setPreviewLikelyBlocked] = useState(false);
+
+  const sent = Number(metrics.sent || 0);
+  const failed = Number(metrics.failed || 0);
+  const totalDeliveries = sent + failed;
+  const successRate = totalDeliveries > 0 ? Math.round((sent / totalDeliveries) * 100) : 0;
+  const leadTotal = Number(metrics.total || 0) > 0 ? Number(metrics.total || 0) : recentLeads.length;
 
   useEffect(() => {
     let active = true;
     const loadMetrics = async () => {
       if (!anonId) return;
-      const res = await fetch(apiUrl("/api/embed/webhook-metrics"), {
-        headers: { "x-rp-anon-id": anonId }
-      });
-      const data = await safeJson(res);
+      let data = null;
+      try {
+        const res = await fetch(apiUrl("/api/embed/webhook-metrics"), {
+          headers: { "x-rp-anon-id": anonId }
+        });
+        data = await safeJson(res);
+      } catch {}
       if (!active) return;
       if (data?.metrics) setMetrics(data.metrics);
     };
@@ -59,10 +71,104 @@ export default function EmbedWidgetPage() {
     };
   }, [anonId]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (window.location.hash !== "#setup") return;
+    const el = document.getElementById("setup");
+    if (!el) return;
+    requestAnimationFrame(() => {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const key = `rp_embed_snippet_installed_${anonId}`;
+    setSnippetInstalled(localStorage.getItem(key) === "1");
+  }, [anonId]);
+
+  useEffect(() => {
+    let active = true;
+    const loadRecentLeads = async () => {
+      if (!anonId) return;
+      setLeadsStatus("loading");
+      try {
+        const res = await fetch(apiUrl("/api/embed/leads"), {
+          headers: { "x-rp-anon-id": anonId }
+        });
+        const data = await safeJson(res);
+        if (!active) return;
+        if (res.ok && data?.ok && Array.isArray(data.leads)) {
+          setRecentLeads(data.leads.slice(0, 5));
+          setLeadsStatus("success");
+          return;
+        }
+        setRecentLeads([]);
+        setLeadsStatus("error");
+      } catch {
+        if (!active) return;
+        setRecentLeads([]);
+        setLeadsStatus("error");
+      }
+    };
+    loadRecentLeads();
+    return () => {
+      active = false;
+    };
+  }, [anonId, setupStatus]);
+
+  useEffect(() => {
+    setPreviewLoaded(false);
+    setPreviewLikelyBlocked(false);
+  }, [embedUrl]);
+
+  useEffect(() => {
+    if (previewLoaded) return;
+    const timer = setTimeout(() => {
+      setPreviewLikelyBlocked(true);
+    }, 2500);
+    return () => clearTimeout(timer);
+  }, [previewLoaded, embedUrl]);
+
+  async function sendTestLead() {
+    setSetupStatus("Creating test lead...");
+    try {
+      const res = await fetch(apiUrl("/api/embed/lead"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          owner_id: anonId,
+          url: "https://example.com/pricing",
+          email: `widget-test+${Date.now()}@example.com`,
+          name: "Widget Test Lead"
+        })
+      });
+      const data = await safeJson(res);
+      if (!res.ok || !data?.ok) throw new Error(data?.error || "Failed to create test lead.");
+      setSetupStatus("Test lead created. Open Leads Inbox to verify.");
+      setTimeout(() => setSetupStatus(""), 2500);
+    } catch (e) {
+      setSetupStatus(String(e?.message || "Failed to create test lead."));
+      setTimeout(() => setSetupStatus(""), 2500);
+    }
+  }
+
+  const testLeadReceived = recentLeads.some((lead) => {
+    const email = String(lead?.email || "").toLowerCase();
+    const name = String(lead?.name || "").toLowerCase();
+    return email.includes("widget-test+") || name.includes("widget test lead");
+  });
+  const leadsInboxConnected = leadsStatus === "success";
+  const verificationChecks = [
+    { key: "snippet", label: "Snippet installed", ok: snippetInstalled },
+    { key: "test", label: "Test lead received", ok: testLeadReceived },
+    { key: "inbox", label: "Leads inbox connected", ok: leadsInboxConnected }
+  ];
+
   return (
     <AppShell
       title="Embeddable Audit Widget"
-      subtitle="Capture leads on your site with a lightweight audit form. Send leads to your webhook in real time."
+      subtitle="Capture SEO audit leads directly on your site. Setup in minutes, test instantly, and push leads to your sales workflow."
       seoTitle="Embeddable Audit Widget | RankyPulse"
       seoDescription="Capture leads on your site with a lightweight audit form."
       seoCanonical={`${base}/embed`}
@@ -70,10 +176,10 @@ export default function EmbedWidgetPage() {
     >
       <div className="mb-4 grid gap-4 md:grid-cols-4">
         {[
-          { label: "Webhook sent", value: metrics.sent ?? 0, tone: "text-[var(--rp-indigo-700)]" },
-          { label: "Failures", value: metrics.failed ?? 0, tone: "text-rose-600" },
-          { label: "Success rate", value: `${metrics.successRate ?? 0}%`, tone: "text-emerald-600" },
-          { label: "Total leads", value: metrics.total ?? 0, tone: "text-[var(--rp-text-900)]" }
+          { label: "Webhook sent", value: sent, tone: "text-[var(--rp-indigo-700)]" },
+          { label: "Failures", value: failed, tone: "text-rose-600" },
+          { label: "Success rate", value: `${successRate}%`, tone: "text-emerald-600" },
+          { label: "Total leads", value: leadTotal, tone: "text-[var(--rp-text-900)]" }
         ].map((item) => (
           <div key={item.label} className="rp-kpi-card rounded-2xl border border-[var(--rp-border)] bg-white p-4 shadow-sm">
             <div className="text-xs text-[var(--rp-text-500)]">{item.label}</div>
@@ -81,8 +187,33 @@ export default function EmbedWidgetPage() {
           </div>
         ))}
       </div>
+      <div className="mb-4 rp-card border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-4">
+        <div className="text-sm font-semibold text-[var(--rp-text-900)]">Quick setup flow</div>
+        <div className="mt-2 grid gap-2 text-xs text-[var(--rp-text-600)] md:grid-cols-3">
+          <div className="rounded-xl border border-[var(--rp-border)] bg-white p-3">1. Set your brand + theme + destination webhook.</div>
+          <div className="rounded-xl border border-[var(--rp-border)] bg-white p-3">2. Copy snippet and place it on your pricing or contact page.</div>
+          <div className="rounded-xl border border-[var(--rp-border)] bg-white p-3">3. Send a test lead and confirm capture in Leads Inbox.</div>
+        </div>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          {verificationChecks.map((item) => (
+            <span
+              key={item.key}
+              className={[
+                "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold",
+                item.ok
+                  ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                  : "border-[var(--rp-border)] bg-white text-[var(--rp-text-500)]"
+              ].join(" ")}
+              title={item.ok ? "Verified" : "Pending"}
+            >
+              <span className={["h-1.5 w-1.5 rounded-full", item.ok ? "bg-emerald-500" : "bg-[var(--rp-text-400)]"].join(" ")} />
+              {item.label}
+            </span>
+          ))}
+        </div>
+      </div>
       <div className="grid gap-6 md:grid-cols-[1.2fr_0.8fr]">
-        <div className="rp-card p-6">
+        <div id="setup" className="rp-card p-6">
           <div className="rp-section-title">Widget settings</div>
           <div className="mt-4 grid gap-4">
             <label className="block text-sm text-[var(--rp-text-600)]">
@@ -166,141 +297,153 @@ export default function EmbedWidgetPage() {
           </div>
           <div className="mt-6 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-4">
             <div className="text-xs text-[var(--rp-text-500)]">Embed snippet</div>
+            <div className="mt-1 text-xs text-[var(--rp-text-500)]">
+              Paste this code where you want the audit form to appear on your site (for example, Pricing or Contact page).
+            </div>
             <pre className="mt-2 whitespace-pre-wrap break-all rounded-xl border border-[var(--rp-border)] bg-white p-3 text-xs text-[var(--rp-text-600)]">
 {iframeSnippet}
             </pre>
-            <button
-              className="rp-btn-secondary mt-3 text-xs"
-              onClick={async () => {
-                if (!webhook.trim()) {
-                  setWebhookStatus("Add a webhook URL first.");
-                  return;
-                }
-                setWebhookStatus("Sending test...");
-                const res = await fetch(apiUrl("/api/embed/test-webhook"), {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ owner_id: anonId, webhook: webhook.trim() })
-                });
-                const data = await safeJson(res);
-                if (data?.ok) {
-                  setWebhookStatus("Test delivered.");
-                } else {
-                  setWebhookStatus(data?.error || "Test failed.");
-                }
-                setTimeout(() => setWebhookStatus(""), 2500);
-              }}
-            >
-              Test webhook
-            </button>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                className="rp-btn-secondary text-xs"
+                onClick={async () => {
+                  if (!webhook.trim()) {
+                    setWebhookStatus("Add a webhook URL first.");
+                    return;
+                  }
+                  setWebhookStatus("Sending test...");
+                  const res = await fetch(apiUrl("/api/embed/test-webhook"), {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ owner_id: anonId, webhook: webhook.trim() })
+                  });
+                  const data = await safeJson(res);
+                  if (data?.ok) {
+                    setWebhookStatus("Test delivered.");
+                  } else {
+                    setWebhookStatus(data?.error || "Test failed.");
+                  }
+                  setTimeout(() => setWebhookStatus(""), 2500);
+                }}
+              >
+                Test webhook
+              </button>
+              <button className="rp-btn-secondary text-xs" onClick={sendTestLead}>Send test lead</button>
+              <a className="rp-btn-secondary text-xs" href={embedUrl} target="_blank" rel="noreferrer">Open form</a>
+              <Link to="/leads" className="rp-btn-secondary text-xs">Open Leads Inbox</Link>
+            </div>
             {webhookStatus && (
               <div className="mt-2 text-xs text-[var(--rp-text-500)]">{webhookStatus}</div>
             )}
+            {setupStatus ? <div className="mt-1 text-xs text-[var(--rp-text-500)]">{setupStatus}</div> : null}
+            <div className="mt-2 text-xs text-[var(--rp-text-500)]">
+              This `iframe` code is what actually embeds your lead form on external pages.
+            </div>
           </div>
           <div className="mt-4 text-xs text-[var(--rp-text-500)]">
             The form posts to RankyPulse and forwards to your webhook if provided.
           </div>
           <div className="mt-6 rounded-2xl border border-[var(--rp-border)] bg-white p-4">
             <div className="flex items-center justify-between">
-              <div className="text-xs text-[var(--rp-text-500)]">Webhook retry history</div>
+              <div className="text-xs text-[var(--rp-text-500)]">Recent captured leads</div>
               <div className="text-xs text-[var(--rp-text-500)]">
-                Delivery success: <span className="font-semibold text-[var(--rp-text-700)]">{metrics.successRate}%</span>
+                Delivery success: <span className="font-semibold text-[var(--rp-text-700)]">{successRate}%</span>
               </div>
               <button
                 className="rp-btn-secondary rp-btn-sm h-8 px-3 text-xs"
                 onClick={async () => {
-                  setHistoryStatus("loading");
-                  const res = await fetch(apiUrl("/api/embed/webhook-history"), {
+                  setLeadsStatus("loading");
+                  const res = await fetch(apiUrl("/api/embed/leads"), {
                     headers: anonId ? { "x-rp-anon-id": anonId } : {}
                   });
                   const data = await safeJson(res);
-                  setHistory(Array.isArray(data?.history) ? data.history : []);
-                  setHistoryStatus("success");
-                  const metricsRes = await fetch(apiUrl("/api/embed/webhook-metrics"), {
-                    headers: anonId ? { "x-rp-anon-id": anonId } : {}
-                  });
-                  const metricsData = await safeJson(metricsRes);
-                  if (metricsData?.metrics) setMetrics(metricsData.metrics);
+                  setRecentLeads(Array.isArray(data?.leads) ? data.leads.slice(0, 5) : []);
+                  setLeadsStatus("success");
                 }}
               >
                 Refresh
               </button>
             </div>
-            {historyStatus === "loading" && (
-              <div className="mt-2 text-xs text-[var(--rp-text-500)]">Loading history…</div>
+            {leadsStatus === "loading" && (
+              <div className="mt-2 text-xs text-[var(--rp-text-500)]">Loading recent leads…</div>
             )}
-            {historyStatus !== "loading" && history.length === 0 && (
-              <div className="mt-2 text-xs text-[var(--rp-text-500)]">No retries queued.</div>
+            {leadsStatus !== "loading" && recentLeads.length === 0 && (
+              <div className="mt-2 text-xs text-[var(--rp-text-500)]">No leads captured yet. Use “Send test lead” to validate your setup.</div>
             )}
-            {history.length > 0 && (
+            {recentLeads.length > 0 && (
               <div className="mt-3 space-y-2 text-xs text-[var(--rp-text-600)]">
-                {history.slice(0, 6).map((h) => (
-                  <div key={h.id} className="rounded-xl border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-3">
+                {recentLeads.map((lead) => (
+                  <div key={lead.id} className="rounded-xl border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-3">
                     <div className="flex items-center justify-between">
-                      <div className="truncate">{h.webhook}</div>
-                      <span className="rp-chip rp-chip-neutral">{h.status}</span>
+                      <div className="truncate font-medium text-[var(--rp-text-700)]">{lead.email || "Lead"}</div>
+                      <span className="rp-chip rp-chip-neutral capitalize">{lead.status || "new"}</span>
                     </div>
-                    <div className="mt-1">Attempts: {h.attempts} · Next: {h.next_attempt_at ? new Date(h.next_attempt_at).toLocaleString() : "—"}</div>
-                    {h.last_error && <div className="mt-1 text-[var(--rp-text-500)]">Last error: {h.last_error}</div>}
-                    <div className="mt-2">
-                      <button
-                        className="rp-btn-secondary rp-btn-sm h-8 px-3 text-xs"
-                        onClick={async () => {
-                          await fetch(apiUrl(`/api/embed/webhook-history/${h.id}/retry`), {
-                            method: "POST",
-                            headers: anonId ? { "x-rp-anon-id": anonId } : {}
-                          });
-                          setWebhookStatus("Retry scheduled.");
-                          setTimeout(() => setWebhookStatus(""), 2000);
-                        }}
-                      >
-                        Retry now
-                      </button>
-                    </div>
+                    <div className="mt-1 truncate">{lead.url || "-"}</div>
+                    <div className="mt-1 text-[var(--rp-text-500)]">{lead.created_at ? new Date(lead.created_at).toLocaleString() : "-"}</div>
                   </div>
                 ))}
               </div>
             )}
           </div>
           <div className="mt-4 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-4">
-            <div className="text-xs text-[var(--rp-text-500)]">Delivery success chart</div>
-            <div className="mt-3 flex items-center gap-4">
-              <div className="w-[120px]">
-                <ApexSemiDonutScore value={metrics.successRate || 0} height={120} color="#22c55e" />
+            <div className="text-xs text-[var(--rp-text-500)]">Delivery health</div>
+            {totalDeliveries === 0 ? (
+              <div className="mt-2 rounded-xl border border-[var(--rp-border)] bg-white p-3 text-xs text-[var(--rp-text-600)]">
+                <div className="font-semibold text-[var(--rp-text-700)]">No delivery data yet</div>
+                <div className="mt-1">Run “Test webhook” or “Send test lead” once. This section will then show useful delivery trends.</div>
               </div>
-              <div className="text-xs text-[var(--rp-text-600)] space-y-1">
-                <div>Sent: <span className="font-semibold text-[var(--rp-text-800)]">{metrics.sent}</span></div>
-                <div>Failed: <span className="font-semibold text-[var(--rp-text-800)]">{metrics.failed}</span></div>
-                <div>Total: <span className="font-semibold text-[var(--rp-text-800)]">{metrics.total}</span></div>
+            ) : (
+              <div className="mt-3 space-y-3">
+                <div className="grid gap-2 text-xs text-[var(--rp-text-600)] sm:grid-cols-3">
+                  <div className="rounded-xl border border-[var(--rp-border)] bg-white p-3">
+                    Sent: <span className="font-semibold text-[var(--rp-text-800)]">{sent}</span>
+                  </div>
+                  <div className="rounded-xl border border-[var(--rp-border)] bg-white p-3">
+                    Failed: <span className="font-semibold text-[var(--rp-text-800)]">{failed}</span>
+                  </div>
+                  <div className="rounded-xl border border-[var(--rp-border)] bg-white p-3">
+                    Success rate: <span className="font-semibold text-[var(--rp-text-800)]">{successRate}%</span>
+                  </div>
+                </div>
+                <div className="rounded-xl border border-[var(--rp-border)] bg-white p-3 text-xs text-[var(--rp-text-600)]">
+                  <div className="mb-2 flex items-center justify-between">
+                    <span>Success</span>
+                    <span className="font-semibold text-[var(--rp-text-700)]">{successRate}%</span>
+                  </div>
+                  <div className="h-2 rounded-full bg-[var(--rp-border)]">
+                    <div
+                      className="h-2 rounded-full bg-emerald-500 transition-all"
+                      style={{ width: `${successRate}%` }}
+                    />
+                  </div>
+                </div>
               </div>
-            </div>
-            <div className="mt-3">
-              <ApexMetricBars
-                height={165}
-                metrics={[
-                  { label: "Success rate", value: metrics.successRate || 0 },
-                  {
-                    label: "Failure rate",
-                    value: Math.max(0, 100 - Number(metrics.successRate || 0))
-                  },
-                  {
-                    label: "Delivery volume",
-                    value: Math.min(100, Math.round(((metrics.total || 0) / Math.max(1, (metrics.total || 0) + 10)) * 100))
-                  }
-                ]}
-              />
-            </div>
+            )}
           </div>
         </div>
 
         <div className="rp-card p-6">
           <div className="rp-section-title">Live preview</div>
           <div className="mt-4 overflow-hidden rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-gray-50)] p-3">
-            <iframe
-              title="Embed preview"
-              src={embedUrl}
-              style={{ width: "100%", height: 520, border: "0", borderRadius: "14px" }}
-            />
+            {!previewLoaded && previewLikelyBlocked ? (
+              <div className="flex h-[520px] flex-col items-center justify-center rounded-[14px] border border-dashed border-[var(--rp-border)] bg-white p-4 text-center text-xs text-[var(--rp-text-500)]">
+                <div className="text-sm font-semibold text-[var(--rp-text-700)]">Preview unavailable in this browser</div>
+                <div className="mt-1">Use “Open form” to verify the exact embed experience.</div>
+                <a className="rp-btn-secondary mt-3 text-xs" href={embedUrl} target="_blank" rel="noreferrer">
+                  Open form
+                </a>
+              </div>
+            ) : (
+              <iframe
+                title="Embed preview"
+                src={embedUrl}
+                onLoad={() => setPreviewLoaded(true)}
+                style={{ width: "100%", height: 520, border: "0", borderRadius: "14px" }}
+              />
+            )}
+          </div>
+          <div className="mt-2 text-xs text-[var(--rp-text-500)]">
+            This panel should show the same form your visitors will see when embedded on your site.
           </div>
           <div className="mt-4 flex items-center gap-2 text-xs text-[var(--rp-text-500)]">
             <IconLink size={12} />
@@ -311,6 +454,10 @@ export default function EmbedWidgetPage() {
             onClick={async () => {
               try {
                 await navigator.clipboard.writeText(iframeSnippet);
+                if (typeof window !== "undefined") {
+                  localStorage.setItem(`rp_embed_snippet_installed_${anonId}`, "1");
+                }
+                setSnippetInstalled(true);
                 setCopied(true);
                 setTimeout(() => setCopied(false), 2000);
               } catch {}
