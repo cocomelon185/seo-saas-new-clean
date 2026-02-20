@@ -62,7 +62,6 @@ async function main() {
       "test",
       "--config",
       "playwright.config.js",
-      "--project=chromium",
       "--reporter=line",
       "--workers",
       workers
