@@ -15,7 +15,6 @@
     "qa:report": "npx --prefix apps/web playwright show-report artifacts/playwright-report"
   },
   "dependencies": {
-    "@sentry/node": "^10.11.0",
     "@supabase/supabase-js": "^2.39.0",
     "bcryptjs": "^3.0.3",
     "better-sqlite3": "^12.6.0",
